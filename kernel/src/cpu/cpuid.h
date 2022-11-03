@@ -1,0 +1,81 @@
+#ifndef CPU_CPUID_H
+#define CPU_CPUID_H
+
+#include <stdint.h>
+#include <stdbool.h>
+
+typedef enum {
+    CPUID_REG_EAX = 0,
+    CPUID_REG_EBX = 1,
+    CPUID_REG_ECX = 2,
+    CPUID_REG_EDX = 3,
+} cpuid_registers_t;
+
+typedef enum {
+    CPUID_CAPABILITY_ECX_SSE3         = 0,
+    CPUID_CAPABILITY_ECX_PCLMUL       = 1,
+    CPUID_CAPABILITY_ECX_DTES64       = 2,
+    CPUID_CAPABILITY_ECX_MONITOR      = 3,
+    CPUID_CAPABILITY_ECX_DS_CPL       = 4,
+    CPUID_CAPABILITY_ECX_VMX          = 5,
+    CPUID_CAPABILITY_ECX_SMX          = 6,
+    CPUID_CAPABILITY_ECX_EST          = 7,
+    CPUID_CAPABILITY_ECX_TM2          = 8,
+    CPUID_CAPABILITY_ECX_SSSE3        = 9,
+    CPUID_CAPABILITY_ECX_CID          = 10,
+    CPUID_CAPABILITY_ECX_SDBG         = 11,
+    CPUID_CAPABILITY_ECX_FMA          = 12,
+    CPUID_CAPABILITY_ECX_CX16         = 13,
+    CPUID_CAPABILITY_ECX_XTPR         = 14,
+    CPUID_CAPABILITY_ECX_PDCM         = 15,
+    CPUID_CAPABILITY_ECX_PCID         = 17,
+    CPUID_CAPABILITY_ECX_DCA          = 18,
+    CPUID_CAPABILITY_ECX_SSE4_1       = 19,
+    CPUID_CAPABILITY_ECX_SSE4_2       = 20,
+    CPUID_CAPABILITY_ECX_X2APIC       = 21,
+    CPUID_CAPABILITY_ECX_MOVBE        = 22,
+    CPUID_CAPABILITY_ECX_POPCNT       = 23,
+    CPUID_CAPABILITY_ECX_TSC          = 24,
+    CPUID_CAPABILITY_ECX_AES          = 25,
+    CPUID_CAPABILITY_ECX_XSAVE        = 26,
+    CPUID_CAPABILITY_ECX_OSXSAVE      = 27,
+    CPUID_CAPABILITY_ECX_AVX          = 28,
+    CPUID_CAPABILITY_ECX_F16C         = 29,
+    CPUID_CAPABILITY_ECX_RDRAND       = 30,
+    CPUID_CAPABILITY_ECX_HYPERVISOR   = 31,
+ 
+    CPUID_CAPABILITY_EDX_FPU          = 32,
+    CPUID_CAPABILITY_EDX_VME          = 33,
+    CPUID_CAPABILITY_EDX_DE           = 34,
+    CPUID_CAPABILITY_EDX_PSE          = 35,
+    CPUID_CAPABILITY_EDX_TSC          = 36,
+    CPUID_CAPABILITY_EDX_MSR          = 37,
+    CPUID_CAPABILITY_EDX_PAE          = 38,
+    CPUID_CAPABILITY_EDX_MCE          = 39,
+    CPUID_CAPABILITY_EDX_CX8          = 40,
+    CPUID_CAPABILITY_EDX_APIC         = 41,
+    CPUID_CAPABILITY_EDX_SEP          = 42,
+    CPUID_CAPABILITY_EDX_MTRR         = 43,
+    CPUID_CAPABILITY_EDX_PGE          = 44,
+    CPUID_CAPABILITY_EDX_MCA          = 45,
+    CPUID_CAPABILITY_EDX_CMOV         = 46,
+    CPUID_CAPABILITY_EDX_PAT          = 47,
+    CPUID_CAPABILITY_EDX_PSE36        = 48,
+    CPUID_CAPABILITY_EDX_PSN          = 49,
+    CPUID_CAPABILITY_EDX_CLFLUSH      = 50,
+    CPUID_CAPABILITY_EDX_DS           = 51,
+    CPUID_CAPABILITY_EDX_ACPI         = 52,
+    CPUID_CAPABILITY_EDX_MMX          = 53,
+    CPUID_CAPABILITY_EDX_FXSR         = 54,
+    CPUID_CAPABILITY_EDX_SSE          = 55,
+    CPUID_CAPABILITY_EDX_SSE2         = 56,
+    CPUID_CAPABILITY_EDX_SS           = 57,
+    CPUID_CAPABILITY_EDX_HTT          = 58,
+    CPUID_CAPABILITY_EDX_TM           = 59,
+    CPUID_CAPABILITY_EDX_IA64         = 60,
+    CPUID_CAPABILITY_EDX_PBE          = 61
+} cpuid_capability_t;
+
+bool cpuid_check_capability(cpuid_capability_t capability);
+
+#endif

@@ -1,0 +1,56 @@
+# Important Things To Not Forget
+- Stack is still at initial
+- Boot sector doesnt have to store the values like it does because the ahci driver doesn't use them
+
+# Backlog
+Current:
+  - APIC
+
+Kernel:
+  - Memory is being identity mapped all over the fucking place. HHDM!!!
+  - kmalloc over HHDM?
+  - Some Type of kernel error system
+  - Kernel logging system
+  - kernel/cpu/interrupts.asm: Dont do cli in interrupt handlers???
+  - kernel/cpu/interrupts.asm: Possibly want to also set SS register to data descriptor?
+  - Unmap memory
+    - Invalidate pages
+  - Device Manager
+  - Optimize VESA
+  - **Devices**
+    - CMOS
+    - Serial?
+
+Bootloader:
+  - Elf loading is super rudamentary
+  - VESA 2.0 is assumed. Not checked...
+  - Right now the display mode is just picked if it is 1920x1080 and rgb. It should be more dynamic and shit
+
+# Bugs
+- AHCI assumes that every port has 32 command slots
+- Stage 1 of bootloader probably doesnt map enough memory to map 512tb of ram lol
+
+# Potential Issues (Not prioritized)
+- Bootloader only supports 512byte sectors, technically fat32 supports other sizes.
+
+# Documentation
+- MBR Errors
+  - `E:0` means a disk error occured
+  - `E:1` means the bootloader was not found.
+
+Command for creating the empty.img image is the following:
+64MiB: `dd if=/dev/zero of=out/empty.img bs=512 count=131072`
+512MiB: `dd if=/dev/zero of=out/empty.img bs=512 count=1048576`
+5GiB: `dd if=/dev/zero of=out/empty.img bs=512 count=10485760`
+
+## Physical Memory Structure
+- B1 Page Structure 0x50000 ⬆️
+- Bootloader Stage 2 0x8000 ⬆️
+- Bootloader Stage 1 0x7C00 ➡️ 0x8000
+- B1 Stack 0x7C00 ⬇️
+
+## Virtual Memory Structure
+- Kernel at                 0xFFFF FFFF 8000 0000 ⬆️
+- HHDM at                   0xFFFF 8000 0000 0000 ⬆️
+- Heap mapped at            0x0000 1000 0000 0000 ⬆️
+- First 2mb identity mapped 0x0000 0000 0000 0000 ➡️ 0x0000 0000 0000 0002 0000
