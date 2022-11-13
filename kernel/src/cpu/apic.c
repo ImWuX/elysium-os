@@ -1,31 +1,48 @@
 #include "apic.h"
 #include <stdio.h>
-#include <cpu/msr.h>
+#include <cpu/idt.h>
 #include <memory/vmm.h>
 
-#define IA32_APIC_BASE_MSR 0x1B
+uint32_t *g_lapic;
+uint32_t *g_ioapic;
 
-#define PIC_8259_MASTER_CMD 0x20
-#define PIC_8259_MASTER_DATA 0x21
-#define PIC_8259_SLAVE_CMD 0xA0
-#define PIC_8259_SLAVE_DATA 0xA1
+static void lapic_write(uint32_t index, uint32_t data) {
+    g_lapic[index * 4] = data;
+}
 
-static void disable_8259_pic() {
-    outb(PIC_8259_MASTER_CMD, 0x11);
-    outb(PIC_8259_SLAVE_CMD, 0x11);
-    outb(PIC_8259_MASTER_DATA, 0x20);
-    outb(PIC_8259_SLAVE_DATA, 0x28);
-    outb(PIC_8259_MASTER_DATA, 0x04);
-    outb(PIC_8259_SLAVE_DATA, 0x02);
-    outb(PIC_8259_MASTER_DATA, 0x01);
-    outb(PIC_8259_SLAVE_DATA, 0x01);
-    outb(PIC_8259_MASTER_DATA, 0xFF);
-    outb(PIC_8259_SLAVE_DATA, 0xFF);
+static uint32_t lapic_read(uint32_t index) {
+    return g_lapic[index * 4];
+}
+
+static void ioapic_write(uint32_t index, uint32_t data) {
+    g_ioapic[0] = index & 0xFF;
+    g_ioapic[4] = data;
+}
+
+static uint32_t ioapic_read(uint32_t index) {
+    g_ioapic[0] = index & 0xFF;
+    return g_ioapic[4];
+}
+
+static void ioapic_set_irq(uint8_t irq, uint64_t apic_id, uint8_t vector) {
+    uint32_t low_irq = 0x10 + irq * 2;
+    uint32_t high_irq = low_irq + 1;
+
+    uint32_t high_data = ioapic_read(high_irq);
+    high_data &= ~0xFF000000;
+    high_data |= apic_id << 24;
+    ioapic_write(high_irq, high_data);
+
+    uint32_t low_data = ioapic_read(low_irq);
+    low_data &= ~(1 << 16);
+    low_data &= ~(1 << 11);
+    low_data &= ~0x700;
+    low_data &= ~0xff;
+    low_data |= vector;
+    ioapic_write(low_irq, low_data);
 }
 
 void initialize_apic(sdt_header_t *apic_header) {
-    disable_8259_pic();
-
     madt_header_t *madt = (madt_header_t *) apic_header;
     uint64_t lapic_address = madt->local_apic_address;
     uint64_t ioapic_address = 0;
@@ -47,20 +64,40 @@ void initialize_apic(sdt_header_t *apic_header) {
             case LAPIC_ADDRESS:
                 lapic_address = ((madt_record_lapic_address_t *) current_record)->lapic_address;
                 break;
+            case SOURCE_OVERRIDE:
+                // madt_record_
+                // printf("Source Override: \n");
+                break;
         }
         nbytes -= current_record->length;
         current_record = (madt_record_t *) ((uint64_t) current_record + current_record->length);
     }
 
-    // uint32_t *lapic_registers = get_hhdm_address(lapic_address);
-    // uint32_t value = lapic_registers[7];
-    // value |= 1 << 8;
-    // lapic_registers[7] = value;
 
-    // printf("LAPIC Address: %x\nIOAPIC Address: %x\nCore count: %i\n", lapic_address, ioapic_address, core_count);
+    //TODO: not a great way of mapping this memory
+    map_memory(lapic_address, HHDM_BASE + lapic_address);
+    g_lapic = HHDM_BASE + lapic_address;
 
-    // Atleast get the APIC address. Either from MADT or the MSR (or both? atleast MSR? ig)
-    //  Possibly also set the address to a definitely available memory location and map it.
-    // Next, we want to disable the 8259 PIC
-    // Then we want to take the APIC out of 8259 emulation mode
+    //TODO: not a great way of mapping this memory
+    map_memory(ioapic_address, HHDM_BASE + ioapic_address);
+    g_ioapic = HHDM_BASE + ioapic_address;
+
+    uint32_t value = lapic_read(0xF);
+    value |= 1 << 8;
+    lapic_write(0xF, value);
+
+    ioapic_set_irq(2, lapic_read(2), 32);
+    ioapic_set_irq(1, lapic_read(2), 32 + 1);
+    ioapic_set_irq(12, lapic_read(2), 32 + 12);
+}
+
+void apic_eoi(uint8_t interrupt_vector) {
+    if(g_lapic == 0) // TODO: Shouldn't be needed after full implementation
+        return;
+
+    uint8_t register_index = interrupt_vector / 32;
+    uint8_t index = interrupt_vector % 32;
+
+    if(lapic_read(0x10 + register_index) & (1 << index))
+        lapic_write(0xB, 1);
 }

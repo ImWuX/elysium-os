@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <drivers/ports.h>
 #include <drivers/display.h>
-#include <cpu/isr.h>
+#include <cpu/irq.h>
 
 #define MOUSE_TIMEOUT 100000
 #define PS2_STATUS 0x64
@@ -43,7 +43,7 @@ static uint8_t mouse_read() {
 	return inb(PS2_DATA);
 }
 
-static void mouse_handler(cpu_register_t registers __attribute__((unused))) {
+static void mouse_handler(irq_cpu_register_t registers __attribute__((unused))) {
     uint8_t status = inb(PS2_STATUS);
     while(status & PS2_READY_READ) {
 		int8_t mouse_in = inb(PS2_DATA);
@@ -127,5 +127,5 @@ void initialize_mouse() {
 	mouse_write(0xF4);
 	mouse_read();
 
-    register_interrupt_handler(IRQ_OFFSET + 12, mouse_handler);
+    register_interrupt_handler(44, mouse_handler);
 }

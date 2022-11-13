@@ -42,7 +42,7 @@ void initialize_paging() {
     // Reserve the page buffer
     reserve_pages(buffer, buffer_size / 0x1000 + 1);
 
-    // Reserve everything under 0x100000 for now.
+    // TODO: Reserve everything under 0x100000 for now.
     reserve_pages(0, 0x100);
 }
 

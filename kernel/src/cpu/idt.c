@@ -6,7 +6,7 @@
 static idt_entry_t g_idt[ENTRIES];
 static idt_descriptor_t g_idt_descriptor = { (uint16_t) sizeof(g_idt) - 1, (uint64_t) &g_idt };
 
-void set_idt_gate(uint8_t gate, uint64_t handler, uint16_t segment, uint8_t flags) {
+void idt_set_gate(uint8_t gate, uint64_t handler, uint16_t segment, uint8_t flags) {
     g_idt[gate].low_offset = (uint16_t) (handler & 0xFFFF);
     g_idt[gate].segment_selector = segment;
     g_idt[gate].ist = 0;
@@ -16,11 +16,11 @@ void set_idt_gate(uint8_t gate, uint64_t handler, uint16_t segment, uint8_t flag
     g_idt[gate].rsv0 = 0;
 }
 
-void enable_idt_gate(uint8_t gate) {
+void idt_enable_gate(uint8_t gate) {
     FLAG_SET(g_idt[gate].flags, IDT_FLAG_PRESENT);
 }
 
-void disable_idt_gate(uint8_t gate) {
+void idt_disable_gate(uint8_t gate) {
     FLAG_UNSET(g_idt[gate].flags, IDT_FLAG_PRESENT);
 }
 

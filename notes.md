@@ -8,6 +8,7 @@ Current:
 
 Kernel:
   - Memory is being identity mapped all over the fucking place. HHDM!!!
+    - Proper way to map memory to HHDM; AND ACCESS
   - kmalloc over HHDM?
   - Some Type of kernel error system
   - Kernel logging system
@@ -17,6 +18,7 @@ Kernel:
     - Invalidate pages
   - Device Manager
   - Optimize VESA
+  - Probably use the MSR for the APIC address instead of relying on ACPI tables?
   - **Devices**
     - CMOS
     - Serial?

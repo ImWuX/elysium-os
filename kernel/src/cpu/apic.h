@@ -46,6 +46,15 @@ typedef struct {
     uint64_t lapic_address;
 } __attribute__((packed)) madt_record_lapic_address_t;
 
+typedef struct {
+    madt_record_t base;
+    uint8_t bus_source;
+    uint8_t irq_source;
+    uint32_t global_system_interrupt;
+    uint16_t flags;
+} __attribute__((packed)) madt_record_source_override_t;
+
 void initialize_apic();
+void apic_eoi(uint8_t interrupt_vector);
 
 #endif

@@ -7,7 +7,8 @@
 #include <util/util.h>
 #include <memory/heap.h>
 #include <memory/pmm.h>
-#include <cpu/timer.h>
+#include <memory/vmm.h>
+#include <cpu/pit.h>
 #include <fs/fat32.h>
 
 #define MAX_CHARACTERS_WRITTEN 500
@@ -73,7 +74,7 @@ static void command_handler(char *input) {
         uint16_t entry_count = *(uint16_t *) g_bios_mmap;
         e820_entry_t *entry = (e820_entry_t *) ((uint8_t *) g_bios_mmap + 2);
 
-        printf("--- [ Memory Map ] ---");
+        printf("--- [ Memory Map ] ---\n");
         for(uint32_t i = 0; i < entry_count; i++) {
             printf("Base: [%x], Length: [%x], Type: [%i]\n", entry[i].address, entry[i].length, entry[i].type);
         }
@@ -95,7 +96,10 @@ static void command_handler(char *input) {
             uint64_t pow = 1;
             for(int i = 1; i < intlen; i++) pow *= 10;
             uint64_t index = 0;
-            for(int i = 0; i < intlen; i++) index += pow * (input[i] - '0');
+            for(int i = 0; i < intlen; i++) {
+                index += pow * (input[i] - '0');
+                pow /= 10;
+            }
 
             for(uint64_t i = 0; i < index; i++) {
                 dir = dir->last_entry;
@@ -120,6 +124,18 @@ static void command_handler(char *input) {
             }
         }
         return;
+    }
+
+    if(strcmp(command, "mm") == 0) {
+        int intlen = full_index - 1 - index;
+        uint64_t pow = 1;
+        for(int i = 1; i < intlen; i++) pow *= 16;
+        uint64_t num = 0;
+        for(int i = 0; i < intlen; i++) {
+            num += pow * (input[i] - '0');
+            pow /= 16;
+        }
+        printf("%x\n", get_physical_address(num));
     }
 }
 

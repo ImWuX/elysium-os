@@ -1,5 +1,5 @@
 #include "keyboard.h"
-#include <cpu/isr.h>
+#include <cpu/irq.h>
 #include <drivers/ports.h>
 
 static int8_t g_scancodes[128];
@@ -43,7 +43,7 @@ void set_keyboard_handler(keyboard_handler_t handler) {
     g_keyboard_handler = handler;
 }
 
-static void keyboard_event(cpu_register_t registers __attribute__((unused))) {
+static void keyboard_event(irq_cpu_register_t registers __attribute__((unused))) {
     uint8_t scancode = inb(0x60);
 
     if(scancode >= 0x80) {
@@ -61,5 +61,5 @@ static void keyboard_event(cpu_register_t registers __attribute__((unused))) {
 }
 
 void initialize_keyboard() {
-    register_interrupt_handler(IRQ_OFFSET + 1, keyboard_event);
+    register_interrupt_handler(33, keyboard_event);
 }

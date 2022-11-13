@@ -1,5 +1,5 @@
-#include "timer.h"
-#include <cpu/isr.h>
+#include "pit.h"
+#include <cpu/irq.h>
 #include <drivers/ports.h>
 #include <memory/heap.h>
 
@@ -8,7 +8,7 @@
 static uint64_t g_ticks;
 static uint16_t g_subticks;
 
-static void timer_callback(cpu_register_t registers __attribute__((unused))) {
+static void timer_callback(irq_cpu_register_t registers __attribute__((unused))) {
     g_subticks++;
     if(g_subticks >= 1000) return;
     g_subticks = 0;
@@ -16,7 +16,7 @@ static void timer_callback(cpu_register_t registers __attribute__((unused))) {
 }
 
 void initialize_timer() {
-    register_interrupt_handler(IRQ_OFFSET, timer_callback);
+    register_interrupt_handler(32, timer_callback);
 
     uint64_t divisor = HW_CLOCK_FREQUENCY / TIMER_FREQUENCY;
     uint8_t low = (uint8_t) (divisor & 0xFF);
