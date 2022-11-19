@@ -15,7 +15,8 @@ extern void* ld_vbe_mode_info;
 extern void* ld_mmap;
 
 extern noreturn void bootmain() {
-    boot_log("Long mode enabled.", LOG_LEVEL_INFO);
+    boot_log_clear();
+    boot_log("Welcome to the 64bit NestOS bootloader", LOG_LEVEL_INFO);
 
     initialize_paging();
     initialize_memory();
@@ -48,15 +49,21 @@ extern noreturn void bootmain() {
             elf64_addr_t entry = read_elf_file(&directory->fd);
             if(entry == 0) break;
             boot_log("Bootloader finished", LOG_LEVEL_INFO);
-            void (*kmain)(boot_parameters_t *) = (void (*)()) entry;
-            kmain(boot_params);
-            while(1) asm("hlt");
+
+            
+
+            // void (*kmain)(boot_parameters_t *) = (void (*)()) entry;
+            // kmain(boot_params);
+            boot_log("Kernel exited", LOG_LEVEL_ERROR);
+            asm("cli");
+            asm("hlt");
         }
         directory = directory->last_entry;
     }
 
     boot_log("Bootloader failed to load kernel", LOG_LEVEL_ERROR);
-    while(1) asm("hlt");
+    asm("cli");
+    asm("hlt");
 
     // TODO: Both AHCI driver and FAT32 driver assumes sector size.. ig mbr does as well but we should support it atleast in the C code
 }

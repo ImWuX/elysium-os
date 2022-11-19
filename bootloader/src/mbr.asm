@@ -6,6 +6,7 @@ LOAD_BUFFER equ 0x7E00                          ; 0x7C00 + 512      one sector w
 FILE_DESTINATION equ 0x8000                     ; 0x7C00 + 1024     address to load both directory clusters and the destination file at
 
 ; FAT32 Bios Boot Parameters
+BYTES_PER_SECTOR equ BPB_OFFSET + 11
 SECTORS_PER_CLUSTER equ BPB_OFFSET + 13
 FAT_COUNT equ BPB_OFFSET + 16
 SECTORS_PER_FAT equ BPB_OFFSET + 36

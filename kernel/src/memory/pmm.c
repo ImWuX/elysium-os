@@ -28,7 +28,7 @@ void *request_page() {
             }
         }
     }
-    // printe("(Critical) Failed to allocate a page. Out of memory."); TODO: ERROR??
+    // TODO: Kernel Panic.. We are out of mem
     return 0;
 }
 
@@ -53,7 +53,7 @@ void *request_linear_pages(int count) {
             available_linearly = 0;
         }
     }
-    // printe("(Critical) Failed to allocate a page. Out of memory."); TODO: ERROR??
+    // TODO: Kernel Panic.. We are out of mem
     return 0;
 }
 

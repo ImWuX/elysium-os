@@ -8,5 +8,6 @@ typedef enum {
 } boot_log_level_t;
 
 void boot_log(char *str, boot_log_level_t level);
+void boot_log_clear();
 
 #endif

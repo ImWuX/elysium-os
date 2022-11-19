@@ -4,14 +4,16 @@
 
 # Backlog
 Current:
-  - APIC
+  - [ ] ELF loader should create the virtual memory mappings for the file
+  - [ ] Bootloader should discard itself along with any data not needed
+  - [ ] Bootloader should pass simple map to kernel
 
 Kernel:
   - Memory is being identity mapped all over the fucking place. HHDM!!!
     - Proper way to map memory to HHDM; AND ACCESS
   - kmalloc over HHDM?
   - Some Type of kernel error system
-  - Kernel logging system
+  - Kernel logging system... we have log.c but it isnt used anywhere and its shit
   - kernel/cpu/interrupts.asm: Dont do cli in interrupt handlers???
   - kernel/cpu/interrupts.asm: Possibly want to also set SS register to data descriptor?
   - Unmap memory
@@ -22,6 +24,9 @@ Kernel:
   - **Devices**
     - CMOS
     - Serial?
+    - HPET
+  - Processes / context switching
+  - SMP
 
 Bootloader:
   - Elf loading is super rudamentary

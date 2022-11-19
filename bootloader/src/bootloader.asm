@@ -29,7 +29,7 @@ start:
     mov edi, ld_temporary_paging
     call setup_paging                           ; Setup paging
 
-    call setup_video_mode                       ; Change video mode
+    ; call setup_video_mode                       ; Change video mode
 
     cli                                         ; Clear interrupts as we are transitioning into long mode
 
