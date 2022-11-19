@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <boot/bootparams.h>
+#include <boot/params.h>
 #include <memory/pmm.h>
 #include <memory/vmm.h>
 #include <memory/heap.h>

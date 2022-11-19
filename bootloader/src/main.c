@@ -7,7 +7,7 @@
 #include <pci.h>
 #include <fat32.h>
 #include <elf.h>
-#include <boot/bootparams.h>
+#include <boot/params.h>
 
 #define KERNEL_FILE "KERNEL  SYS"
 
