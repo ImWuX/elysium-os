@@ -1,10 +1,12 @@
 #include "elf.h"
-#include <paging.h>
 #include <memory.h>
+#include <mm.h>
+#include <util.h>
 #include <bootlog.h>
+#include <boot/memap.h>
 
 elf64_addr_t read_elf_file(file_descriptor_t *file_descriptor) {
-    void *elf_buffer = request_page();
+    void *elf_buffer = mm_request_page();
     map_memory(elf_buffer, elf_buffer);
 
     fread(file_descriptor, sizeof(elf64_header_t), elf_buffer);
@@ -75,7 +77,7 @@ elf64_addr_t read_elf_file(file_descriptor_t *file_descriptor) {
     }
 
     uint64_t page_count = size / 0x1000 + (size % 0x1000 > 0 ? 1 : 0);
-    void *phys_address = request_linear_pages(page_count);
+    void *phys_address = mm_request_linear_pages_type(page_count, BOOT_MEMAP_TYPE_KERNEL);
     for(uint64_t i = 0; i < page_count; i++) {
         map_memory(phys_address + i * 0x1000, (void *) (base_address + i * 0x1000));
     }

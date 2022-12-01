@@ -1,7 +1,8 @@
 #include "ahci.h"
 #include <bootlog.h>
 #include <memory.h>
-#include <paging.h>
+#include <mm.h>
+#include <util.h>
 
 #define	SATA_SIG_ATA	0x00000101
 #define	SATA_SIG_ATAPI	0xEB140101
@@ -64,13 +65,13 @@ static void stop_port(hba_port_t *port) {
 static void configure_port(hba_port_t *port) {
     stop_port(port);
 
-    void *clb = request_page();
+    void *clb = mm_request_page();
     map_memory(clb, clb);
     memset(0, clb, 1024);
     port->command_list_base_address = (uint32_t) (uint64_t) clb;
     port->command_list_base_address_upper = (uint32_t) ((uint64_t) clb >> 32);
 
-    void *fb = request_page();
+    void *fb = mm_request_page();
     map_memory(fb, fb);
     memset(0, fb, 256);
     port->fis_base_address = (uint32_t) (uint64_t) fb;
@@ -80,7 +81,7 @@ static void configure_port(hba_port_t *port) {
     for(int i = 0; i < 32; i++) {
         command_header[i].prd_table_length = 8;
 
-        void *command_table_address = request_page();
+        void *command_table_address = mm_request_page();
         map_memory(command_table_address, command_table_address);
         memset(0, command_table_address, 256);
         command_header[i].command_table_descriptor_base_address = (uint32_t) (uint64_t) command_table_address;
@@ -183,7 +184,6 @@ bool read(uint64_t first_sector, uint32_t sector_count, void *dest) {
 
 void initialize_ahci_device(uint64_t bar5_address) {
     hba_mem_t *hba_mem = (hba_mem_t *) bar5_address;
-
     map_memory((void *) hba_mem, (void *) hba_mem);
 
     for(int i = 0; i < 32; i++) {

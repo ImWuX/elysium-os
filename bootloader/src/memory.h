@@ -23,7 +23,4 @@ void map_memory(void *physical_address, void *virtual_address);
 void map_memory_2mb(void *physical_address, void *virtual_address);
 uint64_t get_pml4_address();
 
-void memcpy(void *source, void *dest, int nbytes);
-void memset(uint8_t value, void *dest, int len);
-
 #endif

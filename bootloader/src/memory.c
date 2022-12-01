@@ -1,5 +1,8 @@
 #include "memory.h"
-#include <paging.h>
+#include <mm.h>
+#include <bootlog.h>
+#include <util.h>
+#include <boot/memap.h>
 
 page_table_t *pml4;
 
@@ -25,24 +28,24 @@ static uint8_t pt_get_flag(uint64_t entry, pt_entry_flags_t flag){
 }
 
 void initialize_memory() {
-    pml4 = (page_table_t *) request_page();
+    pml4 = (page_table_t *) mm_request_page();
     memset(0, (uint8_t *) pml4, 0x1000);
 
-    uint16_t entry_count = *(uint16_t *) &ld_mmap;
-    e820_entry_t *entry = (e820_entry_t *) ((uint8_t *) &ld_mmap + 2);
-    for(uint32_t i = 0; i < entry_count; i++) {
-        uint64_t address = entry[i].address;
-        address &= 0xFFFFFFFFFFFFF000;
-        while(address < entry[i].address + entry[i].length) {
-            if(address % 0x200000 == 0 && address + 0x200000 < entry[i].address + entry[i].length) {
-                map_memory_2mb((void *) address, (void *) 0xFFFF800000000000 + address);
-                address += 0x200000;
-            } else {
-                map_memory((void *) address, (void *) 0xFFFF800000000000 + address);
-                address += 0x1000;
-            }
-        }
-    }
+    // uint16_t entry_count = *(uint16_t *) &ld_mmap;
+    // e820_entry_t *entry = (e820_entry_t *) ((uint8_t *) &ld_mmap + 2);
+    // for(uint32_t i = 0; i < entry_count; i++) {
+    //     uint64_t address = entry[i].address;
+    //     address &= 0xFFFFFFFFFFFFF000;
+    //     while(address < entry[i].address + entry[i].length) {
+    //         if(address % 0x200000 == 0 && address + 0x200000 < entry[i].address + entry[i].length) {
+    //             map_memory_2mb((void *) address, (void *) 0xFFFF800000000000 + address);
+    //             address += 0x200000;
+    //         } else {
+    //             map_memory((void *) address, (void *) 0xFFFF800000000000 + address);
+    //             address += 0x1000;
+    //         }
+    //     }
+    // }
 
     // TODO: Need to start using HHDM
     for(uint64_t i = 0; i < 512; i++) {
@@ -64,7 +67,7 @@ void map_memory(void *physical_address, void *virtual_address) {
     for(int i = 0; i <= 2; i++) {
         uint64_t entry = current_table->entries[indexes[i]];
         if(!pt_get_flag(entry, PT_FLAG_PRESENT)) {
-            page_table_t *new_table = (page_table_t *) request_page();
+            page_table_t *new_table = (page_table_t *) mm_request_page();
             memset(0, (uint8_t *) new_table, 0x1000);
             uint64_t new_entry = 0;
             pt_set_address(&new_entry, (uint64_t) new_table >> 12);
@@ -97,7 +100,7 @@ void map_memory_2mb(void *physical_address, void *virtual_address) {
     for(int i = 0; i <= 1; i++) {
         uint64_t entry = current_table->entries[indexes[i]];
         if(!pt_get_flag(entry, PT_FLAG_PRESENT)) {
-            page_table_t *new_table = (page_table_t *) request_page();
+            page_table_t *new_table = (page_table_t *) mm_request_page();
             memset(0, (uint8_t *) new_table, 0x1000);
             uint64_t new_entry = 0;
             pt_set_address(&new_entry, (uint64_t) new_table >> 12);
@@ -119,14 +122,4 @@ void map_memory_2mb(void *physical_address, void *virtual_address) {
 
 uint64_t get_pml4_address() {
     return (uint64_t) pml4;
-}
-
-void memcpy(void *src, void *dest, int nbytes) {
-    for(int i = 0; i < nbytes; i++)
-        *((uint8_t *) dest + i) = *((uint8_t *) src + i);
-}
-
-void memset(uint8_t value, void *dest, int len) {
-    uint8_t *temp = (uint8_t *) dest;
-    for(; len != 0; len--) *temp++ = value;
 }

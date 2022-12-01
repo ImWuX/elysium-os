@@ -23,13 +23,13 @@
 
 extern noreturn void kmain(boot_parameters_t *boot_params) {
     // Initialize memory management
-    initialize_paging(
-        boot_params->memory_map_buffer_address,
-        boot_params->memory_map_buffer_size,
-        boot_params->memory_map_free_mem,
-        boot_params->memory_map_reserved_mem,
-        boot_params->memory_map_used_mem
-    );
+    // initialize_paging(
+    //     boot_params->memory_map_buffer_address,
+    //     boot_params->memory_map_buffer_size,
+    //     boot_params->memory_map_free_mem,
+    //     boot_params->memory_map_reserved_mem,
+    //     boot_params->memory_map_used_mem
+    // );
     initialize_memory(boot_params->paging_address);
     initialize_heap((void *) 0x100000000000, 10);
 
@@ -52,7 +52,7 @@ extern noreturn void kmain(boot_parameters_t *boot_params) {
 
     // Initialize graphics
     initialize_display(boot_params->vbe_mode_info_address);
-    initialize_kconsole(200, 200, get_display_mode_info()->width - 400, get_display_mode_info()->height - 400, boot_params->bios_memory_map_address);
+    initialize_kconsole(200, 200, get_display_mode_info()->width - 400, get_display_mode_info()->height - 400);
 
     // Initialize drivers
     sdt_header_t *mcfg_header = acpi_find_table((uint8_t *) "MCFG");

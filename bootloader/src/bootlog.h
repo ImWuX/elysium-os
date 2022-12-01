@@ -1,5 +1,6 @@
-#ifndef BOUT_H
-#define BOUT_H
+#ifndef BOOTLOG_H
+#define BOOTLOG_H
+#include <stdint.h>
 
 typedef enum {
     LOG_LEVEL_INFO,
@@ -8,6 +9,7 @@ typedef enum {
 } boot_log_level_t;
 
 void boot_log(char *str, boot_log_level_t level);
+void boot_log_hex(uint64_t value);
 void boot_log_clear();
 
 #endif

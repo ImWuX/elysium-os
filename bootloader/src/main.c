@@ -1,8 +1,8 @@
 #include <stdnoreturn.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <mm.h>
 #include <memory.h>
-#include <paging.h>
 #include <bootlog.h>
 #include <pci.h>
 #include <fat32.h>
@@ -10,27 +10,22 @@
 #include <boot/params.h>
 
 #define KERNEL_FILE "KERNEL  SYS"
+#define BOOT_DRIVE_ADDRESS 0x7C40
 
 extern void* ld_vbe_mode_info;
 extern void* ld_mmap;
 
 extern noreturn void bootmain() {
     boot_log_clear();
-    boot_log("Welcome to the 64bit NestOS bootloader", LOG_LEVEL_INFO);
+    boot_log("Welcome to the 64bit NestOS bootloader\n", LOG_LEVEL_INFO);
 
-    initialize_paging();
+    mm_initialize();
     initialize_memory();
 
-    boot_parameters_t *boot_params = (boot_parameters_t *) request_page();
-    boot_params->boot_drive = *((uint8_t *) 0x7C40);
-    boot_params->memory_map_buffer_address = get_buffer_address();
-    boot_params->memory_map_buffer_size = get_buffer_size();
-    boot_params->memory_map_free_mem = get_free_memory();
-    boot_params->memory_map_reserved_mem = get_reserved_memory();
-    boot_params->memory_map_used_mem = get_used_memory();
+    boot_parameters_t *boot_params = (boot_parameters_t *) mm_request_page();
+    boot_params->boot_drive = *((uint8_t *) BOOT_DRIVE_ADDRESS);
     boot_params->paging_address = get_pml4_address();
     boot_params->vbe_mode_info_address = (uint64_t) &ld_vbe_mode_info;
-    boot_params->bios_memory_map_address = (uint64_t) &ld_mmap;
 
     pci_enumerate();
     initialize_fs();
@@ -48,22 +43,29 @@ extern noreturn void bootmain() {
         if(is_kernel) {
             elf64_addr_t entry = read_elf_file(&directory->fd);
             if(entry == 0) break;
-            boot_log("Bootloader finished", LOG_LEVEL_INFO);
+            boot_log("Bootloader finished\n", LOG_LEVEL_INFO);
 
-            
+            for(uint64_t i = 0; i < g_memap_length; i++) {
+                boot_log("Type[", LOG_LEVEL_INFO);
+                boot_log_hex(g_memap[i].type);
+                boot_log("] Base[", LOG_LEVEL_INFO);
+                boot_log_hex(g_memap[i].base_address);
+                boot_log("] Length[", LOG_LEVEL_INFO);
+                boot_log_hex(g_memap[i].length);
+                boot_log("]\n", LOG_LEVEL_INFO);
+            }
 
             // void (*kmain)(boot_parameters_t *) = (void (*)()) entry;
             // kmain(boot_params);
-            boot_log("Kernel exited", LOG_LEVEL_ERROR);
+            boot_log("Kernel exited\n", LOG_LEVEL_ERROR);
             asm("cli");
             asm("hlt");
         }
         directory = directory->last_entry;
     }
 
-    boot_log("Bootloader failed to load kernel", LOG_LEVEL_ERROR);
-    asm("cli");
-    asm("hlt");
+    boot_log("Bootloader failed to load kernel\n", LOG_LEVEL_ERROR);
+    while(true) asm("hlt");
 
     // TODO: Both AHCI driver and FAT32 driver assumes sector size.. ig mbr does as well but we should support it atleast in the C code
 }

@@ -16,8 +16,6 @@
 #define BG 0xFF000000
 #define FG 0xFFFFFFFF
 
-static uint64_t g_bios_mmap;
-
 static int g_width;
 static int g_height;
 static int g_corner_x;
@@ -67,17 +65,6 @@ static void command_handler(char *input) {
 
     if(strcmp(command, "time") == 0) {
         printf("Time since system startup: %i\n", get_time_ms());
-        return;
-    }
-
-    if(strcmp(command, "mmap") == 0) {
-        uint16_t entry_count = *(uint16_t *) g_bios_mmap;
-        e820_entry_t *entry = (e820_entry_t *) ((uint8_t *) g_bios_mmap + 2);
-
-        printf("--- [ Memory Map ] ---\n");
-        for(uint32_t i = 0; i < entry_count; i++) {
-            printf("Base: [%x], Length: [%x], Type: [%i]\n", entry[i].address, entry[i].length, entry[i].type);
-        }
         return;
     }
 
@@ -139,9 +126,7 @@ static void command_handler(char *input) {
     }
 }
 
-void initialize_kconsole(int x, int y, int w, int h, uint64_t bios_memory_map_address) {
-    g_bios_mmap = bios_memory_map_address;
-
+void initialize_kconsole(int x, int y, int w, int h) {
     g_width = w;
     g_height = h;
     g_corner_x = x;
