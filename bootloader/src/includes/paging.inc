@@ -30,17 +30,12 @@ setup_paging:
     mov dword [edi], eax                        ; Register PDT
 
     add edi, 0x1000                             ; Move to PDT
-    mov eax, edi
-    add eax, 0x1003
-    mov dword [edi], eax                        ; Register PT
-
-    add edi, 0x1000                             ; Move to PT
-    mov ebx, 3                                  ; Start paging at 0x0 (3 is the flag)
+    mov ebx, 131                                ; Start paging at 0x0 (3 is the flag)
     mov ecx, 512                                ; Create 512 pages
 
 .set_entry:
     mov dword [edi], ebx                        ; Register page
-    add ebx, 0x1000                             ; Increase pointer to next page location
+    add ebx, 0x200000                           ; Increase pointer to next page location
     add edi, 8                                  ; Move to next page
     loop .set_entry
 
