@@ -7,7 +7,6 @@ typedef struct {
     uint8_t boot_drive;
     boot_memap_entry_t *memory_map;
     uint64_t memory_map_length;
-    uint64_t paging_address; //TODO: Again bootloader should better prepare the kernel
     uint64_t vbe_mode_info_address;
 } __attribute__((packed)) boot_parameters_t;
 

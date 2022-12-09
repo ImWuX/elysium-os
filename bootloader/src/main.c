@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <mm.h>
-#include <memory.h>
+#include <paging.h>
 #include <bootlog.h>
 #include <pci.h>
 #include <fat32.h>
@@ -20,11 +20,10 @@ extern noreturn void bootmain() {
     boot_log("Welcome to the 64bit NestOS bootloader\n", LOG_LEVEL_INFO);
 
     mm_initialize();
-    initialize_memory();
+    paging_initialize(g_memap, g_memap_length);
 
     boot_parameters_t *boot_params = (boot_parameters_t *) mm_request_page();
     boot_params->boot_drive = *((uint8_t *) BOOT_DRIVE_ADDRESS);
-    boot_params->paging_address = get_pml4_address();
     boot_params->vbe_mode_info_address = (uint64_t) &ld_vbe_mode_info;
 
     pci_enumerate();

@@ -2,7 +2,7 @@
 #include <ahci.h>
 #include <util.h>
 #include <mm.h>
-#include <memory.h>
+#include <paging.h>
 #include <bootlog.h>
 
 #define LAST_CLUSTER 0x0FFFFFF8
@@ -67,7 +67,7 @@ dir_entry_t *read_directory(uint32_t cluster_num) {
 
             if(current_page_entry_count == 0 || (current_page_entry_count + 1) * sizeof(dir_entry_t) >= 0x1000) {
                 void* page = mm_request_page();
-                map_memory(page, page);
+                paging_map_memory(page, page);
                 memset(0, page, 0x1000);
                 dir_entry = (dir_entry_t *) (uint64_t) page;
                 current_page_entry_count = 0;
@@ -95,7 +95,7 @@ dir_entry_t *read_root_directory() {
 
 void initialize_fs() {
     void *bpb_page = mm_request_page();
-    map_memory(bpb_page, bpb_page);
+    paging_map_memory(bpb_page, bpb_page);
 
     if(!read(0, 1, bpb_page)) {
         boot_log("FS could not be initialized. BPB read failed.", LOG_LEVEL_ERROR);

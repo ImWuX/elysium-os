@@ -30,7 +30,7 @@ extern noreturn void kmain(boot_parameters_t *boot_params) {
     //     boot_params->memory_map_reserved_mem,
     //     boot_params->memory_map_used_mem
     // );
-    initialize_memory(boot_params->paging_address);
+    // initialize_memory(boot_params->paging_address);
     initialize_heap((void *) 0x100000000000, 10);
 
     // Initialize ACPI
