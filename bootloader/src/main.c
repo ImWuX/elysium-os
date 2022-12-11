@@ -56,8 +56,8 @@ extern noreturn void bootmain() {
             //     boot_log("]\n", LOG_LEVEL_INFO);
             // }
 
-            void (*kmain)(boot_parameters_t *) = (void (*)()) entry;
-            kmain(boot_params);
+            // void (*kmain)(boot_parameters_t *) = (void (*)()) entry;
+            // kmain(boot_params);
             boot_log("Kernel exited\n", LOG_LEVEL_ERROR);
             asm("cli");
             asm("hlt");

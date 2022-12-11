@@ -5,14 +5,14 @@ LDFLAGS = -nostdlib
 CFLAGS = -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable
 
 # Sources
-ASM_SOURCES = $(shell find src/ -type f -name '*.asm' ! -name 'mbr.asm')
+ASM_SOURCES = $(shell find src/ -type f -name '*.asm' ! -name 'bootsector.asm')
 C_SOURCES = $(shell find src/ -type f -name '*.c')
 
 # Phony Targets
 .PHONY: clean
 
 # Real Targets
-src/mbr.bin: src/mbr.asm
+src/bootsector.bin: src/bootsector.asm
 	${ASMC} $< -f bin -o $@
 
 src/bootloader.bin: ${ASM_SOURCES:.asm=.o} ${C_SOURCES:.c=.o}

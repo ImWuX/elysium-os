@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ $1 = "-bootonly" ]; then
+    bootonly=true
+fi
+
 while [ 1 ]; do
     read -n 1 -s -p $'\e[94mPress any key to continue. Q to quit.\e[0m' key
     if [ "$key" == "q" ]; then
@@ -9,7 +13,11 @@ while [ 1 ]; do
     clear
 
     # Building OS
-    make
+    if $bootonly; then
+        make bootloader
+    else
+        make
+    fi
     if [ $? -eq 0 ]; then
         # Running QEMU
         echo -e "\e[32mRunning QEMU in VNC\e[0m"

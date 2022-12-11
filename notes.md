@@ -33,7 +33,6 @@ Bootloader:
   - Elf loading is super rudamentary
   - VESA 2.0 is assumed. Not checked...
   - Right now the display mode is just picked if it is 1920x1080 and rgb. It should be more dynamic and shit
-  - Rename MBR
 
 # Bugs
 - AHCI assumes that every port has 32 command slots

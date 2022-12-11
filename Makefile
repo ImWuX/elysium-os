@@ -8,15 +8,17 @@ LD = /usr/local/x86_64elfgcc/bin/x86_64-elf-ld
 AR = /usr/local/x86_64elfgcc/bin/x86_64-elf-ar
 
 # Phony Targets
-.PHONY: all clean $(OUT)/mbr.bin $(OUT)/bootloader.bin $(OUT)/libc.a $(OUT)/kernel.elf $(OUT)/disk.img
+.PHONY: all clean bootloader $(OUT)/bootsector.bin $(OUT)/bootloader.bin $(OUT)/libc.a $(OUT)/kernel.elf $(OUT)/disk.img
 
-all: $(OUT)/mbr.bin $(OUT)/bootloader.bin $(OUT)/libc.a $(OUT)/kernel.elf $(OUT)/disk.img clean
+all: $(OUT)/bootsector.bin $(OUT)/bootloader.bin $(OUT)/libc.a $(OUT)/kernel.elf $(OUT)/disk.img clean
+
+bootloader: $(OUT)/bootsector.bin $(OUT)/bootloader.bin $(OUT)/disk.img clean
 
 # Real Targets
-$(OUT)/mbr.bin:
+$(OUT)/bootsector.bin:
 	@ echo "\e[33m>> Compiling Master Boot Record\e[0m"
-	make -C bootloader src/mbr.bin
-	cp bootloader/src/mbr.bin $@
+	make -C bootloader src/bootsector.bin
+	cp bootloader/src/bootsector.bin $@
 
 $(OUT)/bootloader.bin:
 	@ echo "\e[33m>> Compiling Bootloader\e[0m"
@@ -33,11 +35,11 @@ $(OUT)/kernel.elf:
 	make -C kernel src/kernel.elf
 	cp kernel/src/kernel.elf $@
 
-$(OUT)/disk.img: $(OUT)/mbr.bin
+$(OUT)/disk.img: $(OUT)/bootsector.bin
 	@ echo "\e[33m>> Creating Disk Image\e[0m"
 	cp $(OUT)/empty.img $@
 	mkfs.fat -F 32 -n "MAIN_DRIVE" $@
-	dd if=$(OUT)/mbr.bin of=$@ ibs=422 seek=90 obs=1 conv=notrunc
+	dd if=$(OUT)/bootsector.bin of=$@ ibs=422 seek=90 obs=1 conv=notrunc
 	perl -e 'print pack("ccc",(0xEB,0x58,0x90))' | dd of=$@ bs=1 seek=0 count=3 conv=notrunc
 	mcopy -i $@ $(OUT)/bootloader.bin "::bootload.sys"
 	mcopy -i $@ $(OUT)/kernel.elf "::kernel.sys"
