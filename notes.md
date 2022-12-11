@@ -6,7 +6,8 @@
 Current:
   - [ ] ELF loader should create the virtual memory mappings for the file
   - [ ] Bootloader should discard itself along with any data not needed
-  - [ ] Bootloader should pass simple map to kernel
+  - [x] Bootloader should pass simple map to kernel
+  - [ ] Kernel should use a physical allocation of like memory sections and page structs or smt
 
 Kernel:
   - Memory is being identity mapped all over the fucking place. HHDM!!!

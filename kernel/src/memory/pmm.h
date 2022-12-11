@@ -2,6 +2,7 @@
 #define MEMORY_PMM_H
 
 #include <stdint.h>
+#include <boot/memap.h>
 
 typedef struct {
     uint64_t address;
@@ -18,7 +19,7 @@ typedef enum {
     E820_TYPE_BAD,
 } e820_type_t;
 
-void initialize_paging(uint64_t buf_address, uint64_t buf_size, uint64_t free, uint64_t reserved, uint64_t used);
+void initialize_paging(boot_memap_entry_t *memory_map, uint64_t memory_map_length);
 
 void *request_page();
 void *request_linear_pages(int count);

@@ -4,6 +4,9 @@ The Nest Boot Protocol describes the state that the Nest bootloader will leave t
 ## The State
 - A20 line is opened
 - CPU is set to long mode
+- HHDM is mapped into virtual memory
+    - Starting at offset `0xFFFF800000000000`
+    - Only usable entries are mapped
 
 ## The Memory Map
 - Anything under `0x500` will always be `RESERVED`.

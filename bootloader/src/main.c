@@ -23,6 +23,8 @@ extern noreturn void bootmain() {
     paging_initialize(g_memap, g_memap_length);
 
     boot_parameters_t *boot_params = (boot_parameters_t *) mm_request_page();
+    boot_params->memory_map = g_memap;
+    boot_params->memory_map_length = g_memap_length;
     boot_params->boot_drive = *((uint8_t *) BOOT_DRIVE_ADDRESS);
     boot_params->vbe_mode_info_address = (uint64_t) &ld_vbe_mode_info;
 
@@ -44,18 +46,18 @@ extern noreturn void bootmain() {
             if(entry == 0) break;
             boot_log("Bootloader finished\n", LOG_LEVEL_INFO);
 
-            for(uint64_t i = 0; i < g_memap_length; i++) {
-                boot_log("Type[", LOG_LEVEL_INFO);
-                boot_log_hex(g_memap[i].type);
-                boot_log("] Base[", LOG_LEVEL_INFO);
-                boot_log_hex(g_memap[i].base_address);
-                boot_log("] Length[", LOG_LEVEL_INFO);
-                boot_log_hex(g_memap[i].length);
-                boot_log("]\n", LOG_LEVEL_INFO);
-            }
+            // for(uint64_t i = 0; i < g_memap_length; i++) {
+            //     boot_log("Type[", LOG_LEVEL_INFO);
+            //     boot_log_hex(g_memap[i].type);
+            //     boot_log("] Base[", LOG_LEVEL_INFO);
+            //     boot_log_hex(g_memap[i].base_address);
+            //     boot_log("] Length[", LOG_LEVEL_INFO);
+            //     boot_log_hex(g_memap[i].length);
+            //     boot_log("]\n", LOG_LEVEL_INFO);
+            // }
 
-            // void (*kmain)(boot_parameters_t *) = (void (*)()) entry;
-            // kmain(boot_params);
+            void (*kmain)(boot_parameters_t *) = (void (*)()) entry;
+            kmain(boot_params);
             boot_log("Kernel exited\n", LOG_LEVEL_ERROR);
             asm("cli");
             asm("hlt");

@@ -8,13 +8,17 @@ uint64_t used_memory;
 uint64_t buffer_size;
 uint8_t *buffer;
 
-void initialize_paging(uint64_t buf_address, uint64_t buf_size, uint64_t free, uint64_t reserved, uint64_t used) {
-    // TODO: This whole place is a fucking disaster
-    buffer_size = buf_size;
-    buffer = (uint8_t *) buf_address;
-    free_memory = free;
-    reserved_memory = reserved;
-    used_memory = used;
+void initialize_paging(boot_memap_entry_t *memory_map, uint64_t memory_map_length) {
+    uint64_t largest_entry = 0;
+    uint64_t largest_entry_size = 0;
+    for(uint64_t i = 0; i < memory_map_length; i++) {
+        //TODO: Reclaim bootloader entries
+        if(memory_map[i].type != BOOT_MEMAP_TYPE_USABLE) continue;
+        if(memory_map[i].length > largest_entry_size) {
+            largest_entry_size = memory_map[i].length;
+            largest_entry = i;
+        }
+    }
 }
 
 void *request_page() {
