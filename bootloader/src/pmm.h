@@ -1,5 +1,5 @@
-#ifndef MM_H
-#define MM_H
+#ifndef PMM_H
+#define PMM_H
 
 #include <stdint.h>
 #include <boot/memap.h>
@@ -22,9 +22,9 @@ typedef enum {
 extern boot_memap_entry_t *g_memap;
 extern uint64_t g_memap_length;
 
-void mm_initialize();
-void *mm_request_page();
-void *mm_request_linear_pages(uint64_t number_of_pages);
-void *mm_request_linear_pages_type(uint64_t number_of_pages, boot_memap_entry_type_t type);
+void pmm_initialize();
+void *pmm_request_page();
+void *pmm_request_linear_pages(uint64_t number_of_pages);
+void *pmm_request_linear_pages_type(uint64_t number_of_pages, boot_memap_entry_type_t type);
 
 #endif

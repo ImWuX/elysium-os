@@ -1,5 +1,5 @@
-#include "paging.h"
-#include <mm.h>
+#include "vmm.h"
+#include <pmm.h>
 #include <util.h>
 
 static page_table_t *g_pml4;
@@ -25,8 +25,8 @@ static uint8_t pt_get_flag(uint64_t entry, pt_entry_flags_t flag) {
     return (entry & bitSelector) > 0;
 }
 
-void paging_initialize(boot_memap_entry_t *memory_map, uint64_t memory_map_length) {
-    g_pml4 = (page_table_t *) mm_request_page();
+void vmm_initialize(boot_memap_entry_t *memory_map, uint64_t memory_map_length) {
+    g_pml4 = (page_table_t *) pmm_request_page();
     memset(0, (uint8_t *) g_pml4, 0x1000);
 
     for(uint64_t i = 0; i < memory_map_length; i++) {
@@ -35,10 +35,10 @@ void paging_initialize(boot_memap_entry_t *memory_map, uint64_t memory_map_lengt
         address &= 0xFFFFFFFFFFFFF000;
         while(address < memory_map[i].base_address + memory_map[i].length) {
             if(address % 0x200000 == 0 && address + 0x200000 < memory_map[i].base_address + memory_map[i].length) {
-                paging_map_memory_2mb((void *) address, (void *) 0xFFFF800000000000 + address);
+                vmm_map_memory_2mb((void *) address, (void *) 0xFFFF800000000000 + address);
                 address += 0x200000;
             } else {
-                paging_map_memory((void *) address, (void *) 0xFFFF800000000000 + address);
+                vmm_map_memory((void *) address, (void *) 0xFFFF800000000000 + address);
                 address += 0x1000;
             }
         }
@@ -46,13 +46,13 @@ void paging_initialize(boot_memap_entry_t *memory_map, uint64_t memory_map_lengt
 
     // TODO: Need to start using HHDM
     for(uint64_t i = 0; i < 512; i++) {
-        paging_map_memory((void *) (i * 0x1000), (void *) (i * 0x1000));
+        vmm_map_memory((void *) (i * 0x1000), (void *) (i * 0x1000));
     }
     asm volatile("mov %0, %%cr3" : : "r" (g_pml4));
 
 }
 
-void paging_map_memory(void *physical_address, void *virtual_address) {
+void vmm_map_memory(void *physical_address, void *virtual_address) {
     uint64_t indexes[4];
     uint64_t address = (uint64_t) virtual_address;
     address >>= 3;
@@ -65,7 +65,7 @@ void paging_map_memory(void *physical_address, void *virtual_address) {
     for(int i = 0; i <= 2; i++) {
         uint64_t entry = current_table->entries[indexes[i]];
         if(!pt_get_flag(entry, PT_FLAG_PRESENT)) {
-            page_table_t *new_table = (page_table_t *) mm_request_page();
+            page_table_t *new_table = (page_table_t *) pmm_request_page();
             memset(0, (uint8_t *) new_table, 0x1000);
             uint64_t new_entry = 0;
             pt_set_address(&new_entry, (uint64_t) new_table >> 12);
@@ -85,7 +85,7 @@ void paging_map_memory(void *physical_address, void *virtual_address) {
     current_table->entries[indexes[3]] = entry;
 }
 
-void paging_map_memory_2mb(void *physical_address, void *virtual_address) {
+void vmm_map_memory_2mb(void *physical_address, void *virtual_address) {
     uint64_t indexes[3];
     uint64_t address = (uint64_t) virtual_address;
     address >>= 12;
@@ -98,7 +98,7 @@ void paging_map_memory_2mb(void *physical_address, void *virtual_address) {
     for(int i = 0; i <= 1; i++) {
         uint64_t entry = current_table->entries[indexes[i]];
         if(!pt_get_flag(entry, PT_FLAG_PRESENT)) {
-            page_table_t *new_table = (page_table_t *) mm_request_page();
+            page_table_t *new_table = (page_table_t *) pmm_request_page();
             memset(0, (uint8_t *) new_table, 0x1000);
             uint64_t new_entry = 0;
             pt_set_address(&new_entry, (uint64_t) new_table >> 12);

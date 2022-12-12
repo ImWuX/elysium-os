@@ -1,4 +1,4 @@
-#include "mm.h"
+#include "pmm.h"
 #include <stdbool.h>
 #include <bootlog.h>
 #include <util.h>
@@ -65,7 +65,7 @@ static bool memap_claim(uint64_t base, uint64_t length, boot_memap_entry_type_t 
     return false;
 }
 
-void mm_initialize() {
+void pmm_initialize() {
     uint16_t e820_length = *(uint16_t *) ld_mmap;
     e820_entry_t *e820 = (e820_entry_t *) (ld_mmap + 2);
 
@@ -136,7 +136,7 @@ void mm_initialize() {
     memap_claim(BOOTSECTOR_BASE, align_page_up((uint64_t) (&g_memap + MAX_MEMAP_ENTRIES * sizeof(boot_memap_entry_t)) - BOOTSECTOR_BASE), BOOT_MEMAP_TYPE_BOOT_RECLAIMABLE);
 }
 
-void *mm_request_linear_pages_type(uint64_t number_of_pages, boot_memap_entry_type_t type) {
+void *pmm_request_linear_pages_type(uint64_t number_of_pages, boot_memap_entry_type_t type) {
     uint64_t size = number_of_pages * PAGE_SIZE;
     for(uint64_t i = 0; i < g_memap_length; i++) {
         boot_memap_entry_t entry = g_memap[i];
@@ -150,10 +150,10 @@ void *mm_request_linear_pages_type(uint64_t number_of_pages, boot_memap_entry_ty
     asm("hlt");
 }
 
-void *mm_request_linear_pages(uint64_t number_of_pages) {
-    mm_request_linear_pages_type(number_of_pages, BOOT_MEMAP_TYPE_BOOT_RECLAIMABLE);
+void *pmm_request_linear_pages(uint64_t number_of_pages) {
+    pmm_request_linear_pages_type(number_of_pages, BOOT_MEMAP_TYPE_BOOT_RECLAIMABLE);
 }
 
-void *mm_request_page() {
-    return mm_request_linear_pages(1);
+void *pmm_request_page() {
+    return pmm_request_linear_pages(1);
 }

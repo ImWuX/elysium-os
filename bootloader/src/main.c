@@ -1,8 +1,8 @@
 #include <stdnoreturn.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <mm.h>
-#include <paging.h>
+#include <pmm.h>
+#include <vmm.h>
 #include <bootlog.h>
 #include <pci.h>
 #include <fat32.h>
@@ -19,10 +19,10 @@ extern noreturn void bootmain() {
     boot_log_clear();
     boot_log("Welcome to the 64bit NestOS bootloader\n", LOG_LEVEL_INFO);
 
-    mm_initialize();
-    paging_initialize(g_memap, g_memap_length);
+    pmm_initialize();
+    vmm_initialize(g_memap, g_memap_length);
 
-    boot_parameters_t *boot_params = (boot_parameters_t *) mm_request_page();
+    boot_parameters_t *boot_params = (boot_parameters_t *) pmm_request_page();
     boot_params->memory_map = g_memap;
     boot_params->memory_map_length = g_memap_length;
     boot_params->boot_drive = *((uint8_t *) BOOT_DRIVE_ADDRESS);

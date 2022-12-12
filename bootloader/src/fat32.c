@@ -1,8 +1,8 @@
 #include "fat32.h"
 #include <ahci.h>
 #include <util.h>
-#include <mm.h>
-#include <paging.h>
+#include <pmm.h>
+#include <vmm.h>
 #include <bootlog.h>
 
 #define LAST_CLUSTER 0x0FFFFFF8
@@ -66,8 +66,8 @@ dir_entry_t *read_directory(uint32_t cluster_num) {
             if(entry.attributes == 0xF) continue; // Long name support
 
             if(current_page_entry_count == 0 || (current_page_entry_count + 1) * sizeof(dir_entry_t) >= 0x1000) {
-                void* page = mm_request_page();
-                paging_map_memory(page, page);
+                void* page = pmm_request_page();
+                vmm_map_memory(page, page);
                 memset(0, page, 0x1000);
                 dir_entry = (dir_entry_t *) (uint64_t) page;
                 current_page_entry_count = 0;
@@ -94,8 +94,8 @@ dir_entry_t *read_root_directory() {
 }
 
 void initialize_fs() {
-    void *bpb_page = mm_request_page();
-    paging_map_memory(bpb_page, bpb_page);
+    void *bpb_page = pmm_request_page();
+    vmm_map_memory(bpb_page, bpb_page);
 
     if(!read(0, 1, bpb_page)) {
         boot_log("FS could not be initialized. BPB read failed.", LOG_LEVEL_ERROR);
@@ -104,9 +104,9 @@ void initialize_fs() {
 
     bpb = (bios_param_block_ext_t *) bpb_page;
     uint32_t pages_per_cluster = bpb->bios_param_block.sectors_per_cluster / 8 + (bpb->bios_param_block.sectors_per_cluster % 8 > 0 ? 1 : 0);
-    cluster_buffer = mm_request_linear_pages(pages_per_cluster);
+    cluster_buffer = pmm_request_linear_pages(pages_per_cluster);
 
-    fat = (uint32_t *) mm_request_linear_pages(bpb->sectors_per_fat / 8 + (bpb->sectors_per_fat % 8 > 0 ? 1 : 0));
+    fat = (uint32_t *) pmm_request_linear_pages(bpb->sectors_per_fat / 8 + (bpb->sectors_per_fat % 8 > 0 ? 1 : 0));
     if(!read(bpb->bios_param_block.reserved_sector_count, bpb->sectors_per_fat, (void *) fat)) {
         boot_log("FS could not be initialized. FAT read failed.", LOG_LEVEL_ERROR);
         return;
