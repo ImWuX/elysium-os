@@ -1,0 +1,9 @@
+# IDE
+.vscode/
+
+# Output
+build/*
+*.img
+*.bin
+*.o
+*.elf

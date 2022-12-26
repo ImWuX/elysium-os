@@ -1,0 +1,32 @@
+CC = /usr/local/x86_64elfgcc/bin/x86_64-elf-gcc
+LD = /usr/local/x86_64elfgcc/bin/x86_64-elf-ld
+ASMC = /bin/nasm
+LDFLAGS = -nostdlib
+CFLAGS = -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable
+
+# Sources
+ASM_SOURCES = $(shell find src/ -type f -name '*.asm')
+C_SOURCES = $(shell find src/ -type f -name '*.c')
+
+# Phony Targets
+.PHONY: clean
+
+# Targets
+src/kernel.elf: ${ASM_SOURCES:.asm=.o} ${C_SOURCES:.c=.o}
+	${LD} ${LDFLAGS} -o $@ -T"link.ld" $^ ../build/libc.a
+
+# TODO: Change ../out/libc.a
+
+# Wildcard Targets
+%.o: %.asm
+	${ASMC} -isrc $< -f elf64 -o $@
+
+%.o: %.c
+	${CC} ${CFLAGS} -Isrc -I../../tartarus-bootloader/shared -I../libc/src -c $< -o $@
+
+# TODO: Change -I../../tartarus-bootloader/shared and -I../libc/src
+
+# Clean Targets
+clean:
+	rm -f $(shell find ./src -type f -name '*.o')
+	rm -f $(shell find ./src -type f -name '*.elf')
