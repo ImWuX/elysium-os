@@ -2,10 +2,13 @@
 #include <stdbool.h>
 #include <tartarus.h>
 #include <stdio.h>
+#include <memory/hhdm.h>
 #include <memory/pmm.h>
+#include <memory/vmm.h>
 #include <graphics/basicfont.h>
 
-uint64_t g_hhdm;
+uint64_t g_hhdm_address;
+
 static tartarus_framebuffer_t g_framebuffer;
 static uint16_t g_x;
 static uint16_t g_y;
@@ -43,8 +46,8 @@ int putchar(int c) {
 }
 
 extern noreturn void kmain(tartarus_parameters_t *boot_params) {
+    g_hhdm_address = boot_params->hhdm_address;
     g_framebuffer = *boot_params->framebuffer;
-    g_hhdm = boot_params->hhdm_address;
 
     printf("Welcome to Elysium OS\n");
 
