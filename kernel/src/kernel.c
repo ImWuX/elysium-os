@@ -55,9 +55,9 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
 
     printf("Physical Memory Initialized\n");
 
-    for(uint16_t i = 0; i < boot_params->memory_map_length; i++) {
-        printf("T[%x] B[%x] L[%x]\n", boot_params->memory_map[i].type, boot_params->memory_map[i].base_address, boot_params->memory_map[i].length);
-    }
+    uint64_t pml4;
+    asm volatile("mov %%cr3, %0" : "=r" (pml4));
+    vmm_initialize(pml4);
 
     while(true) asm("hlt");
 }
