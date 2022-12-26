@@ -1,9 +1,7 @@
 #include "pmm.h"
-#include <stdio.h>
+#include <memory/hhdm.h>
 
 #define PAGE_SIZE 0x1000
-
-extern uint64_t g_hhdm;
 
 static uint64_t g_freelist;
 
@@ -15,7 +13,7 @@ void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_leng
 
         for(uint64_t j = PAGE_SIZE; j <= entry.length; j += PAGE_SIZE) {
             uint64_t address = (entry.base_address + entry.length) - j;
-            *((uint64_t *) (g_hhdm + address)) = last_address;
+            *((uint64_t *) HHDM(address)) = last_address;
             last_address = address;
         }
     }
@@ -23,11 +21,11 @@ void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_leng
 
 void *pmm_page_alloc() {
     uint64_t address = g_freelist;
-    g_freelist = *((uint64_t *) g_hhdm + address);
+    g_freelist = *((uint64_t *) HHDM(address));
     return (void *) address;
 }
 
-void pmm_page_free(void *page) {
-    *((uint64_t *) page) = g_freelist;
-    g_freelist = (uint64_t) page;
+void pmm_page_free(void *page_address) {
+    *((uint64_t *) HHDM(page_address)) = g_freelist;
+    g_freelist = (uint64_t) page_address;
 }

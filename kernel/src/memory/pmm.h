@@ -6,6 +6,6 @@
 
 void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_length);
 void *pmm_page_alloc();
-void pmm_page_free(void *page);
+void pmm_page_free(void *page_address);
 
 #endif
