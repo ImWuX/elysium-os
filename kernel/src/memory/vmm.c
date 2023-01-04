@@ -1,9 +1,12 @@
 #include "vmm.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <memory/pmm.h>
 #include <memory/hhdm.h>
-#include <tmplibc.h>
+
+#define BIT_SET(src, n) (src |= (1 << n))
+#define BIT_UNSET(src, n) (src &= ~(1 << n))
 
 static vmm_page_table_t *g_pml4;
 
@@ -64,7 +67,7 @@ void vmm_mapf(void *physical_address, void *virtual_address, uint64_t flags) {
         if(!pt_get_flag(entry, VMM_PT_FLAG_PRESENT)) {
             uint64_t free_address = (uint64_t) pmm_page_alloc();
             vmm_page_table_t *new_table = (vmm_page_table_t *) HHDM(free_address);
-            memset(0, new_table, 0x1000);
+            memset(new_table, 0, 0x1000);
 
             uint64_t new_entry = 0;
             pt_set_address(&new_entry, free_address);

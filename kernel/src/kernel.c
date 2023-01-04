@@ -56,9 +56,7 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
 
     pmm_initialize(boot_params->memory_map, boot_params->memory_map_length);
     printf("Physical Memory Initialized\n");
-    printf("Stats:\n\tTotal: %x\n\tFree: %x\n\tUsed: %x\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used());
-
-    printf("HHDM is at %x\n", g_hhdm_address);
+    printf("Stats:\n\tTotal: %ib\n\tFree: %ib\n\tUsed: %ib\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used());
 
     uint64_t pml4;
     asm volatile("mov %%cr3, %0" : "=r" (pml4));
