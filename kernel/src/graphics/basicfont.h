@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-#define BASIC_FONT_WIDTH 8
-#define BASIC_FONT_HEIGHT 16
+#define BASICFONT_WIDTH 8
+#define BASICFONT_HEIGHT 16
 
-extern uint8_t g_basic_font[256 * 16];
+extern uint8_t g_basicfont[256 * 16];
 
 #endif
