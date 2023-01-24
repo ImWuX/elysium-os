@@ -1,7 +1,6 @@
 #include "heap.h"
 #include <memory/pmm.h>
 #include <memory/vmm.h>
-#include <stdio.h>
 
 #define PAGE_SIZE 0x1000
 #define MIN_ENTRY_SIZE 8

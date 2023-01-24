@@ -2,11 +2,13 @@
 #include <stdbool.h>
 #include <tartarus.h>
 #include <stdio.h>
+#include <panic.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
 #include <memory/vmm.h>
 #include <memory/heap.h>
 #include <graphics/basicfont.h>
+#include <drivers/acpi.h>
 
 uint64_t g_hhdm_address;
 
@@ -74,5 +76,18 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     heap_initialize((void *) 0x100000000000, 10);
     printf("Heap Initialized\n");
 
+    acpi_initialize();
+    printf("ACPI Initialized\n");
+
+    acpi_sdt_header_t *apic_header = acpi_find_table((uint8_t *) "APIC");
+
     while(true) asm("hlt");
+    __builtin_unreachable();
+}
+
+noreturn void panic(char *location, char *msg) {
+    printf("[Kernel Panic] [%s] %s", location, msg);
+    asm volatile("cli");
+    asm volatile("hlt");
+    __builtin_unreachable();
 }
