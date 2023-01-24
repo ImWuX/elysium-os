@@ -23,6 +23,9 @@ Kernel:
   - Processes / context switching
   - SMP
 
+Userspace:
+  - Roll [MLibc](https://github.com/managarm/mlibc)
+
 # Bugs
 - AHCI assumes that every port has 32 command slots
 - AHCI & Fat32 & Bootsector assumes 512byte sectors
