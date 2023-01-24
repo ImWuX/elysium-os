@@ -1,4 +1,5 @@
 #include "pmm.h"
+#include <panic.h>
 #include <memory/hhdm.h>
 
 #define PAGE_SIZE 0x1000
@@ -24,6 +25,7 @@ void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_leng
 }
 
 void *pmm_page_alloc() {
+    if(!g_freelist) panic("PMM", "Out of physical memory");
     uint64_t address = g_freelist;
     g_freelist = *((uint64_t *) HHDM(address));
     g_used_memory += PAGE_SIZE;

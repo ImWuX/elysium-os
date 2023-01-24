@@ -1,6 +1,5 @@
 #include "vmm.h"
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
 #include <memory/pmm.h>
 #include <memory/hhdm.h>
