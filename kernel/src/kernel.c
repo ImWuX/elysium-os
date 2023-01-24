@@ -5,6 +5,7 @@
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
 #include <memory/vmm.h>
+#include <memory/heap.h>
 #include <graphics/basicfont.h>
 
 uint64_t g_hhdm_address;
@@ -56,12 +57,22 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
 
     pmm_initialize(boot_params->memory_map, boot_params->memory_map_length);
     printf("Physical Memory Initialized\n");
-    printf("Stats:\n\tTotal: %ib\n\tFree: %ib\n\tUsed: %ib\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used());
+    printf("Stats:\n\tTotal: %i bytes\n\tFree: %i bytes\n\tUsed: %i bytes\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used());
+
+    uint64_t sp;
+    asm volatile("mov %%rsp, %0" : "=rm" (sp));
+    asm volatile("mov %0, %%rsp" : : "rm" (HHDM(sp)));
+    uint64_t bp;
+    asm volatile("mov %%rbp, %0" : "=rm" (bp));
+    asm volatile("mov %0, %%rbp" : : "rm" (HHDM(bp)));
 
     uint64_t pml4;
     asm volatile("mov %%cr3, %0" : "=r" (pml4));
     vmm_initialize(pml4);
     printf("Virtual Memory Initialized\n");
+
+    heap_initialize((void *) 0x100000000000, 10);
+    printf("Heap Initialized\n");
 
     while(true) asm("hlt");
 }
