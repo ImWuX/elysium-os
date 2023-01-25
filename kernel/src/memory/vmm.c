@@ -42,6 +42,16 @@ void vmm_initialize(uint64_t pml4_address) {
     tlb_flush();
 }
 
+uint64_t vmm_physical(void *virtual_address) {
+    vmm_page_table_t *current_table = g_pml4;
+    for(uint8_t i = 0; i <= 3; i++) {
+        uint64_t entry = current_table->entries[address_to_index((uint64_t) virtual_address, i)];
+        if(!pt_get_flag(entry, VMM_PT_FLAG_PRESENT)) return 0;
+        current_table = (vmm_page_table_t *) HHDM(pt_get_address(entry));
+    }
+    return (uint64_t) current_table;
+}
+
 void vmm_mapf(void *physical_address, void *virtual_address, uint64_t flags) {
     vmm_page_table_t *current_table = g_pml4;
     for(uint8_t i = 0; i < 3; i++) {
