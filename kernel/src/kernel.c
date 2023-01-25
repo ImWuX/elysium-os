@@ -9,6 +9,11 @@
 #include <memory/heap.h>
 #include <graphics/basicfont.h>
 #include <drivers/acpi.h>
+#include <drivers/pic8259.h>
+#include <cpu/exceptions.h>
+#include <cpu/irq.h>
+#include <cpu/idt.h>
+#include <cpu/gdt.h>
 
 uint64_t g_hhdm_address;
 
@@ -57,6 +62,8 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
 
     printf("Welcome to Elysium OS\n");
 
+    gdt_initialize();
+
     pmm_initialize(boot_params->memory_map, boot_params->memory_map_length);
     printf("Physical Memory Initialized\n");
     printf("Stats:\n\tTotal: %i bytes\n\tFree: %i bytes\n\tUsed: %i bytes\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used());
@@ -79,9 +86,18 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     acpi_initialize();
     printf("ACPI Initialized\n");
 
-    acpi_sdt_header_t *apic_header = acpi_find_table((uint8_t *) "APIC");
+    pic8259_remap();
+    exceptions_initialize();
+    irq_initialize();
 
-    while(true) asm("hlt");
+    // acpi_sdt_header_t *apic_header = acpi_find_table((uint8_t *) "APIC");
+    // if(apic_header) {
+    //     // Setup APIC
+    // }
+    idt_initialize();
+    asm volatile("sti");
+
+    while(true) asm volatile("hlt");
     __builtin_unreachable();
 }
 

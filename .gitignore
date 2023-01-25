@@ -3,6 +3,7 @@
 
 # Output
 build/*
+log.txt
 *.img
 *.bin
 *.o
