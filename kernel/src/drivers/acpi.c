@@ -56,7 +56,7 @@ acpi_sdt_header_t *acpi_find_table(uint8_t *signature) {
     uint32_t *entry_ptr = (uint32_t *) ((uint64_t) g_sdts + sizeof(acpi_sdt_header_t));
     for(uint32_t i = 0; i < entries; i++) {
         acpi_sdt_header_t *entry = (acpi_sdt_header_t *) (uint64_t) HHDM(*entry_ptr);
-        if(memcmp(entry->signature, signature, 4)) return entry;
+        if(!memcmp(entry->signature, signature, 4)) return entry;
         entry_ptr++;
     }
     return 0;

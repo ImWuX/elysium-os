@@ -79,7 +79,3 @@ void printf(const char *fmt, ...) {
 
     va_end(args);
 }
-
-void printe(const char *msg) {
-    printf("ERROR: %s\n", msg);
-}

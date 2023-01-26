@@ -1,5 +1,5 @@
-#ifndef HAL_PIC8259_H
-#define HAL_PIC8259_H
+#ifndef CPU_PIC8259_H
+#define CPU_PIC8259_H
 
 #include <stdbool.h>
 

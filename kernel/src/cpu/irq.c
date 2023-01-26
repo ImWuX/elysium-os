@@ -1,5 +1,6 @@
 #include "irq.h"
-#include <drivers/pic8259.h>
+#include <cpu/pic8259.h>
+#include <cpu/apic.h>
 #include <cpu/idt.h>
 
 #define SEG 0x8
@@ -31,5 +32,6 @@ void irq_register_handler(uint8_t id, interrupt_handler_t interrupt_handler) {
 
 void irq_handler(irq_cpu_register_t regs) {
     if(g_interrupt_handlers[regs.int_no]) g_interrupt_handlers[regs.int_no](regs);
+    apic_eoi(regs.int_no);
     pic8259_eoi(regs.int_no >= 40);
 }
