@@ -9,11 +9,15 @@
 #include <memory/heap.h>
 #include <graphics/basicfont.h>
 #include <drivers/acpi.h>
-#include <drivers/pic8259.h>
+#include <cpu/pic8259.h>
+#include <cpu/apic.h>
 #include <cpu/exceptions.h>
 #include <cpu/irq.h>
 #include <cpu/idt.h>
 #include <cpu/gdt.h>
+#include <cpu/msr.h>
+#include <drivers/pit.h>
+#include <drivers/keyboard.h>
 
 uint64_t g_hhdm_address;
 
@@ -56,6 +60,10 @@ int putchar(int c) {
     return c;
 }
 
+static void keyboard_handler(uint8_t character) {
+    putchar(character);
+}
+
 extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     g_hhdm_address = boot_params->hhdm_address;
     g_framebuffer = *boot_params->framebuffer;
@@ -89,20 +97,24 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     pic8259_remap();
     exceptions_initialize();
     irq_initialize();
-
-    // acpi_sdt_header_t *apic_header = acpi_find_table((uint8_t *) "APIC");
-    // if(apic_header) {
-    //     // Setup APIC
-    // }
+    acpi_sdt_header_t *apic_header = acpi_find_table((uint8_t *) "APIC");
+    if(apic_header) {
+        pic8259_disable();
+        apic_initialize(apic_header);
+    }
     idt_initialize();
     asm volatile("sti");
+
+    pit_initialize();
+    keyboard_initialize();
+    keyboard_set_handler(keyboard_handler);
 
     while(true) asm volatile("hlt");
     __builtin_unreachable();
 }
 
 noreturn void panic(char *location, char *msg) {
-    printf("[Kernel Panic] [%s] %s", location, msg);
+    printf(">> Kernel Panic [%s] %s", location, msg);
     asm volatile("cli");
     asm volatile("hlt");
     __builtin_unreachable();

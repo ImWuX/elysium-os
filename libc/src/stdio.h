@@ -8,6 +8,5 @@ extern int putchar(int character);
 typedef unsigned long size_t;
 
 void printf(const char *fmt, ...);
-void printe(const char *msg);
 
 #endif

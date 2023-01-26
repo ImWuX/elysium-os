@@ -1,6 +1,7 @@
 #include "exceptions.h"
 #include <cpu/idt.h>
 #include <stdio.h>
+#include <panic.h>
 
 #define SEG 0x08
 
@@ -39,9 +40,8 @@ static char *g_messages[] = {
 };
 
 void exceptions_handler(exception_cpu_register_t regs) {
-    char *message = g_messages[regs.int_no];
-    printf("Exception: %s %x %x\n", message, regs.err_code, regs.rip);
-    asm volatile("hlt");
+    printf("---==[ Exception ]==---\n%s\nError Code: %x\nRIP: %x\n---==[    END    ]==---\n", g_messages[regs.int_no], regs.err_code, regs.rip);
+    panic("Exception", g_messages[regs.int_no]);
 }
 
 void exceptions_initialize() {
