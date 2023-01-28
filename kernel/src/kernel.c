@@ -8,6 +8,7 @@
 #include <memory/vmm.h>
 #include <memory/heap.h>
 #include <graphics/basicfont.h>
+#include <graphics/draw.h>
 #include <drivers/acpi.h>
 #include <cpu/pic8259.h>
 #include <cpu/apic.h>
@@ -18,56 +19,37 @@
 #include <cpu/msr.h>
 #include <drivers/pit.h>
 #include <drivers/keyboard.h>
+#include <kcon.h>
 
 uint64_t g_hhdm_address;
 
-static tartarus_framebuffer_t g_framebuffer;
-static uint16_t g_x;
-static uint16_t g_y;
-
-int putchar(int c) {
-    switch(c) {
-        case '\n':
-            g_x = 0;
-            g_y += BASICFONT_HEIGHT;
-            break;
-        case '\t':
-            g_x += (4 - (g_x / BASICFONT_WIDTH) % 4) * BASICFONT_WIDTH;
-            break;
-        default:
-            uint8_t *font_char = &g_basicfont[c * 16];
-
-            uint32_t *buf = (uint32_t *) HHDM(g_framebuffer.address);
-            int offset = g_x + g_y * g_framebuffer.pitch / 4;
-            for(int xx = 0; xx < BASICFONT_HEIGHT; xx++) {
-                for(int yy = 0; yy < BASICFONT_WIDTH; yy++) {
-                    if(font_char[xx] & (1 << (BASICFONT_WIDTH - yy))){
-                        buf[offset + yy] = 0xFFFFFFFF;
-                    } else {
-                        buf[offset + yy] = 0;
-                    }
-                }
-                offset += g_framebuffer.pitch / 4;
-            }
-            g_x += BASICFONT_WIDTH;
-            break;
-    }
-    if(g_x >= g_framebuffer.width) {
-        g_x = 0;
-        g_y += BASICFONT_HEIGHT;
-    }
-    if(g_y >= g_framebuffer.height) g_y = g_framebuffer.height - BASICFONT_HEIGHT - 1;
-    return c;
-}
-
-static void keyboard_handler(uint8_t character) {
-    putchar(character);
-}
-
 extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     g_hhdm_address = boot_params->hhdm_address;
-    g_framebuffer = *boot_params->framebuffer;
 
+    draw_framebuffer_t framebuffer = {
+        .width = boot_params->framebuffer->width,
+        .height = boot_params->framebuffer->height,
+        .bpp = boot_params->framebuffer->bpp,
+        .pitch = boot_params->framebuffer->pitch,
+        .address = boot_params->framebuffer->address
+    };
+    draw_colormask_t color_mask = {
+        .red_size = boot_params->framebuffer->mask_red_size,
+        .red_shift = boot_params->framebuffer->mask_red_shift,
+        .green_size = boot_params->framebuffer->mask_green_size,
+        .green_shift = boot_params->framebuffer->mask_green_shift,
+        .blue_size = boot_params->framebuffer->mask_blue_size,
+        .blue_shift = boot_params->framebuffer->mask_blue_shift
+    };
+    draw_initialize(color_mask, framebuffer);
+    kcon_initialize(800, 600, (boot_params->framebuffer->width - 800) / 2, (boot_params->framebuffer->height - 600) / 2);
+
+    printf(" _____ _         _           _____ _____ \n");
+    printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
+    printf("|   __| | | |_ -| | | |     |  |  |__   |\n");
+    printf("|_____|_|_  |___|_|___|_|_|_|_____|_____|\n");
+    printf("        |___|                            \n");
+    printf("\n");
     printf("Welcome to Elysium OS\n");
 
     gdt_initialize();
@@ -107,14 +89,15 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
 
     pit_initialize();
     keyboard_initialize();
-    keyboard_set_handler(keyboard_handler);
+    keyboard_set_handler(kcon_keyboard_handler);
+    kcon_print_prefix();
 
     while(true) asm volatile("hlt");
     __builtin_unreachable();
 }
 
 noreturn void panic(char *location, char *msg) {
-    printf(">> Kernel Panic [%s] %s", location, msg);
+    printf("\n>> Kernel Panic [%s] %s", location, msg);
     asm volatile("cli");
     asm volatile("hlt");
     __builtin_unreachable();
