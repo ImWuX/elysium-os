@@ -54,6 +54,13 @@ typedef struct {
     uint16_t flags;
 } __attribute__((packed)) madt_record_source_override_t;
 
+typedef struct {
+    madt_record_ioapic_t base;
+    uint8_t acpi_processor_id;
+    uint16_t flags;
+    uint8_t lint;
+} __attribute__((packed)) madt_record_nmi_t;
+
 void apic_initialize(acpi_sdt_header_t *apic_header);
 void apic_eoi(uint8_t interrupt_vector);
 
