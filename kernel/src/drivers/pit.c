@@ -19,7 +19,7 @@ static void timer_callback(irq_cpu_register_t registers __attribute__((unused)))
 }
 
 void pit_initialize() {
-    uint32_t divisor = HW_CLOCK_FREQUENCY / 1000;
+    uint16_t divisor = HW_CLOCK_FREQUENCY / 1000;
     ports_outb(CMD, 0x36);
     ports_outb(CHANNEL0_DATA, divisor);
     ports_outb(CHANNEL0_DATA, divisor >> 8);

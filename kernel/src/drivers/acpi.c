@@ -19,14 +19,14 @@ static uint8_t checksum(uint8_t *src, uint32_t size) {
     return (checksum & 1) == 0;
 }
 
-static uint64_t scan_region(uint64_t start, uint64_t end) {
-    for(uint64_t page = start & ~0xFFF; page <= end; page += 0x1000) {
+static uintptr_t scan_region(uintptr_t start, uintptr_t end) {
+    for(uintptr_t page = start & ~0xFFF; page <= end; page += 0x1000) {
         vmm_map((void *) page, (void *) (g_hhdm_address + page));
     }
-    uint64_t addr = HHDM(start);
+    uintptr_t addr = HHDM(start);
     end = HHDM(end);
     while(addr < end) {
-        if(*(uint64_t *) addr == RSDP_IDENTIFIER) {
+        if(*(uintptr_t *) addr == RSDP_IDENTIFIER) {
             if(checksum((uint8_t *) addr, sizeof(acpi_rsdp_t))) {
                 return addr;
             }
@@ -37,7 +37,7 @@ static uint64_t scan_region(uint64_t start, uint64_t end) {
 }
 
 void acpi_initialize() {
-    uint64_t address = scan_region(RSDP_REGION_ONE_BASE, RSDP_REGION_ONE_END);
+    uintptr_t address = scan_region(RSDP_REGION_ONE_BASE, RSDP_REGION_ONE_END);
     if(!address) address = scan_region(RSDP_REGION_TWO_BASE, RSDP_REGION_TWO_END);
     if(!address) panic("ACPI", "Failed to locate the RSDP");
 
@@ -53,9 +53,9 @@ void acpi_initialize() {
 
 acpi_sdt_header_t *acpi_find_table(uint8_t *signature) {
     uint32_t entries = (g_sdts->length - sizeof(acpi_sdt_header_t)) / 4;
-    uint32_t *entry_ptr = (uint32_t *) ((uint64_t) g_sdts + sizeof(acpi_sdt_header_t));
+    uint32_t *entry_ptr = (uint32_t *) ((uintptr_t) g_sdts + sizeof(acpi_sdt_header_t));
     for(uint32_t i = 0; i < entries; i++) {
-        acpi_sdt_header_t *entry = (acpi_sdt_header_t *) (uint64_t) HHDM(*entry_ptr);
+        acpi_sdt_header_t *entry = (acpi_sdt_header_t *) HHDM(*entry_ptr);
         if(!memcmp(entry->signature, signature, 4)) return entry;
         entry_ptr++;
     }
