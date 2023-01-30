@@ -3,8 +3,10 @@
 
 #include <stdint.h>
 
-#define HHDM(address) ((uint64_t) address + g_hhdm_address)
+#define HHDM(address) ((uintptr_t) address + g_hhdm_address)
 
-extern uint64_t g_hhdm_address;
+extern uintptr_t g_hhdm_address;
+
+void hhdm_map(void *address);
 
 #endif

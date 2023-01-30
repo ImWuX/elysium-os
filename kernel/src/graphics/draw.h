@@ -8,7 +8,7 @@ typedef struct {
     uint16_t height;
     uint8_t bpp;
     uint16_t pitch;
-    uint64_t address;
+    uintptr_t address;
 } draw_framebuffer_t;
 
 typedef struct {

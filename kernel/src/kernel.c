@@ -19,9 +19,9 @@
 #include <cpu/msr.h>
 #include <drivers/pit.h>
 #include <drivers/keyboard.h>
+#include <drivers/pci.h>
+#include <drivers/ahci.h>
 #include <kcon.h>
-
-uint64_t g_hhdm_address;
 
 extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     g_hhdm_address = boot_params->hhdm_address;
@@ -42,7 +42,7 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
         .blue_shift = boot_params->framebuffer->mask_blue_shift
     };
     draw_initialize(color_mask, framebuffer);
-    kcon_initialize(800, 600, (boot_params->framebuffer->width - 800) / 2, (boot_params->framebuffer->height - 600) / 2);
+    kcon_initialize(1000, 600, (boot_params->framebuffer->width - 1000) / 2, (boot_params->framebuffer->height - 600) / 2);
 
     printf(" _____ _         _           _____ _____ \n");
     printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
@@ -86,6 +86,13 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     }
     idt_initialize();
     asm volatile("sti");
+
+    acpi_sdt_header_t *mcfg_header = acpi_find_table((uint8_t *) "MCFG");
+    if(mcfg_header) {
+        pci_express_enumerate(mcfg_header);
+    } else {
+        pci_enumerate();
+    }
 
     pit_initialize();
     keyboard_initialize();

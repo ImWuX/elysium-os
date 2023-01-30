@@ -51,7 +51,7 @@ void *heap_alloc(uint64_t count) {
         if(current_entry->free && current_entry->length >= count) {
             if(current_entry->length >= count + MIN_ENTRY_SIZE + sizeof(heap_entry_t)) {
                 heap_entry_t *old = current_entry->next;
-                heap_entry_t *new = (heap_entry_t *) ((uint64_t) current_entry + count + sizeof(heap_entry_t));
+                heap_entry_t *new = (heap_entry_t *) ((uintptr_t) current_entry + count + sizeof(heap_entry_t));
                 current_entry->next = new;
                 new->next = old;
                 new->prev = current_entry;

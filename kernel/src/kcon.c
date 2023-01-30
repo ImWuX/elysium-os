@@ -11,6 +11,7 @@
 #define TAB_WIDTH 4
 #define MAX_CHARACTERS 200
 #define PREFIX "> "
+#define BORDERWIDTH 5
 
 static int g_width;
 static int g_height;
@@ -20,6 +21,7 @@ static int g_x;
 static int g_y;
 static char g_chars[MAX_CHARACTERS];
 static int g_chars_written;
+static char g_path[512];
 
 static void simple_print(char *str) {
     while(*str) putchar(*str++);
@@ -42,13 +44,12 @@ static void command_handler(char *input) {
     while(input[full_index]) full_index++;
     memcpy(input, input + index + 1, full_index);
 
-    if(strcmp(command, "clear") == 0) {
-        clear();
-    }
+    if(strcmp(command, "clear") == 0) clear();
 
-    if(strcmp(command, "time") == 0) {
-        printf("Time since system startup: %is\n", pit_time_s());
-        return;
+    if(strcmp(command, "time") == 0) printf("Time since system startup: %is\n", pit_time_s());
+
+    if(strcmp(command, "ls") == 0) {
+        printf("files\n");
     }
 
     heap_free(command);
@@ -62,6 +63,8 @@ void kcon_initialize(int width, int height, int x, int y) {
     g_x = g_cx;
     g_y = g_cy;
     g_chars_written = 0;
+    draw_rect(x - BORDERWIDTH, y - BORDERWIDTH, width + BORDERWIDTH * 2, height + BORDERWIDTH * 2, DEFAULT_FG);
+    draw_rect(x - 4, y - 4, width + 8, height + 8, DEFAULT_BG);
 }
 
 void kcon_print_prefix() {
