@@ -58,7 +58,7 @@ void vmm_mapf(void *physical_address, void *virtual_address, uint64_t flags) {
         uint64_t index = address_to_index((uint64_t) virtual_address, i);
         uint64_t entry = current_table->entries[index];
         if(!pt_get_flag(entry, VMM_PT_FLAG_PRESENT)) {
-            uintptr_t free_address = (uintptr_t) pmm_page_alloc();
+            uintptr_t free_address = (uintptr_t) pmm_page_request();
             vmm_page_table_t *new_table = (vmm_page_table_t *) HHDM(free_address);
             memset(new_table, 0, 0x1000);
 

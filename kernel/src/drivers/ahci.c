@@ -69,12 +69,12 @@ static void configure_port(ahci_hba_port_t *port) {
     stop_port(port);
 
     //TODO: I was pretty lazy here, unnecessary waste of memory
-    void *clb = pmm_page_alloc();
+    void *clb = pmm_page_request();
     memset((void *) HHDM(clb), 0, 1024);
     port->command_list_base_address = (uint32_t) (uintptr_t) clb;
     port->command_list_base_address_upper = (uint32_t) ((uintptr_t) clb >> 32);
 
-    void *fb = pmm_page_alloc();
+    void *fb = pmm_page_request();
     memset((void *) HHDM(fb), 0, 256);
     port->fis_base_address = (uint32_t) (uintptr_t) fb;
     port->fis_base_address_upper = (uint32_t) ((uintptr_t) fb >> 32);
@@ -83,7 +83,7 @@ static void configure_port(ahci_hba_port_t *port) {
     for(int i = 0; i < 32; i++) {
         command_header[i].prd_table_length = 8;
 
-        void *command_table_address = pmm_page_alloc();
+        void *command_table_address = pmm_page_request();
         memset((void *) HHDM(command_table_address), 0, 256);
         command_header[i].command_table_descriptor_base_address = (uint32_t) (uintptr_t) command_table_address;
         command_header[i].command_table_descriptor_base_address_upper = (uint32_t) ((uintptr_t) command_table_address >> 32);
