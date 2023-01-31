@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <tartarus.h>
 #include <stdio.h>
+#include <string.h>
 #include <panic.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
@@ -108,7 +109,13 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
 }
 
 noreturn void panic(char *location, char *msg) {
-    printf("\n>> Kernel Panic [%s] %s", location, msg);
+    draw_color_t bg = draw_color(255, 60, 60);
+    draw_rect(0, 0, draw_scrw(), draw_scrh(), bg);
+    int y = (draw_scrh() - 3 * BASICFONT_HEIGHT) / 2;
+    char *title = "KERNEL PANIC";
+    draw_string_simple((draw_scrw() - strlen(title) * BASICFONT_WIDTH) / 2, y, title, 0xFFFFFFFF, bg);
+    draw_string_simple((draw_scrw() - strlen(location) * BASICFONT_WIDTH) / 2, y + BASICFONT_HEIGHT, location, 0xFFFFFFFF, bg);
+    draw_string_simple((draw_scrw() - strlen(msg) * BASICFONT_WIDTH) / 2, y + BASICFONT_HEIGHT * 2, msg, 0xFFFFFFFF, bg);
     asm volatile("cli");
     asm volatile("hlt");
     __builtin_unreachable();

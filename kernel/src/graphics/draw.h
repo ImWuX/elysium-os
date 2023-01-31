@@ -23,9 +23,13 @@ typedef struct {
 typedef uint32_t draw_color_t;
 
 void draw_initialize(draw_colormask_t mask, draw_framebuffer_t buffer);
-draw_color_t draw_create_color(uint8_t r, uint8_t g, uint8_t b);
+draw_color_t draw_color(uint8_t r, uint8_t g, uint8_t b);
+
+uint16_t draw_scrw();
+uint16_t draw_scrh();
 
 void draw_char(uint16_t x, uint16_t y, char c, draw_color_t fgcolor, draw_color_t bgcolor);
+void draw_string_simple(uint16_t x, uint16_t y, char *str, draw_color_t fgcolor, draw_color_t bgcolor);
 void draw_pixel(uint16_t x, uint16_t y, draw_color_t color);
 void draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, draw_color_t color);
 

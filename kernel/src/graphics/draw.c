@@ -14,10 +14,18 @@ void draw_initialize(draw_colormask_t mask, draw_framebuffer_t buffer) {
     g_pixel_pitch = g_buffer.pitch / g_pixel_width;
 }
 
-draw_color_t draw_create_color(uint8_t r, uint8_t g, uint8_t b) {
+draw_color_t draw_color(uint8_t r, uint8_t g, uint8_t b) {
     return (r & ((1 << g_mask.red_size) - 1)) << g_mask.red_shift |
         (g & ((1 << g_mask.green_size) - 1)) << g_mask.green_shift |
         (b & ((1 << g_mask.blue_size) - 1)) << g_mask.blue_shift;
+}
+
+uint16_t draw_scrw() {
+    return g_buffer.width;
+}
+
+uint16_t draw_scrh() {
+    return g_buffer.height;
 }
 
 void draw_char(uint16_t x, uint16_t y, char c, draw_color_t fgcolor, draw_color_t bgcolor) {
@@ -34,6 +42,14 @@ void draw_char(uint16_t x, uint16_t y, char c, draw_color_t fgcolor, draw_color_
             }
         }
         offset += g_pixel_pitch;
+    }
+}
+
+void draw_string_simple(uint16_t x, uint16_t y, char *str, draw_color_t fgcolor, draw_color_t bgcolor) {
+    while(*str) {
+        draw_char(x, y, *str, fgcolor, bgcolor);
+        x += BASICFONT_WIDTH;
+        str++;
     }
 }
 
