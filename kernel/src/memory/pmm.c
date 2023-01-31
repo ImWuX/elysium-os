@@ -24,7 +24,7 @@ void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_leng
     g_freelist = last_address;
 }
 
-void *pmm_page_alloc() {
+void *pmm_page_request(uint64_t flags) {
     if(!g_freelist) panic("PMM", "Out of physical memory");
     uintptr_t address = g_freelist;
     g_freelist = *((uintptr_t *) HHDM(address));
@@ -32,7 +32,7 @@ void *pmm_page_alloc() {
     return (void *) address;
 }
 
-void pmm_page_free(void *page_address) {
+void pmm_page_release(void *page_address) {
     *((uintptr_t *) HHDM(page_address)) = g_freelist;
     g_freelist = (uintptr_t) page_address;
     g_used_memory -= PAGE_SIZE;

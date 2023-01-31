@@ -21,6 +21,8 @@
 #include <drivers/keyboard.h>
 #include <drivers/pci.h>
 #include <drivers/ahci.h>
+#include <fs/vfs.h>
+#include <fs/fat32.h>
 #include <kcon.h>
 
 extern noreturn void kmain(tartarus_parameters_t *boot_params) {
@@ -98,6 +100,8 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     keyboard_initialize();
     keyboard_set_handler(kcon_keyboard_handler);
     kcon_print_prefix();
+
+    // fat32_initialize();
 
     while(true) asm volatile("hlt");
     __builtin_unreachable();

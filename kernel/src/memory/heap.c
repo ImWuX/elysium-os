@@ -12,7 +12,7 @@ static heap_entry_t *head;
 
 static void expand(uint64_t pages) {
     for(uint64_t i = 0; i < pages; i++) {
-        void* page = pmm_page_alloc();
+        void* page = pmm_page_request();
         vmm_map(page, g_heap_end);
         if(tail->free) {
             tail->length += PAGE_SIZE;
@@ -33,7 +33,7 @@ void heap_initialize(void *address, uint64_t initial_pages) {
     g_heap_start = address;
     g_heap_end = address;
     for(uint64_t i = 0; i < initial_pages; i++) {
-        void* page = pmm_page_alloc();
+        void* page = pmm_page_request();
         vmm_map(page, g_heap_end);
         g_heap_end += PAGE_SIZE;
     }
