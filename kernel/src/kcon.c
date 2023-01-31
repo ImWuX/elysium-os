@@ -52,6 +52,8 @@ static void command_handler(char *input) {
         printf("files\n");
     }
 
+    if(strcmp(command, "ud2") == 0) asm("ud2");
+
     heap_free(command);
 }
 
