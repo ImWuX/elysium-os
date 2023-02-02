@@ -3,6 +3,7 @@
 
 # Backlog
 Kernel:
+  - The ACPI rsdp has a set region for the ebda but its found at a variable location
   - Make sure that all drivers are mapping memory into HHDM just in-case
   - Claim bootloader reclaimable
   - Kernel logging system
@@ -19,6 +20,15 @@ Kernel:
     - HPET
   - Processes / context switching
   - SMP
+  - TIMERS
+    - get_clock_source()
+      - if (invariant tsc supported && lapic supports invariant tsc) use invariant tsc
+      - if (hpet supported) use hpet
+      - if (lapic supported) use lapic timer
+    - calibration_target()
+      - if (cpuid has tsc freq) calibrate against invariant tsc
+      - if (hpet supported) calibrate against hpet 
+      - if (pit supported) calibrate against pit
 
 Userspace:
   - Roll [MLibc](https://github.com/managarm/mlibc)

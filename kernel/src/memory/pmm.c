@@ -1,19 +1,40 @@
 #include "pmm.h"
 #include <panic.h>
 #include <memory/freelist.h>
+#include <memory/bitmap.h>
 
 #define PAGE_SIZE 0x1000
+#define DMA_REGION_LENGTH 0x1000000
 
 static uint64_t g_total_memory;
 static uint64_t g_used_memory;
 
 void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_length) {
+    uintptr_t bitmap_base = 0;
+    uint64_t bitmap_length = (DMA_REGION_LENGTH / PAGE_SIZE + sizeof(uint64_t) - 1) / sizeof(uint64_t);
+    for(uint16_t i = 0; i < memory_map_length; i++) {
+        tartarus_memap_entry_t entry = memory_map[memory_map_length - i - 1];
+        if(entry.type != TARTARUS_MEMAP_TYPE_USABLE || entry.length < bitmap_length) continue;
+        bitmap_base = entry.base_address;
+        bitmap_initialize(bitmap_base, bitmap_length);
+        break;
+    }
+    if(!bitmap_base) panic("PMM", "Not enough memory for the DMA memory bitmap");
+
     uintptr_t last_address = 0;
-    for(uint16_t i = 1; i <= memory_map_length; i++) {
-        tartarus_memap_entry_t entry = memory_map[memory_map_length - i];
+    for(uint16_t i = 0; i < memory_map_length; i++) {
+        tartarus_memap_entry_t entry = memory_map[memory_map_length - i - 1];
         switch(entry.type) {
             case TARTARUS_MEMAP_TYPE_USABLE:
-                if(freelist_add_region(entry.base_address, entry.length)) panic("PMM", "Unaligned usable region");
+                for(uintptr_t address = entry.base_address; address < entry.base_address + entry.length; address += PAGE_SIZE) {
+                    if(address >= bitmap_base && address < bitmap_base + bitmap_length) continue;
+                    if(address >= DMA_REGION_LENGTH) {
+                        freelist_page_release((void *) address);
+                    } else {
+                        bitmap_release((void *) address);
+                    }
+                }
+
                 g_total_memory += entry.length;
                 break;
             case TARTARUS_MEMAP_TYPE_KERNEL:
