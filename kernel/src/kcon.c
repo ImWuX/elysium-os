@@ -44,15 +44,22 @@ static void command_handler(char *input) {
     while(input[full_index]) full_index++;
     memcpy(input, input + index + 1, full_index);
 
-    if(strcmp(command, "clear") == 0) clear();
-
-    if(strcmp(command, "time") == 0) printf("Time since system startup: %is\n", pit_time_s());
-
-    if(strcmp(command, "ls") == 0) {
-        printf("files\n");
+    if(index != 0) {
+        if(strcmp(command, "clear") == 0) {
+            clear();
+        } else if(strcmp(command, "time") == 0) {
+            printf("Time since system startup: %is\n", pit_time_s());
+        } else if(strcmp(command, "ud2") == 0) {
+            asm("ud2");
+        } else if(strcmp(command, "help") == 0) {
+            printf("clear: Clear the console\n");
+            printf("time: Display how much time has passed since the CPU started\n");
+            printf("ud2: Trigger an unknown instruction fault\n");
+            printf("help: Display all the commands\n");
+        } else {
+            printf("Unknown command: \"%s\"\n", command);
+        }
     }
-
-    if(strcmp(command, "ud2") == 0) asm("ud2");
 
     heap_free(command);
 }
@@ -67,6 +74,24 @@ void kcon_initialize(int width, int height, int x, int y) {
     g_chars_written = 0;
     draw_rect(x - BORDERWIDTH, y - BORDERWIDTH, width + BORDERWIDTH * 2, height + BORDERWIDTH * 2, DEFAULT_FG);
     draw_rect(x - 4, y - 4, width + 8, height + 8, DEFAULT_BG);
+
+    int r = 100;
+    int b = 150;
+    int rv = 1;
+    int bv = 1;
+    for(uint16_t yy = 0; yy < draw_scrh(); yy++) {
+        r += rv;
+        b += bv;
+        if(r == 200 || r == 100) rv *= -1;
+        if(b == 250 || b == 150) bv *= -1;
+
+        if(yy < y - BORDERWIDTH || yy > y + height + BORDERWIDTH) {
+            draw_rect(0, yy, draw_scrw(), 1, draw_color(r, 0, b));
+        } else {
+            draw_rect(0, yy, x - BORDERWIDTH, 1, draw_color(r, 0, b));
+            draw_rect(x + width + BORDERWIDTH, yy, draw_scrw() - x - BORDERWIDTH - width, 1, draw_color(r, 0, b));
+        }
+    }
 }
 
 void kcon_print_prefix() {

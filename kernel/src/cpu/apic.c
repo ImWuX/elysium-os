@@ -82,16 +82,12 @@ void apic_initialize(acpi_sdt_header_t *apic_header) {
     // vmm_map((void *) lapic_address, (void *) g_lapic); //TODO: Use hhdm_map once the VMM handles huge pages
     // vmm_map((void *) ioapic_address, (void *) g_ioapic);
 
-    // TODO: Look into these ig
-    // lapic_write(0x8, 0);
-    // lapic_write(0xE, 0xFFFFFFFF);
-    // lapic_write(0xD, 0x01000000);
-
     lapic_write(0xF, 0x100 | 0xFF);
 
     ioapic_set_irq(2, lapic_read(2), 32);
-    ioapic_set_irq(1, lapic_read(2), 32 + 1);
-    ioapic_set_irq(12, lapic_read(2), 32 + 12);
+    ioapic_set_irq(1, lapic_read(2), 32 + 6);
+    ioapic_set_irq(12, lapic_read(2), 32 + 7);
+    ioapic_set_irq(8, lapic_read(2), 32 + 8);
 }
 
 void apic_eoi(uint8_t interrupt_vector) {

@@ -3,7 +3,6 @@
 
 # Backlog
 Kernel:
-  - The ACPI rsdp has a set region for the ebda but its found at a variable location
   - Make sure that all drivers are mapping memory into HHDM just in-case
   - Claim bootloader reclaimable
   - Kernel logging system
