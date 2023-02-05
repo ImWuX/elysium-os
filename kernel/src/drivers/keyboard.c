@@ -1,6 +1,5 @@
 #include "keyboard.h"
 #include <cpu/irq.h>
-#include <drivers/ports.h>
 
 static int8_t g_scancodes[128];
 static keyboard_handler_t g_keyboard_handler;
@@ -40,7 +39,7 @@ static uint8_t g_layout_us[128] = {
 };
 
 static void keyboard_event(irq_cpu_register_t registers __attribute__((unused))) {
-    uint8_t scancode = ports_inb(0x60);
+    uint8_t scancode = ps2_port_read(false);
 
     if(scancode >= 0x80) {
         g_scancodes[scancode - 0x80] = 0;
@@ -53,8 +52,8 @@ static void keyboard_event(irq_cpu_register_t registers __attribute__((unused)))
     if(g_keyboard_handler) g_keyboard_handler(character);
 }
 
-void keyboard_initialize() {
-    irq_register_handler(33, keyboard_event);
+void keyboard_initialize(ps2_ports_t port) {
+    irq_register_handler(32 + 6 + port, keyboard_event);
 }
 
 void keyboard_set_handler(keyboard_handler_t handler) {

@@ -20,8 +20,11 @@
 #include <cpu/msr.h>
 #include <drivers/pit.h>
 #include <drivers/keyboard.h>
+#include <drivers/mouse.h>
+#include <drivers/ps2.h>
 #include <drivers/pci.h>
 #include <drivers/ahci.h>
+#include <drivers/hpet.h>
 #include <fs/vfs.h>
 #include <fs/fat32.h>
 #include <kcon.h>
@@ -51,8 +54,7 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
     printf("|   __| | | |_ -| | | |     |  |  |__   |\n");
     printf("|_____|_|_  |___|_|___|_|_|_|_____|_____|\n");
-    printf("        |___|                            \n");
-    printf("\n");
+    printf("        |___|                            \n\n");
     printf("Welcome to Elysium OS\n");
 
     gdt_initialize();
@@ -82,6 +84,7 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     pic8259_remap();
     exceptions_initialize();
     irq_initialize();
+    // TODO: APIC address needs to be retrieved from an MSR rather than acpi tables
     acpi_sdt_header_t *apic_header = acpi_find_table((uint8_t *) "APIC");
     if(apic_header) {
         pic8259_disable();
@@ -89,6 +92,7 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     }
     idt_initialize();
     asm volatile("sti");
+    printf("Interrupts Initialized\n");
 
     acpi_sdt_header_t *mcfg_header = acpi_find_table((uint8_t *) "MCFG");
     if(mcfg_header) {
@@ -96,13 +100,22 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     } else {
         pci_enumerate();
     }
+    printf("PCI Initialized\n");
 
     pit_initialize();
-    keyboard_initialize();
-    keyboard_set_handler(kcon_keyboard_handler);
-    kcon_print_prefix();
 
-    // fat32_initialize();
+    acpi_sdt_header_t *hpet_header = acpi_find_table((uint8_t *) "HPET");
+    if(hpet_header) {
+        hpet_initialize();
+        printf("HPET Initialized\n");
+    }
+
+    //TODO: Check the FADT to make sure that a ps2 controller is present
+    ps2_initialize();
+    printf("PS2 Controller initialized\n");
+
+    kcon_print_prefix();
+    keyboard_set_handler(kcon_keyboard_handler);
 
     while(true) asm volatile("hlt");
     __builtin_unreachable();
