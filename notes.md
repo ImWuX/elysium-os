@@ -3,6 +3,9 @@
 
 # Backlog
 Kernel:
+  - Mouse driver seems to fail if mouse is moving on initialization
+  - Check that the PAT is actually setup properly
+  - Map framebuffer as write combining and memory mapped HW as non cacheable
   - Make sure that all drivers are mapping memory into HHDM just in-case
   - Claim bootloader reclaimable
   - Kernel logging system

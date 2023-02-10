@@ -20,8 +20,8 @@ void *memset(void *dest, int ch, size_t count) {
 }
 
 void *memcpy(void *dest, const void *src, size_t count) {
-    for(size_t i = 0; i < count; i++)
-        *((unsigned char *) dest + i) = *((unsigned char *) src + i);
+    asm volatile("cld");
+    asm volatile("rep movsb" : "+D"(dest), "+S"(src), "+c"(count) : : "memory");
     return dest;
 }
 

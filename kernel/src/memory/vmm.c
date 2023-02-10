@@ -3,6 +3,7 @@
 #include <string.h>
 #include <memory/pmm.h>
 #include <memory/hhdm.h>
+#include <cpu/msr.h>
 
 #define DEFAULT_FLAGS VMM_PT_FLAG_PRESENT | VMM_PT_FLAG_READWRITE
 
@@ -34,6 +35,11 @@ static void tlb_flush() {
 
 void vmm_initialize(uintptr_t pml4_address) {
     g_pml4 = (vmm_page_table_t *) HHDM(pml4_address);
+
+    uint64_t pat = msr_get(MSR_IA32_PAT);
+    pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
+    pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
+    msr_set(MSR_IA32_PAT, pat);
 
     for(int i = 0; i < 256; i++) {
         g_pml4->entries[i] = 0;
