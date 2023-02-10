@@ -40,8 +40,7 @@ static char *g_messages[] = {
 };
 
 void exceptions_handler(exception_cpu_register_t regs) {
-    printf("\n---==[ Exception ]==---\n%s\nError Code: %x\nRIP: %x\n---==[    END    ]==---", g_messages[regs.int_no], regs.err_code, regs.rip);
-    panic("Exception", g_messages[regs.int_no]);
+    panic_exception(g_messages[regs.int_no], regs);
 }
 
 void exceptions_initialize() {

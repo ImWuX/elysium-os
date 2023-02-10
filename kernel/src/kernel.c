@@ -28,18 +28,17 @@
 #include <fs/vfs.h>
 #include <fs/fat32.h>
 #include <kcon.h>
+#include <kdesktop.h>
+
+#define PAGE_SIZE 0x1000
+
+static draw_colormask_t g_fb_colormask;
+static draw_context_t g_fb_context;
 
 extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     g_hhdm_address = boot_params->hhdm_address;
 
-    draw_framebuffer_t framebuffer = {
-        .width = boot_params->framebuffer->width,
-        .height = boot_params->framebuffer->height,
-        .bpp = boot_params->framebuffer->bpp,
-        .pitch = boot_params->framebuffer->pitch,
-        .address = boot_params->framebuffer->address
-    };
-    draw_colormask_t color_mask = {
+    g_fb_colormask = (draw_colormask_t) {
         .red_size = boot_params->framebuffer->mask_red_size,
         .red_shift = boot_params->framebuffer->mask_red_shift,
         .green_size = boot_params->framebuffer->mask_green_size,
@@ -47,15 +46,17 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
         .blue_size = boot_params->framebuffer->mask_blue_size,
         .blue_shift = boot_params->framebuffer->mask_blue_shift
     };
-    draw_initialize(color_mask, framebuffer);
-    kcon_initialize(1000, 600, (boot_params->framebuffer->width - 1000) / 2, (boot_params->framebuffer->height - 600) / 2);
+    g_fb_context = (draw_context_t) {
+        .width = boot_params->framebuffer->width,
+        .height = boot_params->framebuffer->height,
+        .pitch = boot_params->framebuffer->pitch / 4,
+        .address = (void *) HHDM(boot_params->framebuffer->address),
+        .colormask = &g_fb_colormask,
+        .invalidated = true
+    };
 
-    printf(" _____ _         _           _____ _____ \n");
-    printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
-    printf("|   __| | | |_ -| | | |     |  |  |__   |\n");
-    printf("|_____|_|_  |___|_|___|_|_|_|_____|_____|\n");
-    printf("        |___|                            \n\n");
-    printf("Welcome to Elysium OS\n");
+    uint16_t memap_length = boot_params->memory_map_length;
+    tartarus_memap_entry_t *memap = (tartarus_memap_entry_t *) HHDM(boot_params->memory_map);
 
     gdt_initialize();
 
@@ -114,21 +115,61 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     ps2_initialize();
     printf("PS2 Controller initialized\n");
 
-    kcon_print_prefix();
-    keyboard_set_handler(kcon_keyboard_handler);
+    kdesktop_initialize(&g_fb_context);
+    // printf(" _____ _         _           _____ _____ \n");
+    // printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
+    // printf("|   __| | | |_ -| | | |     |  |  |__   |\n");
+    // printf("|_____|_|_  |___|_|___|_|_|_|_____|_____|\n");
+    // printf("        |___|                            \n\n");
+    // printf("Welcome to Elysium OS\n");
 
     while(true) asm volatile("hlt");
     __builtin_unreachable();
 }
 
 noreturn void panic(char *location, char *msg) {
-    draw_color_t bg = draw_color(255, 60, 60);
-    draw_rect(0, 0, draw_scrw(), draw_scrh(), bg);
-    int y = (draw_scrh() - 3 * BASICFONT_HEIGHT) / 2;
+    draw_color_t bg = draw_color(&g_fb_context, 255, 60, 60);
+    draw_rect(&g_fb_context, 0, 0, g_fb_context.width, g_fb_context.height, bg);
+    int y = (g_fb_context.height - 3 * BASICFONT_HEIGHT) / 2;
     char *title = "KERNEL PANIC";
-    draw_string_simple((draw_scrw() - strlen(title) * BASICFONT_WIDTH) / 2, y, title, 0xFFFFFFFF, bg);
-    draw_string_simple((draw_scrw() - strlen(location) * BASICFONT_WIDTH) / 2, y + BASICFONT_HEIGHT, location, 0xFFFFFFFF, bg);
-    draw_string_simple((draw_scrw() - strlen(msg) * BASICFONT_WIDTH) / 2, y + BASICFONT_HEIGHT * 2, msg, 0xFFFFFFFF, bg);
+    draw_string_simple(&g_fb_context, (g_fb_context.width - strlen(title) * BASICFONT_WIDTH) / 2, y, title, 0xFFFFFFFF);
+    draw_string_simple(&g_fb_context, (g_fb_context.width - strlen(location) * BASICFONT_WIDTH) / 2, y + BASICFONT_HEIGHT, location, 0xFFFFFFFF);
+    draw_string_simple(&g_fb_context, (g_fb_context.width - strlen(msg) * BASICFONT_WIDTH) / 2, y + BASICFONT_HEIGHT * 2, msg, 0xFFFFFFFF);
+
+    asm volatile("cli");
+    asm volatile("hlt");
+    __builtin_unreachable();
+}
+
+static void panic_prntnum(draw_context_t *ctx, uint16_t x, uint16_t y, uint64_t value) {
+    int cc = 0;
+    uint64_t pw = 1;
+    while(value / pw >= 16) pw *= 16;
+
+    draw_char(ctx, x + BASICFONT_WIDTH * cc++, y, '0', 0xFFFFFFFF);
+    draw_char(ctx, x + BASICFONT_WIDTH * cc++, y, 'x', 0xFFFFFFFF);
+    while(pw > 0) {
+        uint8_t c = value / pw;
+        if(c >= 10) {
+            draw_char(ctx, x + BASICFONT_WIDTH * cc++, y, c - 10 + 'a', 0xFFFFFFFF);
+        } else {
+            draw_char(ctx, x + BASICFONT_WIDTH * cc++, y, c + '0', 0xFFFFFFFF);
+        }
+        value %= pw;
+        pw /= 16;
+    }
+}
+
+noreturn void panic_exception(char *msg, exception_cpu_register_t regs) {
+    draw_color_t bg = draw_color(&g_fb_context, 255, 60, 60);
+    draw_rect(&g_fb_context, 0, 0, g_fb_context.width, g_fb_context.height, bg);
+    int y = (g_fb_context.height - 3 * BASICFONT_HEIGHT) / 2;
+    char *title = "EXCEPTION";
+    draw_string_simple(&g_fb_context, (g_fb_context.width - strlen(title) * BASICFONT_WIDTH) / 2, y, title, 0xFFFFFFFF);
+    draw_string_simple(&g_fb_context, (g_fb_context.width - strlen(msg) * BASICFONT_WIDTH) / 2, y + BASICFONT_HEIGHT, msg, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, g_fb_context.width / 2, y + BASICFONT_HEIGHT * 2, (uint64_t) regs.err_code);
+    panic_prntnum(&g_fb_context, g_fb_context.width / 2, y + BASICFONT_HEIGHT * 3, regs.rip);
+
     asm volatile("cli");
     asm volatile("hlt");
     __builtin_unreachable();
