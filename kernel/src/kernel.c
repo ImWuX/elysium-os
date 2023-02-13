@@ -59,10 +59,7 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     tartarus_memap_entry_t *memap = (tartarus_memap_entry_t *) HHDM(boot_params->memory_map);
 
     gdt_initialize();
-
     pmm_initialize(boot_params->memory_map, boot_params->memory_map_length);
-    printf("Physical Memory Initialized\n");
-    printf("Stats:\n\tTotal: %i bytes\n\tFree: %i bytes\n\tUsed: %i bytes\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used());
 
     uint64_t sp;
     asm volatile("mov %%rsp, %0" : "=rm" (sp));
@@ -74,13 +71,8 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     uint64_t pml4;
     asm volatile("mov %%cr3, %0" : "=r" (pml4));
     vmm_initialize(pml4);
-    printf("Virtual Memory Initialized\n");
-
     heap_initialize((void *) 0x100000000000, 10);
-    printf("Heap Initialized\n");
-
     acpi_initialize();
-    printf("ACPI Initialized\n");
 
     pic8259_remap();
     exceptions_initialize();
@@ -93,7 +85,6 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     }
     idt_initialize();
     asm volatile("sti");
-    printf("Interrupts Initialized\n");
 
     acpi_sdt_header_t *mcfg_header = acpi_find_table((uint8_t *) "MCFG");
     if(mcfg_header) {
@@ -101,27 +92,17 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     } else {
         pci_enumerate();
     }
-    printf("PCI Initialized\n");
 
     pit_initialize();
-
     acpi_sdt_header_t *hpet_header = acpi_find_table((uint8_t *) "HPET");
     if(hpet_header) {
         hpet_initialize();
-        printf("HPET Initialized\n");
     }
 
     //TODO: Check the FADT to make sure that a ps2 controller is present
     ps2_initialize();
-    printf("PS2 Controller initialized\n");
 
     kdesktop_initialize(&g_fb_context);
-    // printf(" _____ _         _           _____ _____ \n");
-    // printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
-    // printf("|   __| | | |_ -| | | |     |  |  |__   |\n");
-    // printf("|_____|_|_  |___|_|___|_|_|_|_____|_____|\n");
-    // printf("        |___|                            \n\n");
-    // printf("Welcome to Elysium OS\n");
 
     while(true) asm volatile("hlt");
     __builtin_unreachable();

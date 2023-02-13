@@ -27,11 +27,11 @@ typedef uint32_t draw_color_t;
 
 draw_color_t draw_color(draw_context_t *ctx, uint8_t r, uint8_t g, uint8_t b);
 
-draw_color_t draw_getpixel(draw_context_t *ctx, uint16_t x, uint16_t y);
+draw_color_t draw_getpixel(draw_context_t *ctx, int x, int y);
 
-void draw_char(draw_context_t *ctx, uint16_t x, uint16_t y, char c, draw_color_t color);
-void draw_string_simple(draw_context_t *ctx, uint16_t x, uint16_t y, char *str, draw_color_t color);
-void draw_pixel(draw_context_t *ctx, uint16_t x, uint16_t y, draw_color_t color);
-void draw_rect(draw_context_t *ctx, uint16_t x, uint16_t y, uint16_t w, uint16_t h, draw_color_t color);
+void draw_char(draw_context_t *ctx, int x, int y, char c, draw_color_t color);
+void draw_string_simple(draw_context_t *ctx, int x, int y, char *str, draw_color_t color);
+void draw_pixel(draw_context_t *ctx, int x, int y, draw_color_t color);
+void draw_rect(draw_context_t *ctx, int x, int y, uint16_t w, uint16_t h, draw_color_t color);
 
 #endif

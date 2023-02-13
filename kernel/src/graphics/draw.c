@@ -18,17 +18,29 @@ draw_color_t draw_color(draw_context_t *ctx, uint8_t r, uint8_t g, uint8_t b) {
         ((b & ((1 << ctx->colormask->blue_size) - 1)) << ctx->colormask->blue_shift);
 }
 
-draw_color_t draw_getpixel(draw_context_t *ctx, uint16_t x, uint16_t y) {
+draw_color_t draw_getpixel(draw_context_t *ctx, int x, int y) {
     return getpixel(ctx, y * ctx->pitch + x);
 }
 
-void draw_char(draw_context_t *ctx, uint16_t x, uint16_t y, char c, draw_color_t color) {
+void draw_char(draw_context_t *ctx, int x, int y, char c, draw_color_t color) {
+    int w = BASICFONT_WIDTH;
+    int h = BASICFONT_HEIGHT;
+    if(x < 0) {
+        if(w <= -x) return;
+        w += x;
+        x = 0;
+    }
+    if(y < 0) {
+        if(h <= -y) return;
+        h += y;
+        y = 0;
+    }
     uint8_t *font_char = &g_basicfont[c * 16];
 
     uint64_t offset = x + y * ctx->pitch;
-    for(uint16_t yy = 0; yy < BASICFONT_HEIGHT; yy++) {
-        for(uint16_t xx = 0; xx < BASICFONT_WIDTH; xx++) {
-            if(font_char[yy] & (1 << (BASICFONT_WIDTH - xx))) {
+    for(uint16_t yy = 0; yy < h && y + yy < ctx->height; yy++) {
+        for(uint16_t xx = 0; xx < w && x + xx < ctx->width; xx++) {
+            if(font_char[yy] & (1 << (w - xx))) {
                 putpixel(ctx, offset + xx, color);
             }
         }
@@ -36,21 +48,32 @@ void draw_char(draw_context_t *ctx, uint16_t x, uint16_t y, char c, draw_color_t
     }
 }
 
-void draw_string_simple(draw_context_t *ctx, uint16_t x, uint16_t y, char *str, draw_color_t color) {
+void draw_string_simple(draw_context_t *ctx, int x, int y, char *str, draw_color_t color) {
     while(*str) {
         draw_char(ctx, x, y, *str++, color);
         x += BASICFONT_WIDTH;
     }
 }
 
-void draw_pixel(draw_context_t *ctx, uint16_t x, uint16_t y, draw_color_t color) {
+void draw_pixel(draw_context_t *ctx, int x, int y, draw_color_t color) {
+    if(x < 0 || y < 0 || x >= ctx->width || y >= ctx->height) return;
     putpixel(ctx, y * ctx->pitch + x, color);
 }
 
-void draw_rect(draw_context_t *ctx, uint16_t x, uint16_t y, uint16_t w, uint16_t h, draw_color_t color) {
+void draw_rect(draw_context_t *ctx, int x, int y, uint16_t w, uint16_t h, draw_color_t color) {
+    if(x < 0) {
+        if(w <= -x) return;
+        w += x;
+        x = 0;
+    }
+    if(y < 0) {
+        if(h <= -y) return;
+        h += y;
+        y = 0;
+    }
     uint64_t offset = x + y * ctx->pitch;
-    for(uint16_t yy = 0; yy < h; yy++) {
-        for(uint16_t xx = 0; xx < w; xx++) {
+    for(uint16_t yy = 0; yy < h && y + yy < ctx->height; yy++) {
+        for(uint16_t xx = 0; xx < w && x + xx < ctx->width; xx++) {
             putpixel(ctx, offset + xx, color);
         }
         offset += ctx->pitch;

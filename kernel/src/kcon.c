@@ -2,9 +2,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <graphics/basicfont.h>
+#include <memory/pmm.h>
 #include <memory/heap.h>
 #include <drivers/pit.h>
 #include <drivers/mouse.h>
+#include <kdesktop.h>
 
 #define DEFAULT_FG 0xFFFFFFFF
 #define DEFAULT_BG 0
@@ -48,6 +50,8 @@ static void command_handler(char *input) {
             printf("Time since system startup: %is\n", pit_time_s());
         } else if(strcmp(command, "ud2") == 0) {
             asm("ud2");
+        } else if(strcmp(command, "kstat") == 0) {
+            kdesktop_create_window(0, 0, 300, 300, "KSTAT");
         } else if(strcmp(command, "help") == 0) {
             printf("clear: Clear the console\n");
             printf("time: Display how much time has passed since the CPU started\n");
@@ -65,6 +69,14 @@ void kcon_initialize(draw_context_t *ctx) {
     g_ctx = ctx;
     g_chars_written = 0;
     draw_rect(g_ctx, 0, 0, g_ctx->width, g_ctx->height, DEFAULT_BG);
+    printf(" _____ _         _           _____ _____ \n");
+    printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
+    printf("|   __| | | |_ -| | | |     |  |  |__   |\n");
+    printf("|_____|_|_  |___|_|___|_|_|_|_____|_____|\n");
+    printf("        |___|                            \n\n");
+    printf("Welcome to Elysium OS\n");
+    printf("Physical Memory Initialized\n");
+    printf("Stats:\n\tTotal: %i bytes\n\tFree: %i bytes\n\tUsed: %i bytes\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used());
     simple_print(PREFIX);
 }
 
