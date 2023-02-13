@@ -13,7 +13,7 @@ static draw_context_t *g_fb_ctx;
 static draw_context_t *g_bb_ctx;
 static bool g_change = true;
 
-static kdesktop_window_t *head;
+static kdesktop_window_t *head = 0;
 
 int g_mouse_x = 0;
 int g_mouse_y = 0;
@@ -28,27 +28,21 @@ static void draw_desktop() {
     while(window) {
         draw_rect(g_bb_ctx, window->x, window->y, window->ctx->width, 16, draw_color(g_bb_ctx, 170, 170, 170));
         for(uint16_t y = 0; y < window->ctx->height; y++) {
+            if(window->y + y + 16 < 0) continue;
             if(window->y + y + 16 >= g_bb_ctx->height) break;
             uint16_t width = window->ctx->width;
             if(window->x + width > g_bb_ctx->width) width = g_bb_ctx->width - window->x;
-            memcpy(g_bb_ctx->address + ((window->y + y + 16) * g_bb_ctx->pitch + window->x) * sizeof(draw_color_t), window->ctx->address + y * window->ctx->pitch * sizeof(draw_color_t), width * sizeof(draw_color_t));
+            int x_offset = window->x < 0 ? -window->x : 0;
+            memcpy(g_bb_ctx->address + ((window->y + y + 16) * g_bb_ctx->pitch + window->x + x_offset) * sizeof(draw_color_t), window->ctx->address + (y * window->ctx->pitch + x_offset) * sizeof(draw_color_t), (width - x_offset) * sizeof(draw_color_t));
         }
 
         int i = 0;
         while(window->title[i]) {
-            draw_char(g_bb_ctx, window->x + i * BASICFONT_WIDTH, window->y, window->title[i], draw_color(g_bb_ctx, 170, 170, 170));
+            draw_char(g_bb_ctx, window->x + i * BASICFONT_WIDTH, window->y, window->title[i], 0);
             i++;
         }
         window = window->next;
     }
-}
-
-static void draw_fb() {
-    uint64_t count = g_fb_ctx->pitch * g_fb_ctx->height * sizeof(draw_color_t) / 8;
-    uint64_t dst = (uint64_t) g_fb_ctx->address;
-    uint64_t src = (uint64_t) g_bb_ctx->address;
-    asm volatile("cld\n rep movsq" : "+D" (dst), "+S" (src), "+c" (count) : : "memory");
-    // TODO: Deal with leftovers and non 64bit alignment
 }
 
 static void mouse_handler(int16_t x, int16_t y, bool buttons[3]) {
@@ -91,27 +85,32 @@ static void mouse_handler(int16_t x, int16_t y, bool buttons[3]) {
     }
 }
 
+draw_context_t *kdesktop_create_window(int x, int y, uint16_t width, uint16_t height, char* title) {
+    kdesktop_window_t *window = heap_alloc(sizeof(kdesktop_window_t));
+    window->title = title;
+    window->x = x;
+    window->y = y;
+    draw_context_t *window_ctx = heap_alloc(sizeof(draw_context_t));
+    window_ctx->width = width;
+    window_ctx->pitch = window_ctx->width;
+    window_ctx->height = height;
+    window_ctx->address = heap_alloc(window_ctx->height * window_ctx->pitch * sizeof(draw_color_t));
+    window_ctx->colormask = g_bb_ctx->colormask;
+    window_ctx->invalidated = true;
+    window->ctx = window_ctx;
+    window->next = head;
+    head = window;
+    g_change = true;
+    return window_ctx;
+}
+
 void kdesktop_initialize(draw_context_t *ctx) {
     g_fb_ctx = ctx;
     g_bb_ctx = heap_alloc(sizeof(draw_context_t));
     memcpy(g_bb_ctx, g_fb_ctx, sizeof(draw_context_t));
     g_bb_ctx->address = heap_alloc(g_bb_ctx->height * g_bb_ctx->pitch * sizeof(draw_color_t));
 
-    kdesktop_window_t *window = heap_alloc(sizeof(kdesktop_window_t));
-    window->title = "Terminal";
-    window->x = 50;
-    window->y = 50;
-    draw_context_t *window_ctx = heap_alloc(sizeof(draw_context_t));
-    window_ctx->width = 600;
-    window_ctx->pitch = window_ctx->width;
-    window_ctx->height = 600;
-    window_ctx->address = heap_alloc(window_ctx->height * window_ctx->pitch * sizeof(draw_color_t));
-    window_ctx->colormask = g_bb_ctx->colormask;
-    window_ctx->invalidated = true;
-    window->ctx = window_ctx;
-    head = window;
-
-    kcon_initialize(window_ctx);
+    kcon_initialize(kdesktop_create_window(50, 50, 800, 500, "Terminal"));
     keyboard_set_handler(kcon_keyboard_handler);
     mouse_set_handler(mouse_handler);
 
@@ -119,6 +118,11 @@ void kdesktop_initialize(draw_context_t *ctx) {
         if(g_change) {
             draw_desktop();
             g_change = false;
+            uint64_t count = g_fb_ctx->pitch * g_fb_ctx->height * sizeof(draw_color_t) / 8;
+            uint64_t dst = (uint64_t) g_fb_ctx->address;
+            uint64_t src = (uint64_t) g_bb_ctx->address;
+            asm volatile("cld\n rep movsq" : "+D" (dst), "+S" (src), "+c" (count) : : "memory");
+            // TODO: Deal with leftovers and non 64bit alignment
         }
 
         kdesktop_window_t *window = head;
@@ -129,11 +133,11 @@ void kdesktop_initialize(draw_context_t *ctx) {
                     uint16_t width = window->ctx->width;
                     if(window->x + width > g_bb_ctx->width) width = g_bb_ctx->width - window->x;
                     memcpy(g_bb_ctx->address + ((window->y + y + 16) * g_bb_ctx->pitch + window->x) * sizeof(draw_color_t), window->ctx->address + y * window->ctx->pitch * sizeof(draw_color_t), width * sizeof(draw_color_t));
+                    memcpy(g_fb_ctx->address + ((window->y + y + 16) * g_fb_ctx->pitch + window->x) * sizeof(draw_color_t), window->ctx->address + y * window->ctx->pitch * sizeof(draw_color_t), width * sizeof(draw_color_t));
                 }
                 window->ctx->invalidated = false;
             }
             window = window->next;
         }
-        draw_fb();
     }
 }
