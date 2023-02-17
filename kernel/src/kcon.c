@@ -6,6 +6,7 @@
 #include <memory/heap.h>
 #include <drivers/pit.h>
 #include <drivers/mouse.h>
+#include <drivers/hpet.h>
 #include <kdesktop.h>
 
 #define DEFAULT_FG 0xFFFFFFFF
@@ -50,11 +51,14 @@ static void command_handler(char *input) {
             printf("Time since system startup: %is\n", pit_time_s());
         } else if(strcmp(command, "ud2") == 0) {
             asm("ud2");
-        } else if(strcmp(command, "kstat") == 0) {
-            kdesktop_create_window(0, 0, 300, 300, "KSTAT");
+        } else if(strcmp(command, "timer") == 0) {
+            if(configure_timer(1, 8, 100, false)) {
+                printf("timer errorrrr\n");
+            }
         } else if(strcmp(command, "help") == 0) {
             printf("clear: Clear the console\n");
             printf("time: Display how much time has passed since the CPU started\n");
+            printf("timer: Start a timer\n");
             printf("ud2: Trigger an unknown instruction fault\n");
             printf("help: Display all the commands\n");
         } else {

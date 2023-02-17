@@ -12,6 +12,7 @@
 #define RSDP_IDENTIFIER 0x2052545020445352 // "RSDP PTR "
 
 static acpi_sdt_header_t *g_sdts;
+static uint8_t g_revision;
 
 static uint8_t checksum(uint8_t *src, uint32_t size) {
     uint32_t checksum = 0;
@@ -42,6 +43,7 @@ void acpi_initialize() {
     if(!address) panic("ACPI", "Failed to locate the RSDP");
 
     acpi_rsdp_t *rsdp = (acpi_rsdp_t *) address;
+    g_revision = rsdp->revision;
     if(rsdp->revision > 0) {
         acpi_rsdp_ext_t *rsdp_ext = (acpi_rsdp_ext_t *) address;
         if(!checksum(((uint8_t *) rsdp_ext) + sizeof(acpi_rsdp_t), sizeof(acpi_rsdp_ext_t) - sizeof(acpi_rsdp_t))) panic("ACPI", "Checksum for Extended RSDP failed");
@@ -60,4 +62,8 @@ acpi_sdt_header_t *acpi_find_table(uint8_t *signature) {
         entry_ptr++;
     }
     return 0;
+}
+
+uint8_t acpi_revision() {
+    return g_revision;
 }

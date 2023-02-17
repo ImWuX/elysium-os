@@ -73,6 +73,7 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     vmm_initialize(pml4);
     heap_initialize((void *) 0x100000000000, 10);
     acpi_initialize();
+    acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
 
     pic8259_remap();
     exceptions_initialize();
@@ -94,15 +95,20 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     }
 
     pit_initialize();
+
+    kcon_initialize(&g_fb_context);
+    keyboard_set_handler(kcon_keyboard_handler);
+
+    // kdesktop_initialize(&g_fb_context);
+
     acpi_sdt_header_t *hpet_header = acpi_find_table((uint8_t *) "HPET");
     if(hpet_header) {
         hpet_initialize();
     }
 
-    //TODO: Check the FADT to make sure that a ps2 controller is present
-    ps2_initialize();
-
-    kdesktop_initialize(&g_fb_context);
+    if(fadt && (acpi_revision() == 0 || (fadt->boot_architecture_flags & (1 << 1)))) {
+        ps2_initialize();
+    }
 
     while(true) asm volatile("hlt");
     __builtin_unreachable();
