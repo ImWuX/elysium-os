@@ -24,7 +24,7 @@ static uint32_t g_freq;
 
 bool configure_timer(int timer, int irq, int ms, bool one_shot) {
     uint32_t irq_bitmask = g_hpet[CCR(timer)] >> 32;
-    if(g_hpet[CCR(timer)] & CCR_64BIT_CAPABLE == 0) return true;
+    if((g_hpet[CCR(timer)] & CCR_64BIT_CAPABLE) == 0) return true;
     if((irq_bitmask & (1 << irq)) == 0) return true;
     if(!one_shot && (g_hpet[CCR(timer)] & CCR_PERIODIC_CAPABLE) == 0) return true;
 

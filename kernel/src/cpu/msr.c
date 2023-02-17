@@ -4,7 +4,7 @@
 #define CPUID_CAPABILITY_MSR 5
 
 bool msr_available() {
-    unsigned int edx, unused;
+    unsigned int edx = 0, unused;
     __get_cpuid(1, &unused, &unused, &unused, &edx);
     return (edx & (1 << CPUID_CAPABILITY_MSR)) > 0;
 }
