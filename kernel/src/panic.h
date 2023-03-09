@@ -5,6 +5,6 @@
 #include <cpu/exceptions.h>
 
 noreturn void panic(char *location, char *msg);
-noreturn void panic_exception(char *msg, exception_cpu_register_t regs);
+noreturn void panic_exception(char *msg, exception_frame_t regs);
 
 #endif

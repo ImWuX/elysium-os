@@ -38,7 +38,7 @@ static uint8_t g_layout_us[128] = {
     0,      // All other keys are undefined
 };
 
-static void keyboard_event(irq_cpu_register_t registers __attribute__((unused))) {
+static void keyboard_event(irq_frame_t registers __attribute__((unused))) {
     uint8_t scancode = ps2_port_read(false);
 
     if(scancode >= 0x80) {

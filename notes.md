@@ -3,7 +3,8 @@
 
 # Backlog
 Kernel:
-  - Mouse driver seems to fail if mouse is moving on initialization
+  - Mouse driver seems to fail if mouse is moving on initialization - todo with weird ps2 bs
+  - Bootloader VMM is mapping everything as user/supervisor
   - Check that the PAT is actually setup properly
   - Map framebuffer as write combining and memory mapped HW as non cacheable
   - Make sure that all drivers are mapping memory into HHDM just in-case
@@ -31,6 +32,7 @@ Kernel:
       - if (cpuid has tsc freq) calibrate against invariant tsc
       - if (hpet supported) calibrate against hpet 
       - if (pit supported) calibrate against pit
+  - smap/smep
 
 Userspace:
   - Roll [MLibc](https://github.com/managarm/mlibc)

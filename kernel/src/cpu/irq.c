@@ -30,7 +30,7 @@ void irq_register_handler(uint8_t id, interrupt_handler_t interrupt_handler) {
     g_interrupt_handlers[id] = interrupt_handler;
 }
 
-void irq_handler(irq_cpu_register_t regs) {
+void irq_handler(irq_frame_t regs) {
     if(g_interrupt_handlers[regs.int_no]) g_interrupt_handlers[regs.int_no](regs);
     apic_eoi(regs.int_no);
     pic8259_eoi(regs.int_no >= 40);

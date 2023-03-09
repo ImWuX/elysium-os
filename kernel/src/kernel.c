@@ -27,6 +27,8 @@
 #include <drivers/hpet.h>
 #include <fs/vfs.h>
 #include <fs/fat32.h>
+#include <userspace/syscall.h>
+#include <userspace/userspace.h>
 #include <kcon.h>
 #include <kdesktop.h>
 
@@ -58,6 +60,9 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     uint16_t memap_length = boot_params->memory_map_length;
     tartarus_memap_entry_t *memap = (tartarus_memap_entry_t *) HHDM(boot_params->memory_map);
 
+    // TODO: MSR Available WTF to do if its not ig
+    if(!msr_available()) panic("KERNEL", "MSRS are not available");
+
     gdt_initialize();
     pmm_initialize(boot_params->memory_map, boot_params->memory_map_length);
 
@@ -72,6 +77,7 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     asm volatile("mov %%cr3, %0" : "=r" (pml4));
     vmm_initialize(pml4);
     heap_initialize((void *) 0x100000000000, 10);
+
     acpi_initialize();
     acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
 
@@ -99,8 +105,6 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     kcon_initialize(&g_fb_context);
     keyboard_set_handler(kcon_keyboard_handler);
 
-    // kdesktop_initialize(&g_fb_context);
-
     acpi_sdt_header_t *hpet_header = acpi_find_table((uint8_t *) "HPET");
     if(hpet_header) {
         hpet_initialize();
@@ -109,6 +113,14 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     if(fadt && (acpi_revision() == 0 || (fadt->boot_architecture_flags & (1 << 1)))) {
         ps2_initialize();
     }
+
+    gdt_tss_initialize();
+
+    // TODO: Do we just want to panic or do we want an alternative way of implementing syscalls
+    if(!syscall_available()) panic("KERNEL", "Syscalls not available");
+    syscall_initialize();
+
+    userspace_switch();
 
     while(true) asm volatile("hlt");
     __builtin_unreachable();
@@ -147,7 +159,7 @@ static void panic_prntnum(draw_context_t *ctx, uint16_t x, uint16_t y, uint64_t 
     }
 }
 
-noreturn void panic_exception(char *msg, exception_cpu_register_t regs) {
+noreturn void panic_exception(char *msg, exception_frame_t regs) {
     draw_color_t bg = draw_color(&g_fb_context, 255, 60, 60);
     draw_rect(&g_fb_context, 0, 0, g_fb_context.width, g_fb_context.height, bg);
     int y = (g_fb_context.height - 3 * BASICFONT_HEIGHT) / 2;

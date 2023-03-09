@@ -12,13 +12,13 @@ C_SOURCES = $(shell find src/ -type f -name '*.c')
 .PHONY: clean
 
 # Targets
-src/kernel.elf: ${ASM_SOURCES:.asm=.o} ${C_SOURCES:.c=.o}
+src/kernel.elf: ${ASM_SOURCES:.asm=_s.o} ${C_SOURCES:.c=.o}
 	${LD} ${LDFLAGS} -o $@ -T"link.ld" $^ ../build/libc.a
 
 # TODO: Change ../out/libc.a
 
 # Wildcard Targets
-%.o: %.asm
+%_s.o: %.asm
 	${ASMC} -isrc $< -f elf64 -o $@
 
 %.o: %.c

@@ -4,15 +4,14 @@
 #include <stdint.h>
 
 typedef struct {
-    uint64_t ds;
     uint64_t rdi, rsi, rbp, rsp, rdx, rcx, rbx, rax;
     uint64_t r15, r14, r13, r12, r11, r10, r9, r8;
     uint64_t int_no, err_code;
     uint64_t rip, cs, eflags, useresp, ss;
-} exception_cpu_register_t;
+} exception_frame_t;
 
 void exceptions_initialize();
-void exceptions_handler(exception_cpu_register_t regs);
+void exceptions_handler(exception_frame_t regs);
 
 extern void exception_0();
 extern void exception_1();

@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <tartarus.h>
 
+typedef enum {
+    PMM_FRAME_FLAGS_DMA = (1 << 1)
+} pmm_frame_flags_t;
+
 void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_length);
 void *pmm_page_request();
 void pmm_page_release(void *page_address);

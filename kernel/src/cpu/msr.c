@@ -5,8 +5,8 @@
 
 bool msr_available() {
     unsigned int edx = 0, unused;
-    __get_cpuid(1, &unused, &unused, &unused, &edx);
-    return (edx & (1 << CPUID_CAPABILITY_MSR)) > 0;
+    int supported = __get_cpuid(1, &unused, &unused, &unused, &edx);
+    return supported && (edx & (1 << CPUID_CAPABILITY_MSR)) > 0;
 }
 
 uint64_t msr_get(uint64_t msr) {
