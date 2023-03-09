@@ -10,7 +10,7 @@ typedef struct {
 typedef enum {
     VMM_PT_FLAG_PRESENT = 1,
     VMM_PT_FLAG_READWRITE = (1 << 1),
-    VMM_PT_FLAG_SUPERVISOR = (1 << 2),
+    VMM_PT_FLAG_USER = (1 << 2),
     VMM_PT_FLAG_WRITETHROUGH = (1 << 3),
     VMM_PT_FLAG_DISABLECACHE = (1 << 4),
     VMM_PT_FLAG_ACCESSED = (1 << 5),

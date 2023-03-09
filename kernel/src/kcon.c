@@ -55,6 +55,10 @@ static void command_handler(char *input) {
             if(configure_timer(1, 8, 100, false)) {
                 printf("timer errorrrr\n");
             }
+        } else if(strcmp(command, "sp") == 0) {
+            uint64_t sp;
+            asm volatile("mov %%rsp, %0" : "=rm" (sp));
+            printf("INT - SP: %x\n", sp);
         } else if(strcmp(command, "help") == 0) {
             printf("clear: Clear the console\n");
             printf("time: Display how much time has passed since the CPU started\n");

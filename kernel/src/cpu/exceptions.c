@@ -39,7 +39,7 @@ static char *g_messages[] = {
     "Reserved"
 };
 
-void exceptions_handler(exception_cpu_register_t regs) {
+void exceptions_handler(exception_frame_t regs) {
     panic_exception(g_messages[regs.int_no], regs);
 }
 

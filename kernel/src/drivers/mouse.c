@@ -11,7 +11,7 @@ static mouse_handler_t g_mouse_handler;
 static uint8_t g_cycle = 0;
 static uint8_t g_data[3];
 
-static void mouse_handler(irq_cpu_register_t registers __attribute__((unused))) {
+static void mouse_handler(irq_frame_t registers __attribute__((unused))) {
 	uint8_t data = ps2_port_read(false);
 	g_data[g_cycle++] = data;
 	if(g_cycle == 3) {

@@ -84,7 +84,7 @@ void apic_initialize(acpi_sdt_header_t *apic_header) {
 
     lapic_write(0xF, 0x100 | 0xFF);
 
-    ioapic_set_irq(2, lapic_read(2), 32);
+    // ioapic_set_irq(2, lapic_read(2), 32);
     ioapic_set_irq(1, lapic_read(2), 32 + 6);
     ioapic_set_irq(12, lapic_read(2), 32 + 7);
     ioapic_set_irq(8, lapic_read(2), 32 + 8);

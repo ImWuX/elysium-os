@@ -1,93 +1,58 @@
 extern exceptions_handler
 extern irq_handler
 
-%macro PUSHALL 0
-    push rax
-    push rbx
-    push rcx
-    push rdx
-    push rsp
-    push rbp
-    push rsi
-    push rdi
-
-    push r8
-    push r9
-    push r10
-    push r11
-    push r12
-    push r13
-    push r14
-    push r15
-%endmacro
-
-%macro POPALL 0
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop r11
-    pop r10
-    pop r9
-    pop r8
-
-    pop rdi
-    pop rsi
-    pop rbp
-    pop rsp
-    pop rdx
-    pop rcx
-    pop rbx
-    pop rax
-%endmacro
-
-%macro STUB 2
+%macro STUB 3
     %1_stub:
-        ; Save CPU state
-        PUSHALL
-        xor rax, rax ; TODO: Pointless code (we are only using ax anyway so why clear rax)
-        mov ax, ds
-        push rax
+        push rax                            ; Save CPU state
+        push rbx
+        push rcx
+        push rdx
+        push rsp
+        push rbp
+        push rsi
+        push rdi
+        push r8
+        push r9
+        push r10
+        push r11
+        push r12
+        push r13
+        push r14
+        push r15
 
-        ; Setting segment descriptors to kernel
-        mov ax, 0x10
-        mov ds, ax
-        mov es, ax
-        mov fs, ax
-        mov gs, ax
+        cld                                 ; Clear direction flag
+        call %2                             ; Call appropriate interrupt handler
 
-        cld
-
-        ; Call Handler
-        call %2
-
-        ; Restore segment descriptors
+        pop r15                             ; Restore CPU state
+        pop r14
+        pop r13
+        pop r12
+        pop r11
+        pop r10
+        pop r9
+        pop r8
+        pop rdi
+        pop rsi
+        pop rbp
+        pop rsp
+        pop rdx
+        pop rcx
+        pop rbx
         pop rax
-        mov ds, ax
-        mov es, ax
-        mov fs, ax
-        mov gs, ax
 
-        POPALL                              ; Restore CPU state
-        add rsp, 16                         ; Pops error code and interrupt index
+        add rsp, %3                         ; Discard interrupt number and other data off of the stack
         sti
         iretq
 %endmacro
 
-%macro EXCEPTION_NOERRCODE 1
+%macro EXCEPTION 2
     global exception_%1
     exception_%1:
         cli
-        push byte 0
-        push byte %1
-        jmp exception_stub
-%endmacro
-
-%macro EXCEPTION_ERRCODE 1
-    global exception_%1
-    exception_%1:
-        cli
-        push byte %1
+        %if %1 == 0
+            push qword 0                    ; Push 0 as error code for interrupt without error code
+        %endif
+        push qword %1                       ; Push interrupt number
         jmp exception_stub
 %endmacro
 
@@ -95,62 +60,48 @@ extern irq_handler
     global irq_%1
     irq_%1:
         cli
-        push 0
-        push byte %1
+        push qword %1                       ; Push interrupt number
         jmp irq_stub
 %endmacro
 
-STUB exception, exceptions_handler
-STUB irq, irq_handler
+STUB exception, exceptions_handler, 16
+STUB irq, irq_handler, 8
 
-; Exceptions
-EXCEPTION_NOERRCODE 0
-EXCEPTION_NOERRCODE 1
-EXCEPTION_NOERRCODE 2
-EXCEPTION_NOERRCODE 3
-EXCEPTION_NOERRCODE 4
-EXCEPTION_NOERRCODE 5
-EXCEPTION_NOERRCODE 6
-EXCEPTION_NOERRCODE 7
-EXCEPTION_ERRCODE   8
-EXCEPTION_NOERRCODE 9
-EXCEPTION_ERRCODE   10
-EXCEPTION_ERRCODE   11
-EXCEPTION_ERRCODE   12
-EXCEPTION_ERRCODE   13
-EXCEPTION_ERRCODE   14
-EXCEPTION_NOERRCODE 15
-EXCEPTION_NOERRCODE 16
-EXCEPTION_NOERRCODE 17
-EXCEPTION_NOERRCODE 18
-EXCEPTION_NOERRCODE 19
-EXCEPTION_NOERRCODE 20
-EXCEPTION_NOERRCODE 21
-EXCEPTION_NOERRCODE 22
-EXCEPTION_NOERRCODE 23
-EXCEPTION_NOERRCODE 24
-EXCEPTION_NOERRCODE 25
-EXCEPTION_NOERRCODE 26
-EXCEPTION_NOERRCODE 27
-EXCEPTION_NOERRCODE 28
-EXCEPTION_NOERRCODE 29
-EXCEPTION_NOERRCODE 30
-EXCEPTION_NOERRCODE 31
+EXCEPTION 0, 0
+EXCEPTION 1, 0
+EXCEPTION 2, 0
+EXCEPTION 3, 0
+EXCEPTION 4, 0
+EXCEPTION 5, 0
+EXCEPTION 6, 0
+EXCEPTION 7, 0
+EXCEPTION 8, 1
+EXCEPTION 9, 0
+EXCEPTION 10, 1
+EXCEPTION 11, 1
+EXCEPTION 12, 1
+EXCEPTION 13, 1
+EXCEPTION 14, 1
+EXCEPTION 15, 0
+EXCEPTION 16, 0
+EXCEPTION 17, 0
+EXCEPTION 18, 0
+EXCEPTION 19, 0
+EXCEPTION 20, 0
+EXCEPTION 21, 0
+EXCEPTION 22, 0
+EXCEPTION 23, 0
+EXCEPTION 24, 0
+EXCEPTION 25, 0
+EXCEPTION 26, 0
+EXCEPTION 27, 0
+EXCEPTION 28, 0
+EXCEPTION 29, 0
+EXCEPTION 30, 0
+EXCEPTION 31, 0
 
-; IRQ
-IRQ 32
-IRQ 33
-IRQ 34
-IRQ 35
-IRQ 36
-IRQ 37
-IRQ 38
-IRQ 39
-IRQ 40
-IRQ 41
-IRQ 42
-IRQ 43
-IRQ 44
-IRQ 45
-IRQ 46
-IRQ 47
+%assign i 32
+%rep 224
+IRQ i
+%assign i i+1
+%endrep

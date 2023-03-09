@@ -4,18 +4,17 @@
 #include <stdint.h>
 
 typedef struct {
-    uint64_t ds;
     uint64_t rdi, rsi, rbp, rsp, rdx, rcx, rbx, rax;
     uint64_t r15, r14, r13, r12, r11, r10, r9, r8;
-    uint64_t int_no, err_code;
+    uint64_t int_no;
     uint64_t rip, cs, eflags, useresp, ss;
-} irq_cpu_register_t;
+} irq_frame_t;
 
-typedef void (*interrupt_handler_t)(irq_cpu_register_t);
+typedef void (*interrupt_handler_t)(irq_frame_t);
 
 void irq_initialize();
 void irq_register_handler(uint8_t id, interrupt_handler_t interrupt_handler);
-void irq_handler(irq_cpu_register_t regs);
+void irq_handler(irq_frame_t regs);
 
 extern void irq_32();
 extern void irq_33();

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef enum {
+typedef enum { //TODO: REFACTOR NAMES
     NONE,
     SATA,
     SEMB,
