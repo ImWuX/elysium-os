@@ -28,7 +28,7 @@
 #include <fs/vfs.h>
 #include <fs/fat32.h>
 #include <userspace/syscall.h>
-#include <userspace/userspace.h>
+#include <proc/sched.h>
 #include <kcon.h>
 #include <kdesktop.h>
 
@@ -76,7 +76,7 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     uint64_t pml4;
     asm volatile("mov %%cr3, %0" : "=r" (pml4));
     vmm_initialize(pml4);
-    heap_initialize((void *) 0x100000000000, 10);
+    heap_initialize((void *) 0xFFFFFF0000000000, 10);
 
     acpi_initialize();
     acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
@@ -120,9 +120,7 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     if(!syscall_available()) panic("KERNEL", "Syscalls not available");
     syscall_initialize();
 
-    userspace_switch();
-
-    while(true) asm volatile("hlt");
+    sched_handoff();
     __builtin_unreachable();
 }
 

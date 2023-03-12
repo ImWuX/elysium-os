@@ -15,7 +15,7 @@ typedef enum {
     VMM_PT_FLAG_DISABLECACHE = (1 << 4),
     VMM_PT_FLAG_ACCESSED = (1 << 5),
     VMM_PT_FLAG_PAT = (1 << 7),
-} vmm_pt_flags_t;
+} vmm_pt_flag_t;
 
 typedef enum {
     VMM_PAT_WRITE_BACK = 0,
@@ -25,6 +25,11 @@ typedef enum {
     VMM_PAT_WRITE_COMBINING = VMM_PT_FLAG_PAT | VMM_PT_FLAG_DISABLECACHE,
     VMM_PAT_WRITE_PROTECTED = VMM_PT_FLAG_PAT | VMM_PT_FLAG_WRITETHROUGH
 } vmm_pt_pat_t;
+
+typedef enum {
+    VMM_FLAG_READWRITE = (1 << 1),
+    VMM_FLAG_USER = (1 << 2),
+} vmm_flag_t;
 
 void vmm_initialize(uint64_t pml4_address);
 uint64_t vmm_physical(void *virtual_address);

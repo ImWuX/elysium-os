@@ -47,12 +47,17 @@ Userspace:
 - Enable mmx, sse, sse2 (Currently gcc is told not to use these instructions)
 
 # Documentation
-Command for creating the empty.img image is the following:
-64MiB: `dd if=/dev/zero of=build/empty.img bs=512 count=131072`
-512MiB: `dd if=/dev/zero of=build/empty.img bs=512 count=1048576`
-5GiB: `dd if=/dev/zero of=build/empty.img bs=512 count=10485760`
+Commands for creating the empty.img images are the following:
+- 64MiB: `dd if=/dev/zero of=build/empty.img bs=512 count=131072`
+- 512MiB: `dd if=/dev/zero of=build/empty.img bs=512 count=1048576`
+- 5GiB: `dd if=/dev/zero of=build/empty.img bs=512 count=10485760`
 
 ## Virtual Memory Structure
-- Kernel at                 0xFFFF FFFF 8000 0000 ⬆️
-- HHDM at                   0xFFFF 8000 0000 0000 ⬆️ //TODO: HHDM Might run into kernel lol
-- Heap mapped at            0x0000 1000 0000 0000 ⬆️
+|Start Address (Hex)|End Address (Hex)|Description|
+|-|-|-|
+|0000 0000 0000 0000|0000 7FFF FFFF FFFF|Process Address Space|
+|FFFF 8000 0000 0000|FFFF FEFF FFFF FFFF #NF|Higher Half Direct Map|
+|FFFF FF00 0000 0000|FFFF FFFF 7FFF FFFF #NF|Kernel Heap|
+|FFFF FFFF 8000 0000|FFFF FFFF FFFF FFFF #NF|Kernel|
+
+#NF = Not Enforced (As of now)
