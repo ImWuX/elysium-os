@@ -61,7 +61,7 @@ void gdt_tss_initialize() {
     entry->entry.access = 0b10001001;
     entry->entry.flags = (1 << 4) | (((uint8_t) (sizeof(g_tss) << 16)) & 0b00001111);
     entry->entry.limit = (uint16_t) sizeof(g_tss);
-    entry->entry.base_low = (uint16_t) &g_tss;
+    entry->entry.base_low = (uint16_t) (uint64_t) &g_tss;
     entry->entry.base_mid = (uint8_t) ((uint64_t) &g_tss >> 16);
     entry->entry.base_high = (uint8_t) ((uint64_t) &g_tss >> 24);
     entry->base_ext = (uint32_t) ((uint64_t) &g_tss >> 32);

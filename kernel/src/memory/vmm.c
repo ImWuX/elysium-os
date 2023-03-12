@@ -5,25 +5,25 @@
 #include <memory/hhdm.h>
 #include <cpu/msr.h>
 
-#define DEFAULT_FLAGS VMM_PT_FLAG_PRESENT | VMM_PT_FLAG_READWRITE
+#define DEFAULT_FLAGS VMM_FLAG_READWRITE
 
 static vmm_page_table_t *g_pml4;
 
-static void pt_set_address(uint64_t *entry, uintptr_t address) {
+inline static void pt_set_address(uint64_t *entry, uintptr_t address) {
     address &= 0x000FFFFFFFFFF000;
     *entry &= 0xFFF0000000000FFF;
     *entry |= address;
 }
 
-static uintptr_t pt_get_address(uint64_t entry) {
+inline static uintptr_t pt_get_address(uint64_t entry) {
     return entry & 0x000FFFFFFFFFF000;
 }
 
-static bool pt_get_flag(uint64_t entry, vmm_pt_flags_t flag) {
+inline static bool pt_get_flag(uint64_t entry, vmm_pt_flag_t flag) {
     return entry & flag;
 }
 
-static uint64_t address_to_index(uintptr_t address, uint8_t level) {
+inline static uint64_t address_to_index(uintptr_t address, uint8_t level) {
     return (address >> (3 + (4 - level) * 9)) & 0x1FF;
 }
 
@@ -70,17 +70,23 @@ void vmm_mapf(void *physical_address, void *virtual_address, uint64_t flags) {
 
             uint64_t new_entry = 0;
             pt_set_address(&new_entry, free_address);
-            new_entry |= DEFAULT_FLAGS;
+            new_entry |= VMM_PT_FLAG_PRESENT;
+            if(flags & VMM_FLAG_READWRITE) new_entry |= VMM_PT_FLAG_READWRITE;
+            if(flags & VMM_FLAG_USER) new_entry |= VMM_PT_FLAG_USER;
             current_table->entries[index] = new_entry;
             current_table = new_table;
         } else {
+            if(flags & VMM_FLAG_READWRITE && !(entry & VMM_PT_FLAG_READWRITE)) current_table->entries[index] |= VMM_PT_FLAG_READWRITE;
+            if(flags & VMM_FLAG_USER && !(entry & VMM_PT_FLAG_USER)) current_table->entries[index] |= VMM_PT_FLAG_USER;
             current_table = (vmm_page_table_t *) HHDM(pt_get_address(entry));
         }
     }
 
     uint64_t entry = 0;
     pt_set_address(&entry, (uintptr_t) physical_address);
-    entry |= flags & 0x11FF;
+    entry |= VMM_PT_FLAG_PRESENT;
+    if(flags & VMM_FLAG_READWRITE) entry |= VMM_PT_FLAG_READWRITE;
+    if(flags & VMM_FLAG_USER) entry |= VMM_PT_FLAG_USER;
     current_table->entries[address_to_index((uintptr_t) virtual_address, 3)] = entry;
 }
 
