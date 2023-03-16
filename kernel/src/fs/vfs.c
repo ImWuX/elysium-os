@@ -1,6 +1,12 @@
 #include "vfs.h"
 
-// vfs_fd vfs_open(char *path) {
+static vfs_block_t *g_root_block;
+
+void vfs_initialize(vfs_block_t *root_block) {
+    g_root_block = root_block;
+}
+
+// vfs_fd_t vfs_open(char *path) {
 //     int tail = 0;
 //     int index = 0;
 //     int last_invalid = -1;
@@ -49,45 +55,4 @@
 //         }
 //     } while(path[index++]);
 //     return 3;
-// }
-
-// bool vfs_close(vfs_fd fd) {
-//     return false;
-// }
-
-// uint64_t vfs_seekto(vfs_fd fd, uint64_t position) {
-//     return 0;
-// }
-
-// uint64_t vfs_seek(vfs_fd fd, uint64_t count) {
-//     return 0;
-// }
-
-// uint64_t vfs_write(vfs_fd fd, void *data, uint64_t size) {
-//     switch(fd) {
-//         case VFS_FD_STDIN:
-//             return 0;
-//         case VFS_FD_STDOUT:
-//         case VFS_FD_STDERR:
-            
-//             return size;
-//         default:
-
-//             break;
-//     }
-//     return 0;
-// }
-
-// uint64_t vfs_read(vfs_fd fd, uint64_t count) {
-//     switch(fd) {
-//         case VFS_FD_STDIN:
-//             return count;
-//         case VFS_FD_STDOUT:
-//         case VFS_FD_STDERR:
-//             return 0;
-//         default:
-
-//             break;
-//     }
-//      return 0;
 // }

@@ -25,6 +25,7 @@ $(BUILD)/disk.img: $(BUILD)/kernel.elf $(BUILD)/libc.a
 	mcopy -i $@ $(BUILD)/test.txt "::test.txt"
 	mcopy -i $@ $(BUILD)/universe.tga "::univ.tga"
 	mcopy -i $@ trtrs.cfg "::trtrs.cfg"
+	mcopy -i $@ userspace/test_program "::test_program"
 
 # Clean Targets
 clean:

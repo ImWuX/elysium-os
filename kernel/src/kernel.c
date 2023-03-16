@@ -57,9 +57,6 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
         .invalidated = true
     };
 
-    uint16_t memap_length = boot_params->memory_map_length;
-    tartarus_memap_entry_t *memap = (tartarus_memap_entry_t *) HHDM(boot_params->memory_map);
-
     // TODO: MSR Available WTF to do if its not ig
     if(!msr_available()) panic("KERNEL", "MSRS are not available");
 
@@ -119,6 +116,14 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     // TODO: Do we just want to panic or do we want an alternative way of implementing syscalls
     if(!syscall_available()) panic("KERNEL", "Syscalls not available");
     syscall_initialize();
+
+    // uint32_t root_cluster = fat32_initialize();
+    // void *temp = heap_alloc(512);
+    // fat32_read(root_cluster, temp, 512, 0);
+    // fat32_directory_entry_t *dir = (fat32_directory_entry_t *) temp;
+    // for(int i = 0; i < 5; i++) {
+    //     printf("DIR %i >> %s\n", i, dir->name);
+    // }
 
     sched_handoff();
     __builtin_unreachable();
