@@ -4,18 +4,26 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define VFS_FD_STDIN 0
-#define VFS_FD_STDOUT 1
-#define VFS_FD_STDERR 2
 #define VFS_FD_ERROR UINT64_MAX
 
-// typedef uint64_t vfs_fd;
+typedef uint64_t vfs_fd_t;
 
-// vfs_fd vfs_open(char *path);
-// bool vfs_close(vfs_fd fd);
-// uint64_t vfs_write(vfs_fd fd, void *data, uint64_t size);
-// uint64_t vfs_seekto(vfs_fd fd, uint64_t position);
-// uint64_t vfs_seek(vfs_fd fd, uint64_t count);
-// uint64_t vfs_read(vfs_fd fd, uint64_t count);
+typedef struct {
+    struct vfs_node *root;
+} vfs_block_t;
+
+typedef struct vfs_node {
+    vfs_fd_t fd;
+    uint16_t name_length;
+    uint8_t *name;
+    bool is_directory;
+    struct vfs_node *parent;
+    struct vfs_node *next;
+    vfs_block_t *block;
+    void *block_data;
+} vfs_node_t;
+
+void vfs_initialize(vfs_block_t *root_block);
+vfs_fd_t vfs_open(char *path);
 
 #endif

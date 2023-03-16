@@ -63,6 +63,7 @@ typedef struct {
     uint16_t name2[2];
 } __attribute__((packed)) fat32_directory_entry_long_t;
 
-void fat32_initialize();
+uint32_t fat32_initialize();
+uint64_t fat32_read(uint32_t cluster, void *dest, uint64_t count, uint64_t seek);
 
 #endif

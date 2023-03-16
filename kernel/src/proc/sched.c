@@ -9,7 +9,5 @@ noreturn void sched_handoff() {
     spin_proc[0] = 0xEB;
     spin_proc[1] = 0xFE;
     sched_enter((uint64_t) spin_proc);
-
-    while(true) asm volatile("hlt");
     __builtin_unreachable();
 }
