@@ -27,8 +27,14 @@ inline static uint64_t address_to_index(uintptr_t address, uint8_t level) {
     return (address >> (3 + (4 - level) * 9)) & 0x1FF;
 }
 
-static void tlb_flush() {
-    asm volatile("mov %%cr3, %%rax\nmov %%rax, %%cr3" : : : "rax", "memory");
+inline static void load_cr3(uint64_t value) {
+    asm volatile("movq %0, %%cr3" : : "r" (value) : "memory");
+}
+
+inline static uint64_t read_cr3() {
+    uint64_t value;
+    asm volatile("movq %%cr3, %0" : "=r" (value));
+    return value;
 }
 
 void vmm_initialize(uintptr_t pml4_address) {
@@ -43,7 +49,7 @@ void vmm_initialize(uintptr_t pml4_address) {
         g_pml4->entries[i] = 0;
     }
 
-    tlb_flush();
+    load_cr3(read_cr3());
 }
 
 uintptr_t vmm_physical(void *virtual_address) {
