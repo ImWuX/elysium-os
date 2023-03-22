@@ -19,7 +19,7 @@ static uint32_t readd(pcie_segment_entry_t *segment, uint8_t bus, uint8_t device
     uint32_t reg = ((uint32_t) bus << 16) | ((uint32_t) (device & 0x1F) << 11) | ((uint32_t) (func & 0x7) << 8);
     offset &= 0xFC;
     if(segment) {
-        return *((uint32_t *) (HHDM(segment->base_address) + (reg << 4) | offset));
+        return *((uint32_t *) (HHDM(segment->base_address) + ((reg << 4) | offset)));
     } else {
         ports_outl(PORT_CONFIG_ADDRESS, reg | offset | (1 << 31));
         return ports_inl(PORT_CONFIG_DATA);
@@ -39,7 +39,7 @@ static void writed(pcie_segment_entry_t *segment, uint8_t bus, uint8_t device, u
     uint32_t reg = ((uint32_t) bus << 16) | ((uint32_t) (device & 0x1F) << 11) | ((uint32_t) (func & 0x7) << 8);
     offset &= 0xFC;
     if(segment) {
-        *((uint32_t *) (HHDM(segment->base_address) + (reg << 4) | offset)) = value;
+        *((uint32_t *) (HHDM(segment->base_address) + ((reg << 4) | offset))) = value;
     } else {
         ports_outl(PORT_CONFIG_ADDRESS, reg | offset | (1 << 31));
         ports_outl(PORT_CONFIG_DATA, value);
