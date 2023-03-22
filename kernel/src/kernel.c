@@ -32,8 +32,6 @@
 #include <kcon.h>
 #include <kdesktop.h>
 
-#define PAGE_SIZE 0x1000
-
 static draw_colormask_t g_fb_colormask;
 static draw_context_t g_fb_context;
 
@@ -90,17 +88,11 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     idt_initialize();
     asm volatile("sti");
 
-    acpi_sdt_header_t *mcfg_header = acpi_find_table((uint8_t *) "MCFG");
-    if(mcfg_header) {
-        pci_express_enumerate(mcfg_header);
-    } else {
-        pci_enumerate();
-    }
-
-    pit_initialize();
-
     kcon_initialize(&g_fb_context);
     keyboard_set_handler(kcon_keyboard_handler);
+
+    pci_enumerate(acpi_find_table((uint8_t *) "MCFG"));
+    pit_initialize();
 
     acpi_sdt_header_t *hpet_header = acpi_find_table((uint8_t *) "HPET");
     if(hpet_header) {
@@ -111,19 +103,19 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
         ps2_initialize();
     }
 
+    // uint32_t root_cluster = fat32_initialize();
+    // void *temp = heap_alloc(4096);
+    // fat32_read(root_cluster, temp, 4096, 0);
+    // fat32_directory_entry_t *dir = (fat32_directory_entry_t *) temp;
+    // for(int i = 0; i < 5; i++) {
+    //     printf("DIR %i >> %s\n", i, dir->name);
+    // }
+
     gdt_tss_initialize();
 
     // TODO: Do we just want to panic or do we want an alternative way of implementing syscalls
     if(!syscall_available()) panic("KERNEL", "Syscalls not available");
     syscall_initialize();
-
-    // uint32_t root_cluster = fat32_initialize();
-    // void *temp = heap_alloc(512);
-    // fat32_read(root_cluster, temp, 512, 0);
-    // fat32_directory_entry_t *dir = (fat32_directory_entry_t *) temp;
-    // for(int i = 0; i < 5; i++) {
-    //     printf("DIR %i >> %s\n", i, dir->name);
-    // }
 
     sched_handoff();
     __builtin_unreachable();
@@ -162,17 +154,109 @@ static void panic_prntnum(draw_context_t *ctx, uint16_t x, uint16_t y, uint64_t 
     }
 }
 
-noreturn void panic_exception(char *msg, exception_frame_t regs) {
+noreturn void panic_exception(char *msg, exception_frame_t *regs) {
     draw_color_t bg = draw_color(&g_fb_context, 255, 60, 60);
     draw_rect(&g_fb_context, 0, 0, g_fb_context.width, g_fb_context.height, bg);
-    int y = (g_fb_context.height - 3 * BASICFONT_HEIGHT) / 2;
-    char *title = "EXCEPTION";
-    draw_string_simple(&g_fb_context, (g_fb_context.width - strlen(title) * BASICFONT_WIDTH) / 2, y, title, 0xFFFFFFFF);
-    draw_string_simple(&g_fb_context, (g_fb_context.width - strlen(msg) * BASICFONT_WIDTH) / 2, y + BASICFONT_HEIGHT, msg, 0xFFFFFFFF);
-    panic_prntnum(&g_fb_context, g_fb_context.width / 2, y + BASICFONT_HEIGHT * 2, (uint64_t) regs.err_code);
-    panic_prntnum(&g_fb_context, g_fb_context.width / 2, y + BASICFONT_HEIGHT * 3, regs.rip);
 
-    asm volatile("cli");
-    asm volatile("hlt");
+    char *title = "EXCEPTION";
+    char *r15 = "r15: ";
+    char *r14 = "r14: ";
+    char *r13 = "r13: ";
+    char *r12 = "r12: ";
+    char *r11 = "r11: ";
+    char *r10 = "r10: ";
+    char *r9 = "r9: ";
+    char *r8 = "r8: ";
+    char *rdi = "rdi: ";
+    char *rsi = "rsi: ";
+    char *rbp = "rbp: ";
+    char *rsp = "rsp: ";
+    char *rdx = "rdx: ";
+    char *rcx = "rcx: ";
+    char *rbx = "rbx: ";
+    char *rax = "rax: ";
+    char *int_no = "int_no: ";
+    char *err_code = "err_code: ";
+    char *rip = "rip: ";
+    char *cs = "cs: ";
+    char *rflags = "rflags: ";
+    char *userrsp = "userrsp: ";
+    char *ss = "ss: ";
+    int x = g_fb_context.width / 3;
+    int y = g_fb_context.height / 10;
+    draw_string_simple(&g_fb_context, x, y, title, 0xFFFFFFFF);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, msg, 0xFFFFFFFF);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, r15, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(r15) * BASICFONT_WIDTH, y, (uint64_t) regs->r15);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, r14, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(r14) * BASICFONT_WIDTH, y, (uint64_t) regs->r14);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, r13, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(r13) * BASICFONT_WIDTH, y, (uint64_t) regs->r13);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, r12, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(r12) * BASICFONT_WIDTH, y, (uint64_t) regs->r12);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, r11, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(r11) * BASICFONT_WIDTH, y, (uint64_t) regs->r11);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, r10, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(r10) * BASICFONT_WIDTH, y, (uint64_t) regs->r10);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, r9, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(r9) * BASICFONT_WIDTH, y, (uint64_t) regs->r9);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, r8, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(r8) * BASICFONT_WIDTH, y, (uint64_t) regs->r8);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, rdi, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(rdi) * BASICFONT_WIDTH, y, (uint64_t) regs->rdi);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, rsi, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(rsi) * BASICFONT_WIDTH, y, (uint64_t) regs->rsi);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, rbp, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(rbp) * BASICFONT_WIDTH, y, (uint64_t) regs->rbp);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, rsp, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(rsp) * BASICFONT_WIDTH, y, (uint64_t) regs->rsp);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, rdx, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(rdx) * BASICFONT_WIDTH, y, (uint64_t) regs->rdx);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, rcx, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(rcx) * BASICFONT_WIDTH, y, (uint64_t) regs->rcx);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, rbx, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(rbx) * BASICFONT_WIDTH, y, (uint64_t) regs->rbx);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, rax, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(rax) * BASICFONT_WIDTH, y, (uint64_t) regs->rax);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, int_no, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(int_no) * BASICFONT_WIDTH, y, (uint64_t) regs->int_no);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, err_code, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(err_code) * BASICFONT_WIDTH, y, (uint64_t) regs->err_code);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, rip, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(rip) * BASICFONT_WIDTH, y, (uint64_t) regs->rip);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, cs, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(cs) * BASICFONT_WIDTH, y, (uint64_t) regs->cs);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, rflags, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(rflags) * BASICFONT_WIDTH, y, (uint64_t) regs->rflags);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, userrsp, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(userrsp) * BASICFONT_WIDTH, y, (uint64_t) regs->userrsp);
+    y += BASICFONT_HEIGHT;
+    draw_string_simple(&g_fb_context, x, y, ss, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(ss) * BASICFONT_WIDTH, y, (uint64_t) regs->ss);
+
+    asm volatile("cli\nhlt");
     __builtin_unreachable();
 }

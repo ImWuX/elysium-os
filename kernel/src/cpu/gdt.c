@@ -51,7 +51,7 @@ void gdt_initialize() {
 void gdt_tss_initialize() {
     memset(&g_tss, 0, sizeof(g_tss));
 
-    uint64_t rsp = (uint64_t) heap_alloc(0x5000) + 0x4000; // TODO: Very temporary way of allocating a stack
+    uint64_t rsp = (uint64_t) heap_alloc(0x5000) + 0x5000 - 1; // TODO: Very temporary way of allocating a stack
     g_tss.rsp0_lower = (uint32_t) rsp;
     g_tss.rsp0_upper = (uint32_t) (rsp >> 32);
     g_tss.iomap_base = sizeof(gdt_tss_t);

@@ -1,6 +1,6 @@
 CC = /usr/local/x86_64elfgcc/bin/x86_64-elf-gcc
 AR = /usr/local/x86_64elfgcc/bin/x86_64-elf-ar
-CFLAGS = -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable
+CFLAGS = -ffreestanding -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable -O2
 
 # Sources
 C_SOURCES = $(shell find src/ -type f -name '*.c')

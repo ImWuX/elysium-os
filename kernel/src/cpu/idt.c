@@ -5,7 +5,7 @@
 static idt_entry_t g_idt[ENTRIES];
 
 void idt_set_gate(uint8_t gate, uint64_t handler, uint16_t segment, uint8_t flags) {
-    g_idt[gate].low_offset = (uint16_t) (handler & 0xFFFF); //TODO: Remove the 0xFFFF stuff its not needed cuz were casting the sizes
+    g_idt[gate].low_offset = (uint16_t) handler;
     g_idt[gate].segment_selector = segment;
     g_idt[gate].ist = 0;
     g_idt[gate].flags = flags;

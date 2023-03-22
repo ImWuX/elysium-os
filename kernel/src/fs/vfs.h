@@ -23,7 +23,10 @@ typedef struct vfs_node {
     void *block_data;
 } vfs_node_t;
 
+typedef struct {
+
+} vfs_node_operations_t;
+
 void vfs_initialize(vfs_block_t *root_block);
-vfs_fd_t vfs_open(char *path);
 
 #endif

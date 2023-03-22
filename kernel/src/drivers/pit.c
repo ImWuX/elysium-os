@@ -14,7 +14,7 @@ static uint64_t g_ticks;
 static uint16_t g_subticks;
 static pit_interval_t *g_head;
 
-static void timer_callback(irq_frame_t registers __attribute__((unused))) {
+static void timer_callback(irq_frame_t *registers __attribute__((unused))) {
     pit_interval_t *cur = g_head;
     while(cur) {
         if((g_ticks * 1000 + g_subticks + cur->offset) % cur->interval == 0) cur->cb();

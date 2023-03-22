@@ -4,14 +4,12 @@
 # Backlog
 Kernel:
   - Mouse driver seems to fail if mouse is moving on initialization - todo with weird ps2 bs
-  - Bootloader VMM is mapping everything as user/supervisor
   - Check that the PAT is actually setup properly
   - Map framebuffer as write combining and memory mapped HW as non cacheable
   - Make sure that all drivers are mapping memory into HHDM just in-case
   - Claim bootloader reclaimable
   - Kernel logging system
   - kernel/cpu/interrupts.asm: Dont do cli in interrupt handlers???
-  - kernel/cpu/interrupts.asm: Possibly want to also set SS register to data descriptor?
   - Unmap memory
     - Invalidate pages
   - Device Manager
@@ -43,7 +41,6 @@ Userspace:
 
 # Possible Optimizations
 - GCC O3 flag?
-- Not using mcmodel=large, not sure if this is possible
 - Enable mmx, sse, sse2 (Currently gcc is told not to use these instructions)
 
 # Documentation
