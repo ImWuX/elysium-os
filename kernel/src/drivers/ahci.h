@@ -4,12 +4,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef enum { //TODO: REFACTOR NAMES
-    NONE,
-    SATA,
-    SEMB,
-    PM,
-    SATAPI
+typedef enum {
+    AHCI_PORT_TYPE_NONE,
+    AHCI_PORT_TYPE_SATA,
+    AHCI_PORT_TYPE_SEMB,
+    AHCI_PORT_TYPE_PM,
+    AHCI_PORT_TYPE_SATAPI
 } ahci_port_type_t;
 
 typedef volatile struct {
@@ -93,14 +93,14 @@ typedef struct {
 } __attribute__((packed)) ahci_hba_command_table_t;
 
 typedef enum {
-	FIS_TYPE_REG_H2D	= 0x27,
-	FIS_TYPE_REG_D2H	= 0x34,
-	FIS_TYPE_DMA_ACT	= 0x39,
-	FIS_TYPE_DMA_SETUP	= 0x41,
-	FIS_TYPE_DATA		= 0x46,
-	FIS_TYPE_BIST		= 0x58,
-	FIS_TYPE_PIO_SETUP	= 0x5F,
-	FIS_TYPE_DEV_BITS	= 0xA1
+	AHCI_FIS_TYPE_REG_H2D	= 0x27,
+	AHCI_FIS_TYPE_REG_D2H	= 0x34,
+	AHCI_FIS_TYPE_DMA_ACT	= 0x39,
+	AHCI_FIS_TYPE_DMA_SETUP	= 0x41,
+	AHCI_FIS_TYPE_DATA		= 0x46,
+	AHCI_FIS_TYPE_BIST		= 0x58,
+	AHCI_FIS_TYPE_PIO_SETUP	= 0x5F,
+	AHCI_FIS_TYPE_DEV_BITS	= 0xA1
 } ahci_fis_type_t;
 
 typedef struct {

@@ -28,9 +28,7 @@ inline static uint64_t address_to_index(uintptr_t address, uint8_t level) {
 }
 
 static void tlb_flush() {
-    uint64_t cache;
-    asm volatile("mov %%cr3, %0" : "=r" (cache));
-    asm volatile("mov %0, %%cr3" : : "r" (cache));
+    asm volatile("mov %%cr3, %%rax\nmov %%rax, %%cr3" : : : "rax", "memory");
 }
 
 void vmm_initialize(uintptr_t pml4_address) {

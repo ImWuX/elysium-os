@@ -24,7 +24,7 @@ void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_leng
             pmm_dma_node_t *new_node = (pmm_dma_node_t *) HHDM(entry.base_address);
             memset(new_node, 0, sizeof(pmm_dma_node_t));
             new_node->next = g_dma_nodelist;
-            g_dma_nodelist = entry.base_address;
+            g_dma_nodelist = (pmm_dma_node_t *) entry.base_address;
         }
         for(uintptr_t address = entry.base_address; address < entry.base_address + entry.length; address += PAGE_SIZE) {
             if(address < DMA_REGION_LENGTH) {
@@ -40,13 +40,13 @@ void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_leng
 
 void *pmm_page_request_dma(int count) {
     if(!g_dma_nodelist) panic("PMM", "Out of DMA physical memory");
-    uintptr_t node_address = g_dma_nodelist;
-    pmm_dma_node_t *node = HHDM(node_address);
+    uintptr_t node_address = (uintptr_t) g_dma_nodelist;
+    pmm_dma_node_t *node = (pmm_dma_node_t *) HHDM(node_address);
     pmm_dma_node_t *prev = 0;
     while(node->length < count) {
         if(!node->next) panic("PMM", "Out of DMA physical memory");
         prev = node;
-        node_address = node->next;
+        node_address = (uintptr_t) node->next;
         node = (pmm_dma_node_t *) HHDM(node_address);
     }
     if(node->length > count) {
@@ -55,7 +55,7 @@ void *pmm_page_request_dma(int count) {
     } else {
         if(prev) prev->next = node->next;
         else g_dma_nodelist = 0;
-        return node_address;
+        return (void *) node_address;
     }
 }
 

@@ -3,6 +3,7 @@ extern irq_handler
 
 %macro STUB 3
     %1_stub:
+        cld                                 ; Clear direction flag
         push rax                            ; Save CPU state
         push rbx
         push rcx
@@ -20,7 +21,7 @@ extern irq_handler
         push r14
         push r15
 
-        cld                                 ; Clear direction flag
+        mov rdi, rsp
         call %2                             ; Call appropriate interrupt handler
 
         pop r15                             ; Restore CPU state
@@ -49,7 +50,7 @@ extern irq_handler
     global exception_%1
     exception_%1:
         cli
-        %if %1 == 0
+        %if %2 == 0
             push qword 0                    ; Push 0 as error code for interrupt without error code
         %endif
         push qword %1                       ; Push interrupt number

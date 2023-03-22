@@ -2,7 +2,7 @@ CC = /usr/local/x86_64elfgcc/bin/x86_64-elf-gcc
 LD = /usr/local/x86_64elfgcc/bin/x86_64-elf-ld
 ASMC = /bin/nasm
 LDFLAGS = -nostdlib
-CFLAGS = -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable -O2
+CFLAGS = -ffreestanding -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable -O2
 
 # Sources
 ASM_SOURCES = $(shell find src/ -type f -name '*.asm')

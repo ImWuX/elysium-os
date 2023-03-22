@@ -44,7 +44,7 @@ bool configure_timer(int timer, int irq, int ms, bool one_shot) {
     return false;
 }
 
-static void timer_callback(irq_frame_t registers __attribute__((unused))) {
+static void timer_callback(irq_frame_t *registers __attribute__((unused))) {
     printf("[TIMER] %i\n", g_hpet[MCR]);
 }
 
