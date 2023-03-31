@@ -15,7 +15,6 @@ typedef struct {
     uint64_t rdi;
     uint64_t rsi;
     uint64_t rbp;
-    uint64_t rsp;
     uint64_t rdx;
     uint64_t rcx;
     uint64_t rbx;
@@ -30,9 +29,12 @@ typedef struct {
 
 typedef void (*interrupt_handler_t)(irq_frame_t *);
 
+extern void (* g_irq_eoi)(uint8_t);
+
 void irq_initialize();
 void irq_register_handler(uint8_t id, interrupt_handler_t interrupt_handler);
 void irq_handler(irq_frame_t *regs);
+void irq_eoi(uint8_t interrupt);
 
 extern void irq_32();
 extern void irq_33();

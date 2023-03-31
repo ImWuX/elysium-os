@@ -1,8 +1,11 @@
 #include "keyboard.h"
 #include <cpu/irq.h>
+#include <cpu/idt.h>
+#include <cpu/apic.h>
 
 static int8_t g_scancodes[128];
 static keyboard_handler_t g_keyboard_handler;
+static uint8_t g_interrupt_vector;
 
 static uint8_t g_layout_us[128] = {
     0, 27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
@@ -50,10 +53,14 @@ static void keyboard_event(irq_frame_t *registers __attribute__((unused))) {
     uint8_t character = g_layout_us[scancode];
     if(character >= 'a' && character <= 'z' && (g_scancodes[0x36] || g_scancodes[0x2a])) character = g_layout_us[scancode] - 32;
     if(g_keyboard_handler) g_keyboard_handler(character);
+
+    int vector = idt_free_vector();
+    if(vector == IDT_ERR_FULL) return; // TODO: Handle IVM error
+    g_interrupt_vector = (uint8_t) vector;
 }
 
 void keyboard_initialize(ps2_ports_t port) {
-    irq_register_handler(32 + 6 + port, keyboard_event);
+    irq_register_handler(g_interrupt_vector, keyboard_event);
 }
 
 void keyboard_set_handler(keyboard_handler_t handler) {

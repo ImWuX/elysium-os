@@ -24,7 +24,7 @@ void pic8259_disable() {
     ports_outb(SLAVE_DATA, 0xFF);
 }
 
-void pic8259_eoi(bool slave) {
-    if(slave) ports_outb(SLAVE_CMD, 0x20);
+void pic8259_eoi(uint8_t interrupt_vector) {
+    if(interrupt_vector >= 40) ports_outb(SLAVE_CMD, 0x20);
     ports_outb(MASTER_CMD, 0x20);
 }

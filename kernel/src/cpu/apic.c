@@ -1,11 +1,32 @@
 #include "apic.h"
 #include <stdio.h>
+#include <cpu/msr.h>
 #include <cpu/idt.h>
 #include <memory/vmm.h>
 #include <memory/hhdm.h>
 
-uint32_t *g_lapic;
-uint32_t *g_ioapic;
+#define APIC_BASE_MSR_ADDRESS 0xFFFFFFFFFF000
+#define APIC_BASE_MSR_AE (1 << 11)
+#define APIC_BASE_MSR_EXTD (1 << 10)
+#define APIC_BASE_MSR_BSC (1 << 8)
+
+#define IOAPIC_VER 0x1
+#define IOAPIC_VER_MAX_REDIRECTION_ENTRY(val) (((val) >> 16) & 0xFF)
+
+#define LAPIC_ID 0x2
+#define LAPIC_SPURIOUS_INTERRUPT 0xF
+#define LAPIC_SPURIOUS_INTERRUPT_ENABLE (1 << 8)
+#define LAPIC_EOI 0xB
+#define LAPIC_IN_SERVICE 0x10
+
+static volatile uint32_t *g_lapic;
+static volatile uint32_t *g_ioapic;
+
+static apic_legacy_irq_translation_t g_legacy_irq_map[16] = {
+    {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0},
+    {6, 0}, {7, 0}, {8, 0}, {9, 0}, {10, 0},
+    {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0}
+};
 
 static void lapic_write(uint32_t index, uint32_t data) {
     g_lapic[index * 4] = data;
@@ -44,59 +65,50 @@ static void ioapic_set_irq(uint8_t irq, uint64_t apic_id, uint8_t vector) {
 }
 
 void apic_initialize(acpi_sdt_header_t *apic_header) {
-    madt_header_t *madt = (madt_header_t *) apic_header;
-    uintptr_t lapic_address = madt->local_apic_address;
+    apic_madt_header_t *madt = (apic_madt_header_t *) apic_header;
     uintptr_t ioapic_address = 0;
     uint8_t lapic_ids[256] __attribute__((unused)); //TODO: attribute unused
     uint8_t core_count = 0;
 
-    int nbytes = madt->sdt_header.length - sizeof(madt_header_t);
-    madt_record_t *current_record = (madt_record_t *) ((uintptr_t) madt + sizeof(madt_header_t));
+    uint32_t nbytes = madt->sdt_header.length - sizeof(apic_madt_header_t);
+    apic_madt_record_t *current_record = (apic_madt_record_t *) ((uintptr_t) madt + sizeof(apic_madt_header_t));
     while(nbytes > 0) {
         switch(current_record->type) {
             case LAPIC:
-                madt_record_lapic_t *lapic_record = (madt_record_lapic_t *) current_record;
+                apic_madt_record_lapic_t *lapic_record = (apic_madt_record_lapic_t *) current_record;
                 lapic_ids[core_count++] = lapic_record->apic_id;
                 break;
             case IOAPIC:
-                madt_record_ioapic_t *ioapic_record = (madt_record_ioapic_t *) current_record;
+                apic_madt_record_ioapic_t *ioapic_record = (apic_madt_record_ioapic_t *) current_record;
                 ioapic_address = ioapic_record->ioapic_address;
-                break;
-            case LAPIC_ADDRESS:
-                lapic_address = ((madt_record_lapic_address_t *) current_record)->lapic_address;
+
                 break;
             case SOURCE_OVERRIDE:
-                madt_record_source_override_t *override_record = (madt_record_source_override_t *) current_record;
-                // TODO: Parse source overrides
+                apic_madt_record_source_override_t *override_record = (apic_madt_record_source_override_t *) current_record;
+                g_legacy_irq_map[override_record->irq_source].gsi = override_record->global_system_interrupt;
+                g_legacy_irq_map[override_record->irq_source].flags = override_record->flags;
                 break;
             case NMI:
-                madt_record_nmi_t *nmi_record = (madt_record_nmi_t *) current_record;
+                apic_madt_record_nmi_t *nmi_record = (apic_madt_record_nmi_t *) current_record;
                 break;
         }
         nbytes -= current_record->length;
-        current_record = (madt_record_t *) ((uintptr_t) current_record + current_record->length);
+        current_record = (apic_madt_record_t *) ((uintptr_t) current_record + current_record->length);
     }
 
-    g_lapic = (uint32_t *) HHDM(lapic_address);
+    g_lapic = (uint32_t *) HHDM(msr_get(MSR_APIC_BASE) & APIC_BASE_MSR_ADDRESS);
     g_ioapic = (uint32_t *) HHDM(ioapic_address);
-    // vmm_map((void *) lapic_address, (void *) g_lapic); //TODO: Use hhdm_map once the VMM handles huge pages
-    // vmm_map((void *) ioapic_address, (void *) g_ioapic);
 
-    lapic_write(0xF, 0x100 | 0xFF);
-
-    // ioapic_set_irq(2, lapic_read(2), 32);
-    ioapic_set_irq(1, lapic_read(2), 32 + 6);
-    ioapic_set_irq(12, lapic_read(2), 32 + 7);
-    ioapic_set_irq(8, lapic_read(2), 32 + 8);
+    lapic_write(LAPIC_SPURIOUS_INTERRUPT, 0xFF | LAPIC_SPURIOUS_INTERRUPT_ENABLE);
+    // uint32_t val = ioapic_read(IOAPIC_VER);
 }
 
-void apic_eoi(uint8_t interrupt_vector) {
-    if(g_lapic == 0) // TODO: Shouldn't be needed after full implementation
-        return;
+// void apic_map_legacy_irq(uint8_t irq, uint8_t gsi) {
 
+// }
+
+void apic_eoi(uint8_t interrupt_vector) {
     uint8_t register_index = interrupt_vector / 32;
     uint8_t index = interrupt_vector % 32;
-
-    if(lapic_read(0x10 + register_index) & (1 << index))
-        lapic_write(0xB, 1);
+    if(lapic_read(LAPIC_IN_SERVICE + register_index) & (1 << index)) lapic_write(LAPIC_EOI, 1);
 }

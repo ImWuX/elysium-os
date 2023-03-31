@@ -8,7 +8,6 @@ extern irq_handler
         push rbx
         push rcx
         push rdx
-        push rsp
         push rbp
         push rsi
         push rdi
@@ -35,7 +34,6 @@ extern irq_handler
         pop rdi
         pop rsi
         pop rbp
-        pop rsp
         pop rdx
         pop rcx
         pop rbx

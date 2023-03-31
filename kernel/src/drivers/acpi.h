@@ -40,7 +40,7 @@ typedef struct {
 } __attribute__((packed)) acpi_generic_address_structure_t;
 
 typedef struct {
-    acpi_sdt_header_t sdt_header;
+    acpi_sdt_header_t common_header;
     uint32_t firmware_control;
     uint32_t dsdt;
     uint8_t rsv0;

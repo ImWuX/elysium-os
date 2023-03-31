@@ -2,7 +2,7 @@
 #define DRIVERS_AHCI_H
 
 #include <stdint.h>
-#include <stdbool.h>
+#include <drivers/pci.h>
 
 typedef enum {
     AHCI_PORT_TYPE_NONE,
@@ -30,9 +30,10 @@ typedef volatile struct {
     uint32_t command_issue;
     uint32_t sata_notification;
     uint32_t fis_switch_control;
-    uint32_t rsv1[11];
+    uint32_t device_sleep;
+    uint32_t rsv1[10];
     uint32_t vendor[4];
-} __attribute__((packed)) ahci_hba_port_t;
+} __attribute__((packed)) ahci_port_registers_t;
 
 typedef volatile struct {
     uint32_t host_capabilities;
@@ -46,51 +47,23 @@ typedef volatile struct {
     uint32_t enclosure_mgmt_control;
     uint32_t host_capabilities_ext;
     uint32_t bios_handoff_ctrlsts;
-
-    uint8_t rsv0[0x74];
-    uint8_t vendor[0x60];
-
-    ahci_hba_port_t ports[1];
-} __attribute__((packed)) ahci_hba_mem_t;
+} __attribute__((packed)) ahci_hba_registers_t;
 
 typedef struct {
-    uint8_t command_fis_length: 5;
-    uint8_t atapi:              1;
-    uint8_t write:              1;
-    uint8_t prefetchable:       1;
-
-    uint8_t reset:                  1;
-    uint8_t bist:                   1;
-    uint8_t clear_busy:             1;
-    uint8_t rsv0:                   1;
-    uint8_t port_multiplier_port:   4;
-
+    uint16_t flags;
     uint16_t prd_table_length;
     volatile uint32_t prd_byte_count;
-
     uint32_t command_table_descriptor_base_address;
     uint32_t command_table_descriptor_base_address_upper;
-
-    uint32_t rsv1[4];
-} __attribute__((packed)) ahci_hba_command_header_t;
+    uint32_t rsv0[4];
+} __attribute__((packed)) ahci_command_header_t;
 
 typedef struct {
     uint32_t data_base_address;
     uint32_t data_base_address_upper;
     uint32_t rsv0;
-
-    uint32_t byte_count:                22;
-    uint32_t rsv1:                      9;
-    uint32_t interrupt_on_completion:   1;
-} __attribute__((packed)) ahci_hba_prdt_entry;
-
-typedef struct {
-    uint8_t command_fis[64];
-    uint8_t atapi_command[16];
-    uint8_t rsv0[48];
-
-    ahci_hba_prdt_entry prdt_entries[1];
-} __attribute__((packed)) ahci_hba_command_table_t;
+    uint32_t byte_count_and_flags;
+} __attribute__((packed)) ahci_prdt_entry;
 
 typedef enum {
 	AHCI_FIS_TYPE_REG_H2D	= 0x27,
@@ -105,33 +78,24 @@ typedef enum {
 
 typedef struct {
     uint8_t fis_type;
-
-    uint8_t port_multiplier_port:   4;
-    uint8_t rsv0:                   3;
-    uint8_t command_or_control:     1;
-
+    uint8_t flags;
     uint8_t command;
     uint8_t feature_low;
-
     uint8_t lba0;
     uint8_t lba1;
     uint8_t lba2;
     uint8_t device;
-
     uint8_t lba3;
     uint8_t lba4;
     uint8_t lba5;
     uint8_t feature_high;
-
     uint8_t count_low;
     uint8_t count_high;
     uint8_t isochronous_command_completion;
     uint8_t control;
-
-    uint8_t rsv1[4];
+    uint8_t rsv0[4];
 } __attribute__((packed)) ahci_fis_reg_h2d_t;
 
-void ahci_initialize_device(uint64_t bar5Address);
-bool ahci_read(uint64_t first_sector, uint32_t sector_count, void *dest);
+void ahci_initialize_device(pci_device_t *device);
 
 #endif
