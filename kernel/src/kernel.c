@@ -55,6 +55,8 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
         .invalidated = true
     };
 
+    void *rsdp = boot_params->rsdp;
+
     // TODO: MSR Available WTF to do if its not ig
     if(!msr_available()) panic("KERNEL", "MSRS are not available");
 
@@ -76,7 +78,8 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     kcon_initialize(&g_fb_context);
     keyboard_set_handler(kcon_keyboard_handler);
 
-    acpi_initialize();
+    if(!rsdp) panic("KERNEL", "No RSDP found");
+    acpi_initialize((acpi_rsdp_t *) HHDM(rsdp));
     acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
 
     pic8259_remap();
