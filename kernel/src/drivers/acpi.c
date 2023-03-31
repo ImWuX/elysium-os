@@ -5,12 +5,6 @@
 #include <memory/hhdm.h>
 #include <memory/vmm.h>
 
-#define RSDP_REGION_ONE_BASE 0x80000
-#define RSDP_REGION_ONE_END 0x9FFFF
-#define RSDP_REGION_TWO_BASE 0xE0000
-#define RSDP_REGION_TWO_END 0xFFFFF
-#define RSDP_IDENTIFIER 0x2052545020445352 // "RSD PTR "
-
 static acpi_sdt_header_t *g_xsdt, *g_rsdt;
 static uint8_t g_revision;
 
@@ -20,32 +14,10 @@ static uint8_t checksum(uint8_t *src, uint32_t size) {
     return (checksum & 1) == 0;
 }
 
-static uintptr_t scan_region(uintptr_t start, uintptr_t end) {
-    for(uintptr_t page = start & ~0xFFF; page <= end; page += 0x1000) {
-        vmm_map((void *) page, (void *) (g_hhdm_address + page));
-    }
-    uintptr_t addr = HHDM(start);
-    end = HHDM(end);
-    while(addr < end) {
-        if(*(uintptr_t *) addr == RSDP_IDENTIFIER) {
-            if(checksum((uint8_t *) addr, sizeof(acpi_rsdp_t))) {
-                return addr;
-            }
-        }
-        addr += 16;
-    }
-    return 0;
-}
-
-void acpi_initialize() {
-    uintptr_t address = scan_region(RSDP_REGION_ONE_BASE, RSDP_REGION_ONE_END);
-    if(!address) address = scan_region(RSDP_REGION_TWO_BASE, RSDP_REGION_TWO_END);
-    if(!address) panic("ACPI", "Failed to locate the RSDP");
-
-    acpi_rsdp_t *rsdp = (acpi_rsdp_t *) address;
+void acpi_initialize(acpi_rsdp_t *rsdp) {
     g_revision = rsdp->revision;
     if(rsdp->revision > 0) {
-        acpi_rsdp_ext_t *rsdp_ext = (acpi_rsdp_ext_t *) address;
+        acpi_rsdp_ext_t *rsdp_ext = (acpi_rsdp_ext_t *) rsdp;
         if(!checksum(((uint8_t *) rsdp_ext) + sizeof(acpi_rsdp_t), sizeof(acpi_rsdp_ext_t) - sizeof(acpi_rsdp_t))) panic("ACPI", "Checksum for Extended RSDP failed");
         g_xsdt = (acpi_sdt_header_t *) HHDM(rsdp_ext->xsdt_address);
     } else {
