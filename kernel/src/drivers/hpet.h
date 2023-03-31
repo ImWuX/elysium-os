@@ -14,7 +14,7 @@ typedef struct {
     uint8_t page_protection;
 } __attribute__((packed)) hpet_header_t;
 
-void hpet_initialize();
+void hpet_initialize(acpi_sdt_header_t *header);
 bool configure_timer(int timer, int irq, int ms, bool one_shot);
 
 #endif

@@ -3,6 +3,7 @@
 
 # Backlog
 Kernel:
+  - Move finding the RSDP to the bootloader
   - Mouse driver seems to fail if mouse is moving on initialization - todo with weird ps2 bs
   - Check that the PAT is actually setup properly
   - Map framebuffer as write combining and memory mapped HW as non cacheable

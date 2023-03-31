@@ -6,6 +6,7 @@
 #define SEG 0x8
 
 static interrupt_handler_t g_interrupt_handlers[256];
+void (* g_irq_eoi)(uint8_t);
 
 void irq_initialize() {
     idt_set_gate(32, (uintptr_t) irq_32, SEG, IDT_FLAG_PRESENT | IDT_FLAG_GATE_64BIT_INT | IDT_FLAG_RING0);
@@ -32,6 +33,9 @@ void irq_register_handler(uint8_t id, interrupt_handler_t interrupt_handler) {
 
 void irq_handler(irq_frame_t *regs) {
     if(g_interrupt_handlers[regs->int_no]) g_interrupt_handlers[regs->int_no](regs);
-    apic_eoi(regs->int_no);
-    pic8259_eoi(regs->int_no >= 40);
+    irq_eoi(regs->int_no);
+}
+
+void irq_eoi(uint8_t interrupt) {
+    g_irq_eoi(interrupt);
 }

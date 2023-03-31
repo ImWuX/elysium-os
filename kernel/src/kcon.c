@@ -9,6 +9,7 @@
 #include <drivers/hpet.h>
 #include <kdesktop.h>
 #include <fs/vfs.h>
+#include <drivers/pci.h>
 
 #define DEFAULT_FG 0xFFFFFFFF
 #define DEFAULT_BG 0
@@ -72,6 +73,17 @@ static void command_handler(char *input) {
                 g_path[i + j] = input[j];
             }
             g_path[i + arg_length] = 0;
+        } else if(strcmp(command, "pcidev") == 0) {
+            pci_device_t *device = g_pci_devices;
+            while(device) {
+                uint16_t vendor_id = pci_config_read_word(device, __builtin_offsetof(pci_device_header_t, vendor_id));
+                uint8_t class = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, class));
+                uint8_t sub_class = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, sub_class));
+                uint8_t prog_if = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, program_interface));
+                if(device->segment > 0) printf("Seg %i ", device->segment);
+                printf("%i:%i.%i Vendor: %x, Class: %x, SubClass: %x, ProgIf: %x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
+                device = device->list;
+            }
         } else if(strcmp(command, "help") == 0) {
             printf("clear: Clear the console\n");
             printf("time: Display how much time has passed since the CPU started\n");

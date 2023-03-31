@@ -9,9 +9,9 @@
 #define RSDP_REGION_ONE_END 0x9FFFF
 #define RSDP_REGION_TWO_BASE 0xE0000
 #define RSDP_REGION_TWO_END 0xFFFFF
-#define RSDP_IDENTIFIER 0x2052545020445352 // "RSDP PTR "
+#define RSDP_IDENTIFIER 0x2052545020445352 // "RSD PTR "
 
-static acpi_sdt_header_t *g_sdts;
+static acpi_sdt_header_t *g_xsdt, *g_rsdt;
 static uint8_t g_revision;
 
 static uint8_t checksum(uint8_t *src, uint32_t size) {
@@ -47,19 +47,29 @@ void acpi_initialize() {
     if(rsdp->revision > 0) {
         acpi_rsdp_ext_t *rsdp_ext = (acpi_rsdp_ext_t *) address;
         if(!checksum(((uint8_t *) rsdp_ext) + sizeof(acpi_rsdp_t), sizeof(acpi_rsdp_ext_t) - sizeof(acpi_rsdp_t))) panic("ACPI", "Checksum for Extended RSDP failed");
-        g_sdts = (acpi_sdt_header_t *) HHDM(rsdp_ext->xsdt_address);
+        g_xsdt = (acpi_sdt_header_t *) HHDM(rsdp_ext->xsdt_address);
     } else {
-        g_sdts = (acpi_sdt_header_t *) HHDM(rsdp->rsdt_address);
+        g_rsdt = (acpi_sdt_header_t *) HHDM(rsdp->rsdt_address);
     }
 }
 
 acpi_sdt_header_t *acpi_find_table(uint8_t *signature) {
-    uint32_t entries = (g_sdts->length - sizeof(acpi_sdt_header_t)) / 4;
-    uint32_t *entry_ptr = (uint32_t *) ((uintptr_t) g_sdts + sizeof(acpi_sdt_header_t));
-    for(uint32_t i = 0; i < entries; i++) {
-        acpi_sdt_header_t *entry = (acpi_sdt_header_t *) HHDM(*entry_ptr);
-        if(!memcmp(entry->signature, signature, 4)) return entry;
-        entry_ptr++;
+    if(g_xsdt) {
+        uint32_t entry_count = (g_xsdt->length - sizeof(acpi_sdt_header_t)) / sizeof(uint64_t);
+        uint64_t *entry_ptr = (uint64_t *) ((uintptr_t) g_xsdt + sizeof(acpi_sdt_header_t));
+        for(uint32_t i = 0; i < entry_count; i++) {
+            acpi_sdt_header_t *entry = (acpi_sdt_header_t *) HHDM(*entry_ptr);
+            if(!memcmp(entry->signature, signature, 4)) return entry;
+            entry_ptr++;
+        }
+    } else if(g_rsdt) {
+        uint32_t entry_count = (g_rsdt->length - sizeof(acpi_sdt_header_t)) / sizeof(uint32_t);
+        uint32_t *entry_ptr = (uint32_t *) ((uintptr_t) g_rsdt + sizeof(acpi_sdt_header_t));
+        for(uint32_t i = 0; i < entry_count; i++) {
+            acpi_sdt_header_t *entry = (acpi_sdt_header_t *) HHDM(*entry_ptr);
+            if(!memcmp(entry->signature, signature, 4)) return entry;
+            entry_ptr++;
+        }
     }
     return 0;
 }

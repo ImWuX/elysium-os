@@ -73,43 +73,36 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     vmm_initialize(pml4);
     heap_initialize((void *) 0xFFFFFF0000000000, 10);
 
+    kcon_initialize(&g_fb_context);
+    keyboard_set_handler(kcon_keyboard_handler);
+
     acpi_initialize();
     acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
 
     pic8259_remap();
     exceptions_initialize();
     irq_initialize();
+    g_irq_eoi = pic8259_eoi;
+
     // TODO: APIC address needs to be retrieved from an MSR rather than acpi tables
     acpi_sdt_header_t *apic_header = acpi_find_table((uint8_t *) "APIC");
     if(apic_header) {
         pic8259_disable();
         apic_initialize(apic_header);
+        g_irq_eoi = apic_eoi;
     }
     idt_initialize();
     asm volatile("sti");
 
-    kcon_initialize(&g_fb_context);
-    keyboard_set_handler(kcon_keyboard_handler);
-
     pci_enumerate(acpi_find_table((uint8_t *) "MCFG"));
-    pit_initialize();
 
+    pit_initialize();
     acpi_sdt_header_t *hpet_header = acpi_find_table((uint8_t *) "HPET");
-    if(hpet_header) {
-        hpet_initialize();
-    }
+    if(hpet_header) hpet_initialize(hpet_header);
 
     if(fadt && (acpi_revision() == 0 || (fadt->boot_architecture_flags & (1 << 1)))) {
         ps2_initialize();
     }
-
-    // uint32_t root_cluster = fat32_initialize();
-    // void *temp = heap_alloc(4096);
-    // fat32_read(root_cluster, temp, 4096, 0);
-    // fat32_directory_entry_t *dir = (fat32_directory_entry_t *) temp;
-    // for(int i = 0; i < 5; i++) {
-    //     printf("DIR %i >> %s\n", i, dir->name);
-    // }
 
     gdt_tss_initialize();
 
@@ -177,6 +170,7 @@ noreturn void panic_exception(char *msg, exception_frame_t *regs) {
     char *rax = "rax: ";
     char *int_no = "int_no: ";
     char *err_code = "err_code: ";
+    char *cr2 = "cr2: ";
     char *rip = "rip: ";
     char *cs = "cs: ";
     char *rflags = "rflags: ";
@@ -221,9 +215,6 @@ noreturn void panic_exception(char *msg, exception_frame_t *regs) {
     draw_string_simple(&g_fb_context, x, y, rbp, 0xFFFFFFFF);
     panic_prntnum(&g_fb_context, x + strlen(rbp) * BASICFONT_WIDTH, y, (uint64_t) regs->rbp);
     y += BASICFONT_HEIGHT;
-    draw_string_simple(&g_fb_context, x, y, rsp, 0xFFFFFFFF);
-    panic_prntnum(&g_fb_context, x + strlen(rsp) * BASICFONT_WIDTH, y, (uint64_t) regs->rsp);
-    y += BASICFONT_HEIGHT;
     draw_string_simple(&g_fb_context, x, y, rdx, 0xFFFFFFFF);
     panic_prntnum(&g_fb_context, x + strlen(rdx) * BASICFONT_WIDTH, y, (uint64_t) regs->rdx);
     y += BASICFONT_HEIGHT;
@@ -241,6 +232,11 @@ noreturn void panic_exception(char *msg, exception_frame_t *regs) {
     y += BASICFONT_HEIGHT;
     draw_string_simple(&g_fb_context, x, y, err_code, 0xFFFFFFFF);
     panic_prntnum(&g_fb_context, x + strlen(err_code) * BASICFONT_WIDTH, y, (uint64_t) regs->err_code);
+    y += BASICFONT_HEIGHT;
+    uint64_t cr2_value;
+    asm volatile("movq %%cr2, %0" : "=r" (cr2_value));
+    draw_string_simple(&g_fb_context, x, y, cr2, 0xFFFFFFFF);
+    panic_prntnum(&g_fb_context, x + strlen(cr2) * BASICFONT_WIDTH, y, (uint64_t) cr2_value);
     y += BASICFONT_HEIGHT;
     draw_string_simple(&g_fb_context, x, y, rip, 0xFFFFFFFF);
     panic_prntnum(&g_fb_context, x + strlen(rip) * BASICFONT_WIDTH, y, (uint64_t) regs->rip);
