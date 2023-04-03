@@ -9,6 +9,11 @@ typedef enum {
     PS2_PORT_TWO = 1
 } ps2_ports_t;
 
+typedef enum {
+    PS2_PORT_ONE_IRQ = 1,
+    PS2_PORT_TWO_IRQ = 12,
+} ps2_legacy_irqs_t;
+
 void ps2_initialize();
 uint8_t ps2_status_read();
 void ps2_status_write(uint8_t value);

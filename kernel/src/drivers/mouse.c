@@ -1,18 +1,22 @@
 #include "mouse.h"
 #include <panic.h>
 #include <drivers/ports.h>
-#include <cpu/irq.h>
+#include <cpu/interrupt.h>
+#include <cpu/apic.h>
+#include <drivers/ioapic.h>
 
 #define MOUSE_LEFT (1 << 0)
 #define MOUSE_RIGHT (1 << 1)
 #define MOUSE_MIDDLE (1 << 2)
 
+static uint8_t g_interrupt_vector;
 static mouse_handler_t g_mouse_handler;
 static uint8_t g_cycle = 0;
 static uint8_t g_data[3];
 
-static void mouse_handler(irq_frame_t *registers __attribute__((unused))) {
+static void mouse_handler(interrupt_frame_t *registers __attribute__((unused))) {
 	uint8_t data = ps2_port_read(false);
+	apic_eoi(g_interrupt_vector);
 	g_data[g_cycle++] = data;
 	if(g_cycle == 3) {
 		g_cycle = 0;
@@ -40,5 +44,10 @@ void mouse_initialize(ps2_ports_t port) {
 	if(!ps2_port_write(port, 0xC8) || ps2_port_read(true) != 0xFA) panic("MOUSE", "Could not set a new sample rate");
 	if(!ps2_port_write(port, 0xF4) || ps2_port_read(true) != 0xFA) panic("MOUSE", "Could not enable data reporting");
 
-    irq_register_handler(32 + 6 + port, mouse_handler);
+	int vector = interrupt_request(INTERRUPT_PRIORITY_DRIVER, mouse_handler);
+	if(vector < 0) panic("MOUSE", "Failed to acquire interrupt vector");
+	g_interrupt_vector = vector;
+    uint8_t irq = PS2_PORT_ONE_IRQ;
+    if(port == PS2_PORT_TWO) irq = PS2_PORT_TWO_IRQ;
+    ioapic_map_legacy_irq(irq, apic_id(), false, true, g_interrupt_vector);
 }

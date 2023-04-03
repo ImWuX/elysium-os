@@ -1,6 +1,6 @@
 #include "hpet.h"
 #include <memory/hhdm.h>
-#include <cpu/irq.h>
+#include <cpu/interrupt.h>
 
 #define FEMPTO 1000000000000000
 
