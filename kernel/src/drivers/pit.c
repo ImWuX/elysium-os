@@ -1,5 +1,8 @@
 #include "pit.h"
-#include <cpu/irq.h>
+#include <panic.h>
+#include <cpu/interrupt.h>
+#include <cpu/apic.h>
+#include <drivers/ioapic.h>
 #include <drivers/ports.h>
 #include <memory/heap.h>
 
@@ -10,11 +13,13 @@
 
 #define HW_CLOCK_FREQUENCY 1193182
 
+static uint8_t g_interrupt_vector;
 static uint64_t g_ticks;
 static uint16_t g_subticks;
 static pit_interval_t *g_head;
 
-static void timer_callback(irq_frame_t *registers __attribute__((unused))) {
+static void timer_handler(interrupt_frame_t *registers __attribute__((unused))) {
+    apic_eoi(g_interrupt_vector);
     pit_interval_t *cur = g_head;
     while(cur) {
         if((g_ticks * 1000 + g_subticks + cur->offset) % cur->interval == 0) cur->cb();
@@ -32,7 +37,10 @@ void pit_initialize() {
     ports_outb(CHANNEL0_DATA, divisor);
     ports_outb(CHANNEL0_DATA, divisor >> 8);
 
-    irq_register_handler(32, timer_callback);
+    int vector = interrupt_request(INTERRUPT_PRIORITY_DRIVER, timer_handler);
+    if(vector < 0) panic("PIT", "Failed to acquire interrupt vector");
+    g_interrupt_vector = vector;
+    ioapic_map_legacy_irq(0, apic_id(), false, true, g_interrupt_vector);
 }
 
 void pit_interval(int interval, void (* cb)()) {

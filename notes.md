@@ -3,11 +3,10 @@
 
 # Backlog
 Kernel:
-  - Move finding the RSDP to the bootloader
+  - Probably stop assuming that uninitialized variables are zero. cuz yk UB
   - Mouse driver seems to fail if mouse is moving on initialization - todo with weird ps2 bs
   - Check that the PAT is actually setup properly
   - Map framebuffer as write combining and memory mapped HW as non cacheable
-  - Make sure that all drivers are mapping memory into HHDM just in-case
   - Claim bootloader reclaimable
   - Kernel logging system
   - kernel/cpu/interrupts.asm: Dont do cli in interrupt handlers???

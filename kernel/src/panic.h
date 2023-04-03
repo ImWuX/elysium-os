@@ -2,9 +2,8 @@
 #define PANIC_H
 
 #include <stdnoreturn.h>
-#include <cpu/exceptions.h>
+#include <cpu/interrupt.h>
 
 noreturn void panic(char *location, char *msg);
-noreturn void panic_exception(char *msg, exception_frame_t *regs);
 
 #endif

@@ -1,7 +1,8 @@
 #include "keyboard.h"
-#include <cpu/irq.h>
-#include <cpu/idt.h>
+#include <panic.h>
+#include <cpu/interrupt.h>
 #include <cpu/apic.h>
+#include <drivers/ioapic.h>
 
 static int8_t g_scancodes[128];
 static keyboard_handler_t g_keyboard_handler;
@@ -41,8 +42,9 @@ static uint8_t g_layout_us[128] = {
     0,      // All other keys are undefined
 };
 
-static void keyboard_event(irq_frame_t *registers __attribute__((unused))) {
+static void kb_interrupt_handler(interrupt_frame_t *registers __attribute__((unused))) {
     uint8_t scancode = ps2_port_read(false);
+    apic_eoi(g_interrupt_vector);
 
     if(scancode >= 0x80) {
         g_scancodes[scancode - 0x80] = 0;
@@ -56,7 +58,12 @@ static void keyboard_event(irq_frame_t *registers __attribute__((unused))) {
 }
 
 void keyboard_initialize(ps2_ports_t port) {
-    irq_register_handler(g_interrupt_vector, keyboard_event);
+    int vector = interrupt_request(INTERRUPT_PRIORITY_DRIVER, kb_interrupt_handler);
+    if(vector < 0) panic("KEYBOARD", "Failed to acquire interrupt vector");
+    g_interrupt_vector = vector;
+    uint8_t irq = PS2_PORT_ONE_IRQ;
+    if(port == PS2_PORT_TWO) irq = PS2_PORT_TWO_IRQ;
+    ioapic_map_legacy_irq(irq, apic_id(), false, true, g_interrupt_vector);
 }
 
 void keyboard_set_handler(keyboard_handler_t handler) {

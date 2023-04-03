@@ -11,11 +11,10 @@
 #include <graphics/basicfont.h>
 #include <graphics/draw.h>
 #include <drivers/acpi.h>
+#include <drivers/ioapic.h>
 #include <cpu/pic8259.h>
 #include <cpu/apic.h>
-#include <cpu/exceptions.h>
-#include <cpu/irq.h>
-#include <cpu/idt.h>
+#include <cpu/interrupt.h>
 #include <cpu/gdt.h>
 #include <cpu/msr.h>
 #include <drivers/pit.h>
@@ -34,6 +33,8 @@
 
 static draw_colormask_t g_fb_colormask;
 static draw_context_t g_fb_context;
+
+noreturn void exception_handler(interrupt_frame_t *regs);
 
 extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     g_hhdm_address = boot_params->hhdm_address;
@@ -83,18 +84,20 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
 
     pic8259_remap();
-    exceptions_initialize();
-    irq_initialize();
-    g_irq_eoi = pic8259_eoi;
-
-    // TODO: APIC address needs to be retrieved from an MSR rather than acpi tables
     acpi_sdt_header_t *apic_header = acpi_find_table((uint8_t *) "APIC");
     if(apic_header) {
         pic8259_disable();
-        apic_initialize(apic_header);
-        g_irq_eoi = apic_eoi;
+        apic_initialize();
+        ioapic_initialize(apic_header);
+        g_interrupt_irq_eoi = apic_eoi;
+    } else {
+        g_interrupt_irq_eoi = pic8259_eoi;
+        panic("KERNEL", "Legacy 8529pic is currently unsupported.");
     }
-    idt_initialize();
+    interrupt_initialize();
+    for(int i = 0; i < 32; i++) {
+        interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_handler);
+    }
     asm volatile("sti");
 
     pci_enumerate(acpi_find_table((uint8_t *) "MCFG"));
@@ -150,7 +153,41 @@ static void panic_prntnum(draw_context_t *ctx, uint16_t x, uint16_t y, uint64_t 
     }
 }
 
-noreturn void panic_exception(char *msg, exception_frame_t *regs) {
+static char *g_exception_messages[] = {
+    "Division by Zero",
+    "Debug",
+    "Non-Maskable Interrupt",
+    "Breakpoint",
+    "Overflow",
+    "Out of Bounds",
+    "Invalid Opcode",
+    "No Coprocessor",
+    "Double Fault",
+    "Coprocessor Segment Overrun",
+    "Bat TSS",
+    "Segment not Present",
+    "Stack Fault",
+    "General Protection Fault",
+    "Page Fault",
+    "Unknown Interrupt",
+    "Coprocessor Fault",
+    "Alignment Check",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved"
+};
+
+noreturn void exception_handler(interrupt_frame_t *regs) {
     draw_color_t bg = draw_color(&g_fb_context, 255, 60, 60);
     draw_rect(&g_fb_context, 0, 0, g_fb_context.width, g_fb_context.height, bg);
 
@@ -183,7 +220,7 @@ noreturn void panic_exception(char *msg, exception_frame_t *regs) {
     int y = g_fb_context.height / 10;
     draw_string_simple(&g_fb_context, x, y, title, 0xFFFFFFFF);
     y += BASICFONT_HEIGHT;
-    draw_string_simple(&g_fb_context, x, y, msg, 0xFFFFFFFF);
+    draw_string_simple(&g_fb_context, x, y, g_exception_messages[regs->int_no], 0xFFFFFFFF);
     y += BASICFONT_HEIGHT;
     draw_string_simple(&g_fb_context, x, y, r15, 0xFFFFFFFF);
     panic_prntnum(&g_fb_context, x + strlen(r15) * BASICFONT_WIDTH, y, (uint64_t) regs->r15);

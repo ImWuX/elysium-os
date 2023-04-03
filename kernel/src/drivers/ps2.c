@@ -1,7 +1,6 @@
 #include "ps2.h"
 #include <panic.h>
 #include <drivers/ports.h>
-#include <cpu/irq.h>
 #include <drivers/mouse.h>
 #include <drivers/keyboard.h>
 
