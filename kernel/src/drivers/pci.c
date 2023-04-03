@@ -143,7 +143,7 @@ void pci_config_write_double(pci_device_t *device, uint8_t offset, uint32_t data
 }
 
 void pci_enumerate(acpi_sdt_header_t *mcfg) {
-    g_segments = (pcie_segment_entry_t *) ((uintptr_t) mcfg + sizeof(acpi_sdt_header_t) + 8);
+    if(mcfg) g_segments = (pcie_segment_entry_t *) ((uintptr_t) mcfg + sizeof(acpi_sdt_header_t) + 8);
     unsigned int entry_count = 1;
     if(g_segments) entry_count = (mcfg->length - (sizeof(acpi_sdt_header_t) + 8)) / sizeof(pcie_segment_entry_t);
     for(unsigned int i = 0; i < entry_count; i++) check_segment(i);
