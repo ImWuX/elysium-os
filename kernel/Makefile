@@ -13,18 +13,16 @@ C_SOURCES = $(shell find src/ -type f -name '*.c')
 
 # Targets
 src/kernel.elf: ${ASM_SOURCES:.asm=_s.o} ${C_SOURCES:.c=.o}
-	${LD} ${LDFLAGS} -o $@ -T"link.ld" $^ ../build/libc.a
-
-# TODO: Change ../out/libc.a
+	${LD} ${LDFLAGS} -o $@ -T"link.ld" $^
 
 # Wildcard Targets
 %_s.o: %.asm
 	${ASMC} -isrc $< -f elf64 -o $@
 
 %.o: %.c
-	${CC} ${CFLAGS} -Isrc -I../../tartarus-bootloader/shared -I../libc/src -c $< -o $@
+	${CC} ${CFLAGS} -Isrc -Isrc/klibc -I../../tartarus-bootloader/shared -c $< -o $@
 
-# TODO: Change -I../../tartarus-bootloader/shared and -I../libc/src
+# TODO: Change -I../../tartarus-bootloader/shared
 
 # Clean Targets
 clean:

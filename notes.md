@@ -14,7 +14,6 @@ Kernel:
     - Invalidate pages
   - Device Manager
   - Optimize VESA
-  - Probably use the MSR for the APIC address instead of relying on ACPI tables?
   - **Devices**
     - CMOS
     - Serial?

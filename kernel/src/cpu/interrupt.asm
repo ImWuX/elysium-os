@@ -1,8 +1,8 @@
 extern interrupt_handler
 
 isr_stub:
-    cld                                 ; Clear direction flag
-    push rax                            ; Save CPU state
+    cld                                     ; Clear direction flag
+    push rax                                ; Save CPU state
     push rbx
     push rcx
     push rdx
@@ -19,9 +19,9 @@ isr_stub:
     push r15
 
     mov rdi, rsp
-    call interrupt_handler              ; Call interrupt handler
+    call interrupt_handler                  ; Call interrupt handler
 
-    pop r15                             ; Restore CPU state
+    pop r15                                 ; Restore CPU state
     pop r14
     pop r13
     pop r12
@@ -37,14 +37,12 @@ isr_stub:
     pop rbx
     pop rax
 
-    add rsp, 16                         ; Discard interrupt number and other data off of the stack
-    sti                                     ; TODO: Related to line 47 cli
+    add rsp, 16                             ; Discard interrupt number and other data off of the stack
     iretq
 
 %macro ISR 2
     global isr_%1
     isr_%1:
-        cli                                 ; TODO: PROBABLY DONT DO THIS??
         %if %2 == 0
             push qword 0                    ; Push 0 as error code for interrupt without error code
         %endif
