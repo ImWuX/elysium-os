@@ -44,7 +44,7 @@ void mouse_initialize(ps2_ports_t port) {
 	if(!ps2_port_write(port, 0xC8) || ps2_port_read(true) != 0xFA) panic("MOUSE", "Could not set a new sample rate");
 	if(!ps2_port_write(port, 0xF4) || ps2_port_read(true) != 0xFA) panic("MOUSE", "Could not enable data reporting");
 
-	int vector = interrupt_request(INTERRUPT_PRIORITY_DRIVER, mouse_handler);
+	int vector = interrupt_request(INTERRUPT_PRIORITY_HID, mouse_handler);
 	if(vector < 0) panic("MOUSE", "Failed to acquire interrupt vector");
 	g_interrupt_vector = vector;
     uint8_t irq = PS2_PORT_ONE_IRQ;

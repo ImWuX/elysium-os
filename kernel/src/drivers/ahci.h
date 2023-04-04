@@ -97,5 +97,6 @@ typedef struct {
 } __attribute__((packed)) ahci_fis_reg_h2d_t;
 
 void ahci_initialize_device(pci_device_t *device);
+void ahci_read(uint8_t port, uint64_t sector, uint16_t sector_count, void *dest);
 
 #endif

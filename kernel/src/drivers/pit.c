@@ -37,7 +37,7 @@ void pit_initialize() {
     ports_outb(CHANNEL0_DATA, divisor);
     ports_outb(CHANNEL0_DATA, divisor >> 8);
 
-    int vector = interrupt_request(INTERRUPT_PRIORITY_DRIVER, timer_handler);
+    int vector = interrupt_request(INTERRUPT_PRIORITY_TIMER, timer_handler);
     if(vector < 0) panic("PIT", "Failed to acquire interrupt vector");
     g_interrupt_vector = vector;
     ioapic_map_legacy_irq(0, apic_id(), false, true, g_interrupt_vector);
