@@ -58,7 +58,7 @@ static void kb_interrupt_handler(interrupt_frame_t *registers __attribute__((unu
 }
 
 void keyboard_initialize(ps2_ports_t port) {
-    int vector = interrupt_request(INTERRUPT_PRIORITY_DRIVER, kb_interrupt_handler);
+    int vector = interrupt_request(INTERRUPT_PRIORITY_HID, kb_interrupt_handler);
     if(vector < 0) panic("KEYBOARD", "Failed to acquire interrupt vector");
     g_interrupt_vector = vector;
     uint8_t irq = PS2_PORT_ONE_IRQ;

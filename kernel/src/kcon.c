@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <graphics/basicfont.h>
+#include <memory/hhdm.h>
 #include <memory/pmm.h>
 #include <memory/heap.h>
 #include <drivers/pit.h>
@@ -10,6 +11,7 @@
 #include <kdesktop.h>
 #include <fs/vfs.h>
 #include <drivers/pci.h>
+#include <drivers/ahci.h>
 
 #define DEFAULT_FG 0xFFFFFFFF
 #define DEFAULT_BG 0
@@ -56,7 +58,7 @@ static void command_handler(char *input) {
         } else if(strcmp(command, "sp") == 0) {
             uint64_t sp;
             asm volatile("mov %%rsp, %0" : "=rm" (sp));
-            printf("INT - SP: %x\n", sp);
+            printf("interrupt stack pointer >> %x\n", sp);
         } else if(strcmp(command, "cd") == 0) {
             int arg_length = 0;
             while(input[arg_length]) arg_length++;
@@ -84,11 +86,20 @@ static void command_handler(char *input) {
                 printf("%i:%i.%i Vendor: %x, Class: %x, SubClass: %x, ProgIf: %x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
                 device = device->list;
             }
+        } else if(strcmp(command, "request_page") == 0) {
+            printf("Requested 1 page >> %x\n", pmm_page_request());
+        } else if(strcmp(command, "read") == 0) {
+            void *mem = pmm_page_request();
+            ahci_read(0, 0, 1, mem);
+            printf("Read the bootsector into %x >> signature(%x)\n", mem, *(uint16_t *) HHDM(mem + 510));
         } else if(strcmp(command, "help") == 0) {
             printf("clear: Clear the console\n");
             printf("time: Display how much time has passed since the CPU started\n");
             printf("timer: Start a timer\n");
             printf("ud2: Trigger an unknown instruction fault\n");
+            printf("pcidev: Display all active PCI devices\n");
+            printf("request_page: Get one page of memory\n");
+            printf("sp: Display the stack pointer of an interrupt\n");
             printf("help: Display all the commands\n");
         } else {
             printf("Unknown command: \"%s\"\n", command);
@@ -112,7 +123,7 @@ void kcon_initialize(draw_context_t *ctx) {
     printf("        |___|                            \n\n");
     printf("Welcome to Elysium OS\n");
     printf("Physical Memory Initialized\n");
-    printf("Stats:\n\tTotal: %i bytes\n\tFree: %i bytes\n\tUsed: %i bytes\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used());
+    printf("Stats:\n\tTotal: %i bytes\n\tFree: %i bytes\n\tUsed: %i bytes\n\tLowmem: %i bytes\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used(), pmm_mem_low());
     printf("%s %c ", g_path, PREFIX);
 }
 

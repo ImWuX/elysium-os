@@ -4,6 +4,7 @@
 #include <panic.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
+#include <memory/pmm_lowmem.h>
 
 #define PAGE_SIZE 0x1000
 #define SECTOR_SIZE 512
@@ -78,8 +79,8 @@ void ahci_read(uint8_t port, uint64_t sector, uint16_t sector_count, void *dest)
     command->prd_table_length = (sector_count + SPE - 1) / SPE;
 
     int command_table_page_count = (0x80 + command->prd_table_length * 4 + PAGE_SIZE - 1) / PAGE_SIZE;
-    void *command_table = pmm_page_request_dma(command_table_page_count);
-    memset((void *) HHDM(command_table), 0, PAGE_SIZE * sizeof(command_table_page_count));
+    void *command_table = pmm_lowmem_request(command_table_page_count);
+    memset((void *) HHDM(command_table), 0, PAGE_SIZE * command_table_page_count);
     command->command_table_descriptor_base_address = (uint32_t) (uintptr_t) command_table;
     command->command_table_descriptor_base_address_upper = (uint32_t) ((uintptr_t) command_table >> 32);
 
@@ -129,7 +130,7 @@ void ahci_read(uint8_t port, uint64_t sector, uint16_t sector_count, void *dest)
         }
     } while((port_regs->command_issue & (1 << cmd_slot)) != 0);
 
-    // TODO: Release DMA region, rewrite dma allocator ig
+    pmm_lowmem_release(command_table, command_table_page_count);
 }
 
 void ahci_initialize_device(pci_device_t *device) {

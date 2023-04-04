@@ -2,17 +2,29 @@
 #include <string.h>
 #include <panic.h>
 #include <memory/hhdm.h>
+#include <memory/pmm_lowmem.h>
 
 #define PAGE_SIZE 0x1000
-#define DMA_REGION_LENGTH 0x1000000
+#define LOWMEM_SIZE 0x1000000
 
 static uint64_t g_total_memory;
 static uint64_t g_free_memory;
+static uint64_t g_low_memory;
 
 static uintptr_t g_freelist = 0;
-static pmm_dma_node_t *g_dma_nodelist = 0;
 
 void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_length) {
+    uint64_t lowmem_bitmap_size = (LOWMEM_SIZE / PAGE_SIZE + 7) / 8;
+    uintptr_t lowmem_bitmap_address;
+    for(uint16_t i = 0; i < memory_map_length; i++) {
+        tartarus_memap_entry_t entry = memory_map[i];
+        if(entry.type != TARTARUS_MEMAP_TYPE_USABLE) continue;
+        if(entry.length < lowmem_bitmap_size) continue;
+        pmm_lowmem_initialize(HHDM(entry.base_address), lowmem_bitmap_size);
+        lowmem_bitmap_address = entry.base_address;
+        break;
+    }
+
     uintptr_t latest_dma_address = 0;
     for(uint16_t i = 0; i < memory_map_length; i++) {
         tartarus_memap_entry_t entry = memory_map[memory_map_length - i - 1];
@@ -20,42 +32,20 @@ void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_leng
         g_total_memory += entry.length;
         if(entry.type != TARTARUS_MEMAP_TYPE_USABLE) continue;
         g_free_memory += entry.length;
-        if(entry.base_address < DMA_REGION_LENGTH && (!g_dma_nodelist || entry.base_address != latest_dma_address + PAGE_SIZE)) {
-            pmm_dma_node_t *new_node = (pmm_dma_node_t *) HHDM(entry.base_address);
-            memset(new_node, 0, sizeof(pmm_dma_node_t));
-            new_node->next = g_dma_nodelist;
-            g_dma_nodelist = (pmm_dma_node_t *) entry.base_address;
-        }
         for(uintptr_t address = entry.base_address; address < entry.base_address + entry.length; address += PAGE_SIZE) {
-            if(address < DMA_REGION_LENGTH) {
-                g_dma_nodelist->length++;
-                latest_dma_address = address;
+            if(address >= lowmem_bitmap_address && address < lowmem_bitmap_address + lowmem_bitmap_size) {
+                g_free_memory -= PAGE_SIZE;
+                continue;
+            }
+            if(address < LOWMEM_SIZE) {
+                pmm_lowmem_release(address, 1);
+                g_low_memory += PAGE_SIZE;
+                g_free_memory -= PAGE_SIZE;
             } else {
                 *((uintptr_t *) HHDM(address)) = g_freelist;
                 g_freelist = (uintptr_t) address;
             }
         }
-    }
-}
-
-void *pmm_page_request_dma(int count) {
-    if(!g_dma_nodelist) panic("PMM", "Out of DMA physical memory");
-    uintptr_t node_address = (uintptr_t) g_dma_nodelist;
-    pmm_dma_node_t *node = (pmm_dma_node_t *) HHDM(node_address);
-    pmm_dma_node_t *prev = 0;
-    while(node->length < count) {
-        if(!node->next) panic("PMM", "Out of DMA physical memory");
-        prev = node;
-        node_address = (uintptr_t) node->next;
-        node = (pmm_dma_node_t *) HHDM(node_address);
-    }
-    if(node->length > count) {
-        node->length -= count;
-        return (void *) node_address + node->length * PAGE_SIZE;
-    } else {
-        if(prev) prev->next = node->next;
-        else g_dma_nodelist = 0;
-        return (void *) node_address;
     }
 }
 
@@ -83,4 +73,8 @@ uint64_t pmm_mem_used() {
 
 uint64_t pmm_mem_free() {
     return g_free_memory;
+}
+
+uint64_t pmm_mem_low() {
+    return g_low_memory;
 }
