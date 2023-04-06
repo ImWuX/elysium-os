@@ -68,8 +68,8 @@ static bool get_arg_num(char *str, int argc, uint64_t *value) {
         for(int i = argl - 1; i >= 2; i--) {
             bool valid = false;
             if(arg[i] >= '0' && arg[i] <= '9') { *value += (arg[i] - '0') * pow; valid = true; }
-            if(arg[i] >= 'a' && arg[i] <= 'f') { *value += (arg[i] - 'a') * pow; valid = true; }
-            if(arg[i] >= 'A' && arg[i] <= 'F') { *value += (arg[i] - 'A') * pow; valid = true; }
+            if(arg[i] >= 'a' && arg[i] <= 'f') { *value += (arg[i] - 'a' + 10) * pow; valid = true; }
+            if(arg[i] >= 'A' && arg[i] <= 'F') { *value += (arg[i] - 'A' + 10) * pow; valid = true; }
             if(!valid) {
                 heap_free(arg);
                 return true;
@@ -145,8 +145,8 @@ static void command_handler(char *input) {
                 printf("%i:%i.%i Vendor: %x, Class: %x, SubClass: %x, ProgIf: %x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
                 device = device->list;
             }
-        } else if(strcmp(command, "request_page") == 0) {
-            printf("Requested 1 page >> %lx\n", pmm_page_request());
+        } else if(strcmp(command, "request-page") == 0) {
+            printf("Requested 1 page >> %#lx\n", pmm_page_request());
         } else if(strcmp(command, "read") == 0) {
             if(arg_count < 3) {
                 printf("Missing arguments\n");
@@ -157,7 +157,7 @@ static void command_handler(char *input) {
                     printf("Invalid arguments");
                 } else {
                     ahci_read(0, sector, 1, dest);
-                    printf("Read sector %lx into %lx\n", sector, dest);
+                    printf("Read sector %li into %#lx\n", sector, dest, dest);
                 }
             }
         } else if(strcmp(command, "hexdump") == 0) {
@@ -170,11 +170,11 @@ static void command_handler(char *input) {
                     printf("Invalid arguments");
                 } else {
                     for(int y = 0; y < (count + 9) / 10; y++) {
-                        printf("%lx\t:", address + y * 10);
+                        printf("%#.16lx:   ", address + y * 10);
                         for(int x = 0; x < 10 - (count - y * 10) % 10; x++) {
-                            printf("%x ", *(uint8_t *) (HHDM(address) + y * 10 + x));
+                            printf("%.2x ", *(uint8_t *) (HHDM(address) + y * 10 + x));
                         }
-                        printf("\t");
+                        printf("   ");
                         for(int x = 0; x < 10 - (count - y * 10) % 10; x++) {
                             char c = *(char *) (HHDM(address) + y * 10 + x);
                             if(c < 32 || c > 126) c = '.';
