@@ -1,5 +1,5 @@
 # Important Things To Not Forget
-- Kernel has not moved stack from the bootloader provided 64kb safe stack
+- Kernel has not moved stack from the bootloader provided 64kb safe stack // this can be release at the userspace handoff
 
 # Backlog
 Kernel:

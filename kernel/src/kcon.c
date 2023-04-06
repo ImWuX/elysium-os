@@ -33,22 +33,81 @@ static void clear() {
     g_cursor_y = 0;
 }
 
+static bool is_whitespace(char c) {
+    return c == ' ' || c == '\t';
+}
+
+static bool get_arg(char *str, int argc, char **value) {
+    int cur = 0;
+    while(*str && cur != argc) {
+        if(is_whitespace(*str)) {
+            while(is_whitespace(*str)) str++;
+            cur++;
+        } else str++;
+    }
+    if(cur != argc) return true;
+
+    int strlen = 0;
+    while(str[strlen] && str[strlen] != ' ') strlen++;
+    *value = heap_alloc(strlen + 1);
+    memcpy(*value, str, strlen);
+    (*value)[strlen] = 0;
+    return false;
+}
+
+static bool get_arg_num(char *str, int argc, uint64_t *value) {
+    char *arg;
+    if(get_arg(str, argc, &arg)) {
+        heap_free(arg);
+        return true;
+    }
+    int argl = strlen(arg);
+    *value = 0;
+    uint64_t pow = 1;
+    if(arg[0] == '0' && arg[1] == 'x') {
+        for(int i = argl - 1; i >= 2; i--) {
+            bool valid = false;
+            if(arg[i] >= '0' && arg[i] <= '9') { *value += (arg[i] - '0') * pow; valid = true; }
+            if(arg[i] >= 'a' && arg[i] <= 'f') { *value += (arg[i] - 'a') * pow; valid = true; }
+            if(arg[i] >= 'A' && arg[i] <= 'F') { *value += (arg[i] - 'A') * pow; valid = true; }
+            if(!valid) {
+                heap_free(arg);
+                return true;
+            }
+            pow *= 16;
+        }
+    } else {
+        for(int i = argl - 1; i >= 0; i--) {
+            if(arg[i] < '0' || arg[i] > '9') {
+                heap_free(arg);
+                return true;
+            }
+            *value += ((uint64_t) arg[i] - '0') * pow;
+            pow *= 10;
+        }
+    }
+    heap_free(arg);
+    return false;
+}
+
 static void command_handler(char *input) {
-    int index = 0;
-    while(input[index] && input[index] != ' ') index++;
-    char* command = heap_alloc(sizeof(char) * (index + 1));
-    memcpy(command, input, index);
-    command[index] = 0;
+    char *s = input;
+    bool last_was_space = false;
+    int arg_count = 1;
+    while(*s++) {
+        if(is_whitespace(*s)) {
+            if(!last_was_space) arg_count++;
+            last_was_space = true;
+        } else last_was_space = false;
+    }
 
-    int full_index = 0;
-    while(input[full_index]) full_index++;
-    memcpy(input, input + index + 1, full_index);
-
-    if(index != 0) {
+    char *command;
+    get_arg(input, 0, &command);
+    if(command[0]) {
         if(strcmp(command, "clear") == 0) {
             clear();
         } else if(strcmp(command, "time") == 0) {
-            printf("Time since system startup: %is\n", pit_time_s());
+            printf("Time since system startup: %lis\n", pit_time_s());
         } else if(strcmp(command, "ud2") == 0) {
             asm("ud2");
         } else if(strcmp(command, "timer") == 0) {
@@ -58,23 +117,23 @@ static void command_handler(char *input) {
         } else if(strcmp(command, "sp") == 0) {
             uint64_t sp;
             asm volatile("mov %%rsp, %0" : "=rm" (sp));
-            printf("interrupt stack pointer >> %x\n", sp);
+            printf("interrupt stack pointer >> %lx\n", sp);
         } else if(strcmp(command, "cd") == 0) {
-            int arg_length = 0;
-            while(input[arg_length]) arg_length++;
-            int i = 0;
-            while(i < 512) {
-                if(!g_path[i]) break;
-                i++;
-            }
-            if(i + arg_length >= 512) {
-                printf("Exceeded path limit");
-                return;
-            }
-            for(int j = 0; j < arg_length; j++) {
-                g_path[i + j] = input[j];
-            }
-            g_path[i + arg_length] = 0;
+            // int arg_length = 0;
+            // while(input[arg_length]) arg_length++;
+            // int i = 0;
+            // while(i < 512) {
+            //     if(!g_path[i]) break;
+            //     i++;
+            // }
+            // if(i + arg_length >= 512) {
+            //     printf("Exceeded path limit");
+            //     return;
+            // }
+            // for(int j = 0; j < arg_length; j++) {
+            //     g_path[i + j] = input[j];
+            // }
+            // g_path[i + arg_length] = 0;
         } else if(strcmp(command, "pcidev") == 0) {
             pci_device_t *device = g_pci_devices;
             while(device) {
@@ -87,11 +146,45 @@ static void command_handler(char *input) {
                 device = device->list;
             }
         } else if(strcmp(command, "request_page") == 0) {
-            printf("Requested 1 page >> %x\n", pmm_page_request());
+            printf("Requested 1 page >> %lx\n", pmm_page_request());
         } else if(strcmp(command, "read") == 0) {
-            void *mem = pmm_page_request();
-            ahci_read(0, 0, 1, mem);
-            printf("Read the bootsector into %x >> signature(%x)\n", mem, *(uint16_t *) HHDM(mem + 510));
+            if(arg_count < 3) {
+                printf("Missing arguments\n");
+            } else {
+                uint64_t sector;
+                uint64_t dest;
+                if(get_arg_num(input, 1, &sector) || get_arg_num(input, 2, &dest)) {
+                    printf("Invalid arguments");
+                } else {
+                    ahci_read(0, sector, 1, dest);
+                    printf("Read sector %lx into %lx\n", sector, dest);
+                }
+            }
+        } else if(strcmp(command, "hexdump") == 0) {
+            if(arg_count < 3) {
+                printf("Missing arguments\n");
+            } else {
+                uint64_t address;
+                uint64_t count;
+                if(get_arg_num(input, 1, &address) || get_arg_num(input, 2, &count)) {
+                    printf("Invalid arguments");
+                } else {
+                    for(int y = 0; y < (count + 9) / 10; y++) {
+                        printf("%lx\t:", address + y * 10);
+                        for(int x = 0; x < 10 - (count - y * 10) % 10; x++) {
+                            printf("%x ", *(uint8_t *) (HHDM(address) + y * 10 + x));
+                        }
+                        printf("\t");
+                        for(int x = 0; x < 10 - (count - y * 10) % 10; x++) {
+                            char c = *(char *) (HHDM(address) + y * 10 + x);
+                            if(c < 32 || c > 126) c = '.';
+                            printf("%c ", c);
+                        }
+                        printf("\n");
+                    }
+                }
+            }
+
         } else if(strcmp(command, "help") == 0) {
             printf("clear: Clear the console\n");
             printf("time: Display how much time has passed since the CPU started\n");
@@ -100,6 +193,8 @@ static void command_handler(char *input) {
             printf("pcidev: Display all active PCI devices\n");
             printf("request_page: Get one page of memory\n");
             printf("sp: Display the stack pointer of an interrupt\n");
+            printf("read: Loads a desired sector into a desired destination\n");
+            printf("hexdump: Dumps memory at an address\n");
             printf("help: Display all the commands\n");
         } else {
             printf("Unknown command: \"%s\"\n", command);
@@ -123,7 +218,7 @@ void kcon_initialize(draw_context_t *ctx) {
     printf("        |___|                            \n\n");
     printf("Welcome to Elysium OS\n");
     printf("Physical Memory Initialized\n");
-    printf("Stats:\n\tTotal: %i bytes\n\tFree: %i bytes\n\tUsed: %i bytes\n\tLowmem: %i bytes\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used(), pmm_mem_low());
+    printf("Stats:\n\tTotal: %li bytes\n\tFree: %li bytes\n\tUsed: %li bytes\n\tLowmem: %li bytes\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used(), pmm_mem_low());
     printf("%s %c ", g_path, PREFIX);
 }
 
