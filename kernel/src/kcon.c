@@ -4,6 +4,7 @@
 #include <graphics/basicfont.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
+#include <memory/pmm_lowmem.h>
 #include <memory/heap.h>
 #include <drivers/pit.h>
 #include <drivers/mouse.h>
@@ -145,8 +146,32 @@ static void command_handler(char *input) {
                 printf("%i:%i.%i Vendor: %x, Class: %x, SubClass: %x, ProgIf: %x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
                 device = device->list;
             }
-        } else if(strcmp(command, "request-page") == 0) {
+        } else if(strcmp(command, "rpage") == 0) {
             printf("Requested 1 page >> %#lx\n", pmm_page_request());
+        } else if(strcmp(command, "reqcpage") == 0) {
+            uint64_t pages;
+            if(arg_count < 2) {
+                printf("Missing arguments\n");
+            } else {
+                if(get_arg_num(input, 1, &pages)) {
+                    printf("Invalid arguments\n");
+                } else {
+                    printf("Requested %li pages >> %#lx\n", pages, pmm_lowmem_request(pages));
+                }
+            }
+        } else if(strcmp(command, "relcpage") == 0) {
+            uint64_t address;
+            uint64_t pages;
+            if(arg_count < 3) {
+                printf("Missing arguments\n");
+            } else {
+                if(get_arg_num(input, 1, &address) || get_arg_num(input, 2, &pages)) {
+                    printf("Invalid arguments\n");
+                } else {
+                    pmm_lowmem_release((void *) address, pages);
+                    printf("Released %li pages starting at %#lx\n", pages, address);
+                }
+            }
         } else if(strcmp(command, "read") == 0) {
             if(arg_count < 3) {
                 printf("Missing arguments\n");
@@ -154,9 +179,9 @@ static void command_handler(char *input) {
                 uint64_t sector;
                 uint64_t dest;
                 if(get_arg_num(input, 1, &sector) || get_arg_num(input, 2, &dest)) {
-                    printf("Invalid arguments");
+                    printf("Invalid arguments\n");
                 } else {
-                    ahci_read(0, sector, 1, dest);
+                    ahci_read(0, sector, 1, (void *) dest);
                     printf("Read sector %li into %#lx\n", sector, dest, dest);
                 }
             }
@@ -169,29 +194,50 @@ static void command_handler(char *input) {
                 if(get_arg_num(input, 1, &address) || get_arg_num(input, 2, &count)) {
                     printf("Invalid arguments");
                 } else {
-                    for(int y = 0; y < (count + 9) / 10; y++) {
-                        printf("%#.16lx:   ", address + y * 10);
-                        for(int x = 0; x < 10 - (count - y * 10) % 10; x++) {
-                            printf("%.2x ", *(uint8_t *) (HHDM(address) + y * 10 + x));
+                    bool star = false;
+                    uint8_t last[10];
+                    int row_count = ((int) count + 9) / 10;
+                    for(int y = 0; y < row_count; y++) {
+                        int row_length = 10 - ((int) count - y * 10) % 10;
+                        bool identical = (y != 0 && y != row_count - 1);
+                        if(identical) {
+                            for(int x = 0; x < row_length; x++) {
+                                uint8_t value = *(uint8_t *) (HHDM(address) + y * 10 + x);
+                                if(last[x] != value) identical = false;
+                                last[x] = value;
+                            }
                         }
-                        printf("   ");
-                        for(int x = 0; x < 10 - (count - y * 10) % 10; x++) {
-                            char c = *(char *) (HHDM(address) + y * 10 + x);
-                            if(c < 32 || c > 126) c = '.';
-                            printf("%c ", c);
+
+                        if(!identical) {
+                            star = false;
+                            printf("%#18.16lx:  ", address + y * 10);
+                            for(int x = 0; x < row_length; x++) {
+                                printf("%.2x ", *(uint8_t *) (HHDM(address) + y * 10 + x));
+                            }
+
+                            printf("  ");
+                            for(int x = 0; x < row_length; x++) {
+                                char c = *(char *) (HHDM(address) + y * 10 + x);
+                                if(c < 32 || c > 126) c = '.';
+                                printf("%c ", c);
+                            }
+                            printf("\n");
+                        } else {
+                            if(star) continue;
+                            printf("*\n");
+                            star = true;
                         }
-                        printf("\n");
                     }
                 }
             }
-
         } else if(strcmp(command, "help") == 0) {
             printf("clear: Clear the console\n");
             printf("time: Display how much time has passed since the CPU started\n");
             printf("timer: Start a timer\n");
             printf("ud2: Trigger an unknown instruction fault\n");
             printf("pcidev: Display all active PCI devices\n");
-            printf("request_page: Get one page of memory\n");
+            printf("rpage: Get one page of memory\n");
+            printf("rcpage: Get contiguous pages of memory\n");
             printf("sp: Display the stack pointer of an interrupt\n");
             printf("read: Loads a desired sector into a desired destination\n");
             printf("hexdump: Dumps memory at an address\n");

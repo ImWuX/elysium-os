@@ -15,15 +15,18 @@ static uintptr_t g_freelist = 0;
 
 void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_length) {
     uint64_t lowmem_bitmap_size = (LOWMEM_SIZE / PAGE_SIZE + 7) / 8;
+    bool bitmap_location_found = false;
     uintptr_t lowmem_bitmap_address;
     for(uint16_t i = 0; i < memory_map_length; i++) {
         tartarus_memap_entry_t entry = memory_map[i];
         if(entry.type != TARTARUS_MEMAP_TYPE_USABLE) continue;
         if(entry.length < lowmem_bitmap_size) continue;
-        pmm_lowmem_initialize(HHDM(entry.base_address), lowmem_bitmap_size);
+        pmm_lowmem_initialize((void *) HHDM(entry.base_address), lowmem_bitmap_size);
         lowmem_bitmap_address = entry.base_address;
+        bitmap_location_found = true;
         break;
     }
+    if(!bitmap_location_found) panic("PMM", "Unable to find memory for lowmem bitmap");
 
     uintptr_t latest_dma_address = 0;
     for(uint16_t i = 0; i < memory_map_length; i++) {
@@ -38,7 +41,7 @@ void pmm_initialize(tartarus_memap_entry_t *memory_map, uint16_t memory_map_leng
                 continue;
             }
             if(address < LOWMEM_SIZE) {
-                pmm_lowmem_release(address, 1);
+                pmm_lowmem_release((void *) address, 1);
                 g_low_memory += PAGE_SIZE;
                 g_free_memory -= PAGE_SIZE;
             } else {
