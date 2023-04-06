@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <math.h>
-#include <string.h>
 
 #define FLAG_LEFT (1 << 0)
 #define FLAG_SIGN (1 << 1)
@@ -256,8 +255,9 @@ int vprintf(const char *format, va_list list) {
             case 's':
                 // TODO: Handle wchar_t (l modifier)
                 char *str = (char *) value.pointer;
-                int length = (int) strlen(str);
-                if(precision < length) length = precision;
+                int length = 0;
+                while(str[length]) ++length;
+                if(precision >= 0 && precision < length) length = precision;
                 if(!(flags & FLAG_LEFT)) for(int i = length; i < width; i++) PUTCHAR(' ', count);
                 while(precision != 0 && *str) {
                     PUTCHAR(*str, count);
@@ -324,7 +324,7 @@ int vprintf(const char *format, va_list list) {
     if(precision_pad == 0 && (flags & FLAG_LEADING_ZERO) && (value.integer != 0 || !(flags & FLAG_NO_PREFIX_ON_ZERO))) precision_pad = 1;
     length += precision_pad;
     if(negative) length++;
-    else for(int i = prefix_offset; prefixes[i]; i++) length++;
+    else if(!(flags & FLAG_NO_PREFIX_ON_ZERO) || value.integer != 0) for(int i = prefix_offset; prefixes[i]; i++) length++;
 
     if(!(flags & (FLAG_LEFT | FLAG_ZERO))) for(int i = length; i < width; i++) PUTCHAR(' ', count);
     if(!length) goto lbl_normal;
