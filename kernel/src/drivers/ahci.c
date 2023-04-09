@@ -4,11 +4,12 @@
 #include <panic.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
+#include <memory/vmm.h>
 #include <memory/pmm_lowmem.h>
 
 #define PAGE_SIZE 0x1000
 #define SECTOR_SIZE 512
-#define SPE (PAGE_SIZE / SECTOR_SIZE)
+#define SPP (PAGE_SIZE / SECTOR_SIZE)
 
 #define PRDT_DW3_DBC(dbc) ((dbc) & 0x3FFFFF)
 #define PRDT_DW3_I (1 << 31)
@@ -67,7 +68,9 @@ static void stop_port(ahci_port_registers_t *port) {
     while(port->command_and_status & (PxCMD_FR | PxCMD_CR));
 }
 
-void ahci_read(uint8_t port, uint64_t sector, uint16_t sector_count, void *dest) {
+void ahci_read(uint8_t port, uint64_t lba, uint16_t count, void *dest) {
+    if(!count) return;
+    if((uintptr_t) dest & 0xFFF) panic("AHCI", "Unaligned dest address");
     ahci_port_registers_t *port_regs = (ahci_port_registers_t *) (g_bar5 + 0x100 + sizeof(ahci_port_registers_t) * port);
 
     int cmd_slot = -1;
@@ -76,42 +79,43 @@ void ahci_read(uint8_t port, uint64_t sector, uint16_t sector_count, void *dest)
     ahci_command_header_t *command = (ahci_command_header_t *) HHDM(g_command_lists[port] + sizeof(ahci_command_header_t) * cmd_slot);
     memset(command, 0, sizeof(ahci_command_header_t));
     command->flags = (sizeof(ahci_fis_reg_h2d_t) / sizeof(uint32_t)) & 0x1F;
-    command->prd_table_length = (sector_count + SPE - 1) / SPE;
+    command->prd_table_length = (count + SPP - 1) / SPP;
 
     int command_table_page_count = (0x80 + command->prd_table_length * 4 + PAGE_SIZE - 1) / PAGE_SIZE;
-    void *command_table = pmm_lowmem_request(command_table_page_count);
+    void *command_table = pmm_lowmem_request(command_table_page_count); // TODO: Consider static allocations for PRDT
+    if((uintptr_t) command_table & 0x7F) panic("AHCI", "Unaligned command table");
     memset((void *) HHDM(command_table), 0, PAGE_SIZE * command_table_page_count);
     command->command_table_descriptor_base_address = (uint32_t) (uintptr_t) command_table;
     command->command_table_descriptor_base_address_upper = (uint32_t) ((uintptr_t) command_table >> 32);
-
-    ahci_prdt_entry *entries = (ahci_prdt_entry *) HHDM(command_table + 0x80);
-    uint16_t sectors_left = sector_count;
-    for(int i = 0; i < command->prd_table_length - 1; i++) {
-        entries[i].data_base_address = (uint32_t) (uintptr_t) dest;
-        entries[i].data_base_address_upper = (uint32_t) ((uintptr_t) dest >> 32);
-        entries[i].byte_count_and_flags = PRDT_DW3_DBC(SPE * SECTOR_SIZE - 1);
-        entries[i].byte_count_and_flags |= PRDT_DW3_I;
-        dest += SPE * SECTOR_SIZE;
-        sectors_left -= SPE;
-    }
-    entries[command->prd_table_length - 1].data_base_address = (uint32_t) (uintptr_t) dest;
-    entries[command->prd_table_length - 1].data_base_address_upper = (uint32_t) ((uintptr_t) dest >> 32);
-    entries[command->prd_table_length - 1].byte_count_and_flags = PRDT_DW3_DBC((sectors_left * SECTOR_SIZE) - 1);
-    entries[command->prd_table_length - 1].byte_count_and_flags |= PRDT_DW3_I;
 
     ahci_fis_reg_h2d_t *commandfis = (ahci_fis_reg_h2d_t *) HHDM(command_table);
     commandfis->fis_type = AHCI_FIS_TYPE_REG_H2D;
     commandfis->flags = FIS_REG_H2D_FLAGS_CMD;
     commandfis->command = ATA_CMD_READ_DMA_EX;
-    commandfis->lba0 = (uint8_t) sector;
-    commandfis->lba1 = (uint8_t) (sector >> 8);
-    commandfis->lba2 = (uint8_t) (sector >> 16);
-    commandfis->lba3 = (uint8_t) (sector >> 24);
-    commandfis->lba4 = (uint8_t) (sector >> 32);
-    commandfis->lba5 = (uint8_t) (sector >> 40);
+    commandfis->lba0 = (uint8_t) lba;
+    commandfis->lba1 = (uint8_t) (lba >> 8);
+    commandfis->lba2 = (uint8_t) (lba >> 16);
+    commandfis->lba3 = (uint8_t) (lba >> 24);
+    commandfis->lba4 = (uint8_t) (lba >> 32);
+    commandfis->lba5 = (uint8_t) (lba >> 40);
     commandfis->device = FIS_REG_H2D_LBA_MODE;
-    commandfis->count_low = (uint8_t) sector_count;
-    commandfis->count_high = (uint8_t) (sector_count >> 8);
+    commandfis->count_low = (uint8_t) count;
+    commandfis->count_high = (uint8_t) (count >> 8);
+
+    ahci_prdt_entry *prdt = (ahci_prdt_entry *) HHDM(command_table + 0x80);
+    for(int i = 0; i < command->prd_table_length; i++) {
+        uintptr_t address = vmm_physical(dest);
+        uint16_t sectors = SPP;
+        if(count < SPP) sectors = count;
+
+        prdt[i].data_base_address = (uint32_t) address;
+        prdt[i].data_base_address_upper = (uint32_t) (address >> 32);
+        prdt[i].byte_count_and_flags = PRDT_DW3_DBC(sectors * SECTOR_SIZE - 1);
+        prdt[i].byte_count_and_flags |= PRDT_DW3_I;
+
+        dest += sectors * SECTOR_SIZE;
+        count -= sectors;
+    }
 
     int spin = 0;
     while((port_regs->task_file_data & (ATA_DEV_BUSY | ATA_DEV_DRQ))) {

@@ -1,7 +1,6 @@
 CC = /usr/local/x86_64elfgcc/bin/x86_64-elf-gcc
 LD = /usr/local/x86_64elfgcc/bin/x86_64-elf-ld
 ASMC = /bin/nasm
-LDFLAGS = -nostdlib
 CFLAGS = -ffreestanding -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable -O2
 
 # Sources
@@ -13,7 +12,7 @@ C_SOURCES = $(shell find src/ -type f -name '*.c')
 
 # Targets
 src/kernel.elf: ${ASM_SOURCES:.asm=_s.o} ${C_SOURCES:.c=.o}
-	${LD} ${LDFLAGS} -o $@ -T"link.ld" $^
+	${LD} -o $@ -T"link.ld" $^
 
 # Wildcard Targets
 %_s.o: %.asm

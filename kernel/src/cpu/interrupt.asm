@@ -18,7 +18,10 @@ isr_stub:
     push r14
     push r15
 
-    mov rdi, rsp
+    mov rax, rsp                            ; Save the RSP that is pointing to the int frame
+    and rsp, ~0xf                           ; Align stack to 16bytes for C
+
+    mov rdi, rax                            ; RDI to be used as a pointer to the int frame
     call interrupt_handler                  ; Call interrupt handler
 
     pop r15                                 ; Restore CPU state
@@ -37,7 +40,7 @@ isr_stub:
     pop rbx
     pop rax
 
-    add rsp, 16                             ; Discard interrupt number and other data off of the stack
+    add rsp, 16                             ; Discard interrupt number and error code
     iretq
 
 %macro ISR 2
