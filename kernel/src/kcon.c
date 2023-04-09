@@ -4,6 +4,7 @@
 #include <graphics/basicfont.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
+#include <memory/vmm.h>
 #include <memory/pmm_lowmem.h>
 #include <memory/heap.h>
 #include <drivers/pit.h>
@@ -58,10 +59,7 @@ static bool get_arg(char *str, int argc, char **value) {
 
 static bool get_arg_num(char *str, int argc, uint64_t *value) {
     char *arg;
-    if(get_arg(str, argc, &arg)) {
-        heap_free(arg);
-        return true;
-    }
+    if(get_arg(str, argc, &arg)) return true;
     int argl = strlen(arg);
     *value = 0;
     uint64_t pow = 1;
@@ -173,36 +171,84 @@ static void command_handler(char *input) {
                 }
             }
         } else if(strcmp(command, "read") == 0) {
-            if(arg_count < 3) {
+            if(arg_count < 4) {
                 printf("Missing arguments\n");
             } else {
                 uint64_t sector;
+                uint64_t count;
                 uint64_t dest;
-                if(get_arg_num(input, 1, &sector) || get_arg_num(input, 2, &dest)) {
+                if(get_arg_num(input, 1, &sector) || get_arg_num(input, 2, &count) || get_arg_num(input, 3, &dest)) {
                     printf("Invalid arguments\n");
                 } else {
-                    ahci_read(0, sector, 1, (void *) dest);
-                    printf("Read sector %li into %#lx\n", sector, dest, dest);
+                    ahci_read(0, sector, count, (void *) dest);
+                    printf("Read %li sectors starting at %li into %#lx\n", count, sector, dest);
+                }
+            }
+        } else if(strcmp(command, "phys") == 0) {
+            if(arg_count < 2) {
+                printf("Missing arguments\n");
+            } else {
+                uint64_t virt;
+                if(get_arg_num(input, 1, &virt)) {
+                    printf("Invalid arguments\n");
+                } else {
+                    printf("Physical %#lx\n", vmm_physical((void *) virt));
+                }
+            }
+        } else if(strcmp(command, "vdbg") == 0) {
+            if(arg_count < 5) {
+                printf("Missing arguments\n");
+            } else {
+                uint64_t indexes[4];
+                if(get_arg_num(input, 1, indexes) || get_arg_num(input, 2, indexes + 1) || get_arg_num(input, 3, indexes + 2) || get_arg_num(input, 4, indexes + 3)) {
+                    printf("Invalid arguments\n");
+                } else {
+                    uint64_t entries[4] = {0};
+                    vmm_dbg_tables(indexes, entries);
+                    for(int i = 0; i < 4; i++) {
+                        uint64_t address = entries[i] & 0x000FFFFFFFFFF000;
+                        uint64_t flags = entries[i] & 0xFFF;
+                        printf("L%i Entry [%#lx] (%#lx)\n", 4 - i, address, flags);
+                    }
+                }
+            }
+        } else if(strcmp(command, "reqvpage") == 0) {
+            if(arg_count < 3) {
+                printf("Missing arguments\n");
+            } else {
+                uint64_t virt;
+                uint64_t page_count;
+                if(get_arg_num(input, 1, &virt) || get_arg_num(input, 2, &page_count)) {
+                    printf("Invalid arguments\n");
+                } else {
+                    for(uint64_t i = 0; i < page_count; i++) {
+                        vmm_map(pmm_page_request(), (void *) (virt + i * 0x1000));
+                    }
+                    printf("Allocated %li pages at virtual address %#lx\n", page_count, virt);
                 }
             }
         } else if(strcmp(command, "hexdump") == 0) {
             if(arg_count < 3) {
                 printf("Missing arguments\n");
             } else {
+                uint64_t usephys;
                 uint64_t address;
                 uint64_t count;
+                if(get_arg_num(input, 3, &usephys) || usephys > 1) usephys = 0;
                 if(get_arg_num(input, 1, &address) || get_arg_num(input, 2, &count)) {
                     printf("Invalid arguments");
                 } else {
+                    if(usephys) address = HHDM(address);
                     bool star = false;
                     uint8_t last[10];
                     int row_count = ((int) count + 9) / 10;
                     for(int y = 0; y < row_count; y++) {
-                        int row_length = 10 - ((int) count - y * 10) % 10;
+                        int row_length = (int) count - y * 10;
+                        if(row_length > 10) row_length = 10;
                         bool identical = (y != 0 && y != row_count - 1);
                         if(identical) {
                             for(int x = 0; x < row_length; x++) {
-                                uint8_t value = *(uint8_t *) (HHDM(address) + y * 10 + x);
+                                uint8_t value = *(uint8_t *) (address + y * 10 + x);
                                 if(last[x] != value) identical = false;
                                 last[x] = value;
                             }
@@ -212,12 +258,13 @@ static void command_handler(char *input) {
                             star = false;
                             printf("%#18.16lx:  ", address + y * 10);
                             for(int x = 0; x < row_length; x++) {
-                                printf("%.2x ", *(uint8_t *) (HHDM(address) + y * 10 + x));
+                                printf("%.2x ", *(uint8_t *) (address + y * 10 + x));
                             }
+                            for(int x = row_length; x < 10; x++) printf("   ");
 
                             printf("  ");
                             for(int x = 0; x < row_length; x++) {
-                                char c = *(char *) (HHDM(address) + y * 10 + x);
+                                char c = *(char *) (address + y * 10 + x);
                                 if(c < 32 || c > 126) c = '.';
                                 printf("%c ", c);
                             }
@@ -239,7 +286,7 @@ static void command_handler(char *input) {
             printf("rpage: Get one page of memory\n");
             printf("rcpage: Get contiguous pages of memory\n");
             printf("sp: Display the stack pointer of an interrupt\n");
-            printf("read: Loads a desired sector into a desired destination\n");
+            printf("read: Reads from disk\n");
             printf("hexdump: Dumps memory at an address\n");
             printf("help: Display all the commands\n");
         } else {

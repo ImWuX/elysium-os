@@ -32,8 +32,9 @@ typedef enum {
 } vmm_flag_t;
 
 void vmm_initialize(uint64_t pml4_address);
-uint64_t vmm_physical(void *virtual_address);
+uintptr_t vmm_physical(void *virtual_address);
 void vmm_mapf(void *physical_address, void *virtual_address, uint64_t flags);
 void vmm_map(void *physical_address, void *virtual_address);
+void vmm_dbg_tables(uint64_t indexes[4], uint64_t entries[4]);
 
 #endif

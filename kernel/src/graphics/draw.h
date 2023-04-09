@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <graphics/draw.h>
 
 typedef struct {
     uint8_t red_size;

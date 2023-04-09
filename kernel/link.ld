@@ -9,20 +9,20 @@ SECTIONS
     . = ld_kernel_start;
 
     .text : {
-        *(.text)
+        *(.text .text.*)
     }
 
     .data : {
-        *(.data)
+        *(.data .data.*)
     }
 
     .rodata : {
-        *(.rodata)
+        *(.rodata .rodata.*)
     }
 
     .bss : {
         *(COMMON)
-        *(.bss)
+        *(.bss .bss.*)
     }
 
     ld_kernel_end = .;
