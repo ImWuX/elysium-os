@@ -125,9 +125,11 @@ static void stack_trace(stack_frame_t *stack_frame) {
             print("[UNKNOWN]");
         } else {
             while(g_symbols[offset] != '\n') printc(g_symbols[offset++]);
+            print(" +");
+            print_num(address - stack_frame->rip);
         }
         print(" <");
-        print_num((uint64_t) stack_frame->rip);
+        print_num(stack_frame->rip);
         print(">\n");
         stack_frame = stack_frame->rbp;
     }
@@ -184,7 +186,7 @@ noreturn void exception_handler(interrupt_frame_t *regs) {
     print("\nss: "); print_num(regs->ss);
     printc('\n');
     stack_frame_t initial_stack_frame;
-    initial_stack_frame.rbp = regs->rbp;
+    initial_stack_frame.rbp = (stack_frame_t *) regs->rbp;
     initial_stack_frame.rip = regs->rip;
     stack_trace(&initial_stack_frame);
     asm volatile("cli\nhlt");
