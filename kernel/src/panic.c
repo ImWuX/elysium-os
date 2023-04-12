@@ -125,7 +125,7 @@ static void stack_trace(stack_frame_t *stack_frame) {
             print("[UNKNOWN]");
         } else {
             while(g_symbols[offset] != '\n') printc(g_symbols[offset++]);
-            print(" +");
+            printc('+');
             print_num(address - stack_frame->rip);
         }
         print(" <");
