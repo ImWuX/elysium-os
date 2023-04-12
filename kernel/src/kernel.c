@@ -26,6 +26,7 @@
 #include <drivers/hpet.h>
 #include <fs/vfs.h>
 #include <fs/fat32.h>
+#include <fs/tmpfs.h>
 #include <userspace/syscall.h>
 #include <proc/sched.h>
 #include <kcon.h>
@@ -112,6 +113,16 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
         ps2_initialize();
     }
 
+    vfs_initialize(tmpfs_create());
+    vfs_node_t *root;
+    vfs_node_t *tmp;
+    g_vfs->ops->root(g_vfs, &root);
+
+    root->ops->create(root, &tmp, "test");
+    root->ops->create(root, &tmp, "test 2");
+    root->ops->mkdir(root, &tmp, "epic dir");
+    tmp->ops->create(tmp, &tmp, "a file");
+
     gdt_tss_initialize();
 
     // TODO: Do we just want to panic or do we want an alternative way of implementing syscalls
@@ -120,4 +131,16 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
 
     sched_handoff();
     __builtin_unreachable();
+}
+
+void print_tmpfs(tmpfs_node_t *node, int level) {
+    for(int i = 0; i < level * 2; i++) printf(" ");
+    printf("%s\n", node->name);
+    if(node->is_dir) {
+        node = node->children;
+        while(node) {
+            print_tmpfs(node, level + 1);
+            node = node->next;
+        }
+    }
 }
