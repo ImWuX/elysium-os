@@ -259,11 +259,7 @@ int vprintf(const char *format, va_list list) {
                 while(str[length]) ++length;
                 if(precision >= 0 && precision < length) length = precision;
                 if(!(flags & FLAG_LEFT)) for(int i = length; i < width; i++) PUTCHAR(' ', count);
-                while(precision != 0 && *str) {
-                    PUTCHAR(*str, count);
-                    if(precision > 0) precision--;
-                    str++;
-                }
+                for(int i = 0; i < length; i++) PUTCHAR(str[i], count);
                 if(flags & FLAG_LEFT) for(int i = length; i < width; i++) PUTCHAR(' ', count);
                 fmt++;
                 goto lbl_normal;
