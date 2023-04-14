@@ -13,6 +13,13 @@ int strcmp(const char *lhs, const char *rhs) {
     return lhs[i] < rhs[i] ? -1 : 1;
 }
 
+char *strcpy(char *dest, const char *src) {
+    int i;
+    for(i = 0; src[i]; i++) dest[i] = src[i];
+    dest[i] = src[i];
+    return dest;
+}
+
 void *memset(void *dest, int ch, size_t count) {
     char *temp = (char *) dest;
     for(; count > 0; count--) *temp++ = (unsigned char) ch;

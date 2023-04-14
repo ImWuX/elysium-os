@@ -59,9 +59,9 @@ void *heap_alloc(uint64_t count) {
                 new->free = true;
                 new->length = current_entry->length - count - sizeof(heap_entry_t);
                 current_entry->length = count;
-                current_entry->free = false;
                 if(current_entry == tail) tail = new;
             }
+            current_entry->free = false;
             return (void *) current_entry + sizeof(heap_entry_t);
         }
         current_entry = current_entry->next;

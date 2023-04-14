@@ -1,8 +1,6 @@
 #include "vfs.h"
 #include <string.h>
 
-#define MAX_PATH 255
-
 vfs_t *g_vfs;
 
 void vfs_initialize(vfs_t *root_vfs) {
@@ -10,7 +8,7 @@ void vfs_initialize(vfs_t *root_vfs) {
 }
 
 int vfs_lookup(vfs_node_t *cwd, const char *path, vfs_node_t **out) {
-    char buffer[MAX_PATH + 1];
+    char buffer[VFS_MAX_PATH + 1];
     int sub = 0;
 
     vfs_node_t *node = cwd;
@@ -20,7 +18,7 @@ int vfs_lookup(vfs_node_t *cwd, const char *path, vfs_node_t **out) {
         sub++;
     }
 
-    for(int i = 0; i < MAX_PATH; i++) {
+    for(int i = 0; i < VFS_MAX_PATH; i++) {
         if(path[i] == '/' || path[i] == 0) {
             if(sub < i && (i - sub != 1 || path[i - 1] != '.')) {
                 memcpy(buffer, path + sub, i - sub);

@@ -9,6 +9,7 @@ typedef struct tmpfs_node {
     char *name;
     vfs_node_t *vfs_node;
     bool is_dir;
+    uint64_t size;
     struct tmpfs_node *parent;
     struct tmpfs_node *next;
     struct tmpfs_node *children;

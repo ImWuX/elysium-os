@@ -11,23 +11,25 @@
 #include <drivers/mouse.h>
 #include <drivers/hpet.h>
 #include <kdesktop.h>
-#include <fs/vfs.h>
 #include <drivers/pci.h>
 #include <drivers/ahci.h>
+#include <fs/tmpfs.h>
 
 #define DEFAULT_FG 0xFFFFFFFF
 #define DEFAULT_BG 0
 #define TAB_WIDTH 4
-#define MAX_CHARACTERS 200
 #define PREFIX '>'
+#define MAX_CHARS 512
 
 static int g_cursor_x;
 static int g_cursor_y;
 static draw_context_t *g_ctx;
 
-static char g_chars[MAX_CHARACTERS];
-static int g_chars_written;
-static char g_path[512];
+static char g_chars[MAX_CHARS];
+static int g_chars_written = 0;
+static char g_path[VFS_MAX_PATH + 1] = "/home";
+static int g_path_length = 5;
+static vfs_node_t *g_cwd;
 
 static void clear() {
     draw_rect(g_ctx, 0, 0, g_ctx->width, g_ctx->height, DEFAULT_BG);
@@ -51,6 +53,7 @@ static bool get_arg(char *str, int argc, char **value) {
 
     int strlen = 0;
     while(str[strlen] && str[strlen] != ' ') strlen++;
+    if(strlen <= 0) return true;
     *value = heap_alloc(strlen + 1);
     memcpy(*value, str, strlen);
     (*value)[strlen] = 0;
@@ -118,21 +121,71 @@ static void command_handler(char *input) {
             asm volatile("mov %%rsp, %0" : "=rm" (sp));
             printf("interrupt stack pointer >> %lx\n", sp);
         } else if(strcmp(command, "cd") == 0) {
-            // int arg_length = 0;
-            // while(input[arg_length]) arg_length++;
-            // int i = 0;
-            // while(i < 512) {
-            //     if(!g_path[i]) break;
-            //     i++;
-            // }
-            // if(i + arg_length >= 512) {
-            //     printf("Exceeded path limit");
-            //     return;
-            // }
-            // for(int j = 0; j < arg_length; j++) {
-            //     g_path[i + j] = input[j];
-            // }
-            // g_path[i + arg_length] = 0;
+            char *str;
+            if(arg_count < 2) {
+                printf("Missing arguments\n");
+            } else {
+                if(get_arg(input, 1, &str)) {
+                    printf("Invalid arguments\n");
+                } else {
+                    vfs_node_t *node;
+                    if(vfs_lookup(g_cwd, str, &node) == 0 && node->type == VFS_NODE_TYPE_DIRECTORY) {
+                        g_cwd = node;
+
+                        char *cstr = str;
+                        if(*str == '/') g_path_length = 0;
+
+                        bool term_start = true;
+                        while(*cstr) {
+                            switch(*cstr) {
+                                case '/':
+                                    term_start = true;
+                                    cstr++;
+                                    continue;
+                                case '.':
+                                    if(!term_start) break;
+                                    int period_count = 1;
+                                    if(cstr[1] == '.') period_count = 2;
+                                    if(cstr[period_count] && cstr[period_count] != '/') break;
+                                    if(period_count == 2) {
+                                        while(g_path[g_path_length] != '/' && g_path_length > 0) g_path_length--;
+                                        g_path[g_path_length] = 0;
+                                    }
+                                    cstr += period_count;
+                                    continue;
+                            }
+                            if(term_start && g_path_length > 1) g_path[g_path_length++] = '/';
+                            term_start = false;
+                            g_path[g_path_length++] = *cstr++;
+                        }
+                        if(!g_path_length) g_path[g_path_length++] = '/';
+                    }
+                    heap_free(str);
+                }
+            }
+        } else if(strcmp(command, "mkdir") == 0) {
+            char *str;
+            if(arg_count < 2) {
+                printf("Missing arguments\n");
+            } else {
+                if(get_arg(input, 1, &str)) {
+                    printf("Invalid arguments\n");
+                } else {
+                    vfs_node_t *tmp;
+                    vfs_node_attributes_t *attributes = heap_alloc(sizeof(vfs_node_attributes_t));
+                    attributes->type = VFS_NODE_TYPE_DIRECTORY;
+                    if(g_cwd->ops->create(g_cwd, &tmp, str, attributes)) printf("Failed\n");
+                    heap_free(attributes);
+                    heap_free(str);
+                }
+            }
+        } else if(strcmp(command, "ls") == 0) {
+            off_t offset = 0;
+            dirent_t *dirent = heap_alloc(sizeof(dirent_t));
+            while((offset = g_cwd->ops->readdir(g_cwd, dirent, offset))) {
+                printf("%s\n", dirent->d_name);
+            }
+            heap_free(dirent);
         } else if(strcmp(command, "pcidev") == 0) {
             pci_device_t *device = g_pci_devices;
             while(device) {
@@ -299,9 +352,6 @@ static void command_handler(char *input) {
 
 void kcon_initialize(draw_context_t *ctx) {
     g_ctx = ctx;
-    g_chars_written = 0;
-    g_path[0] = '/';
-    g_path[1] = 0;
 
     draw_rect(g_ctx, 0, 0, g_ctx->width, g_ctx->height, DEFAULT_BG);
     printf(" _____ _         _           _____ _____ \n");
@@ -312,7 +362,11 @@ void kcon_initialize(draw_context_t *ctx) {
     printf("Welcome to Elysium OS\n");
     printf("Physical Memory Initialized\n");
     printf("Stats:\n\tTotal: %li bytes\n\tFree: %li bytes\n\tUsed: %li bytes\n\tLowmem: %li bytes\n", pmm_mem_total(), pmm_mem_free(), pmm_mem_used(), pmm_mem_low());
-    printf("%s %c ", g_path, PREFIX);
+    printf("%.*s %c ", g_path_length, g_path, PREFIX);
+}
+
+void kcon_initialize_fs(vfs_node_t *cwd) {
+    g_cwd = cwd;
 }
 
 void kcon_keyboard_handler(uint8_t character) {
@@ -327,10 +381,10 @@ void kcon_keyboard_handler(uint8_t character) {
             g_chars[g_chars_written] = 0;
             command_handler(g_chars);
             g_chars_written = 0;
-            printf("%s %c ", g_path, PREFIX);
+            printf("%.*s %c ", g_path_length, g_path, PREFIX);
             return;
         default:
-            if(g_chars_written > MAX_CHARACTERS) return;
+            if(g_chars_written > MAX_CHARS) return;
             g_chars[g_chars_written] = character;
             g_chars_written++;
             break;

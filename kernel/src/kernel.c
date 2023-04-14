@@ -115,13 +115,11 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
 
     vfs_initialize(tmpfs_create());
     vfs_node_t *root;
-    vfs_node_t *tmp;
     g_vfs->ops->root(g_vfs, &root);
-
-    root->ops->create(root, &tmp, "test");
-    root->ops->create(root, &tmp, "test 2");
-    root->ops->mkdir(root, &tmp, "epic dir");
-    tmp->ops->create(tmp, &tmp, "a file");
+    vfs_node_t *home;
+    vfs_node_attributes_t attributes = { .type = VFS_NODE_TYPE_DIRECTORY };
+    root->ops->create(root, &home, "home", &attributes);
+    kcon_initialize_fs(home);
 
     gdt_tss_initialize();
 
