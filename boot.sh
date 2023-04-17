@@ -17,7 +17,7 @@ while [ 1 ]; do
     clear
 
     # Building OS
-    make
+    make ARCH=AMD64
     if [ $? -eq 0 ]; then
         if [ "$sim" == "qemu" ]; then
             # Running QEMU
