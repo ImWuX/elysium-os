@@ -1,5 +1,3 @@
-#ifdef __ARCH_AMD64
-
 #include "gdt.h"
 // #include <string.h>
 // #include <memory/heap.h>
@@ -70,5 +68,3 @@ void gdt_initialize() {
 
 //     asm volatile("ltr %0" : : "m" (seg));
 // }
-
-#endif
