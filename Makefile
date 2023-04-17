@@ -1,6 +1,7 @@
 BUILD = ${realpath ./build}
 FILES = ${realpath ./files}
 TARTARUS = ${realpath ../tartarus-bootloader/}
+ARCH ?= AMD64
 
 # Phony Targets
 .PHONY: all clean $(BUILD)/kernel.elf $(BUILD)/ksymbols.txt $(BUILD)/disk.img

@@ -1,6 +1,7 @@
 #include <stdnoreturn.h>
 #include <stdbool.h>
 #include <tartarus.h>
+#include <arch/arch_init.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
 
@@ -14,6 +15,8 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
         if(entry.type != TARTARUS_MEMAP_TYPE_USABLE) continue;
         pmm_region_add(entry.base_address, entry.length);
     }
+
+    arch_init(boot_params);
 
     for(;;) asm volatile("hlt");
     __builtin_unreachable();
