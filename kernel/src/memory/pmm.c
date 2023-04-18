@@ -30,12 +30,14 @@ void pmm_region_add(uintptr_t base, size_t length) {
     size_t i = 0;
     for(; i < used_pages; i++) {
         region->pages[i].usage = PMM_PAGE_USAGE_WIRED;
+        g_stats.wired_pages++;
     }
 
     for(; i < region->page_count; i++) {
         region->pages[i].usage = PMM_PAGE_USAGE_FREE;
         region->pages[i].next = g_pages_free;
         g_pages_free = &region->pages[i];
+        g_stats.free_pages++;
     }
 
     region->next = g_regions;
