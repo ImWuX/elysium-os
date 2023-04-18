@@ -55,6 +55,9 @@ typedef struct {
 	uint16_t iomap_base;
 } __attribute__((packed)) gdt_tss_t;
 
+/**
+ * @brief Initialize GDT
+ */
 void gdt_initialize();
 // void gdt_tss_initialize();
 
