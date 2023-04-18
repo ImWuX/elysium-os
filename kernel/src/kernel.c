@@ -6,12 +6,13 @@
 #include <memory/pmm.h>
 #include <graphics/draw.h>
 #include <graphics/basicfont.h>
+#include <string.h>
 
 uintptr_t g_hhdm_address;
 
 static draw_context_t g_ctx;
 static int g_x = 0, g_y = 0;
-static void putchar(char c) {
+void putchar(char c) {
     switch(c) {
         case '\n':
             g_x = 0;
@@ -39,6 +40,8 @@ extern noreturn void kmain(tartarus_parameters_t *boot_params) {
     }
 
     arch_init(boot_params);
+
+    printf("Welcome to ElysiumOS\n");
 
     for(;;) asm volatile("hlt");
     __builtin_unreachable();
