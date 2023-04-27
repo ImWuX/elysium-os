@@ -30,6 +30,7 @@ while [ 1 ]; do
                 -machine q35 \
                 -k en-us \
                 -serial stdio \
+                -M smm=off \
                 -s
         else
             # Running Bochs

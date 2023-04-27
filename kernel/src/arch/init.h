@@ -1,5 +1,5 @@
-#ifndef ARCH_ARCH_INIT_H
-#define ARCH_ARCH_INIT_H
+#ifndef ARCH_INIT_H
+#define ARCH_INIT_H
 
 #include <tartarus.h>
 

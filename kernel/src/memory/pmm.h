@@ -8,6 +8,7 @@
 typedef enum {
     PMM_PAGE_USAGE_FREE,
     PMM_PAGE_USAGE_WIRED,
+    PMM_PAGE_USAGE_VMM,
     PMM_PAGE_USAGE_ANON,
     PMM_PAGE_USAGE_BACKED
 } pmm_page_usage_t;
@@ -33,11 +34,11 @@ typedef struct {
 
 /**
  * @brief Adds a block of memory to be managed by the PMM.
- * 
+ *
  * @param base Base address of memory block
- * @param length Size of the block in bytes
+ * @param size Size of the block in bytes
  */
-void pmm_region_add(uintptr_t base, size_t length);
+void pmm_region_add(uintptr_t base, size_t size);
 
 /**
  * @brief Allocates a page of memory.
