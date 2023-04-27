@@ -17,16 +17,16 @@ static pmm_stats_t g_stats = {0};
 
 static pmm_page_t *g_pages_free = 0;
 
-void pmm_region_add(uintptr_t base, size_t length) {
+void pmm_region_add(uintptr_t base, size_t size) {
     pmm_region_t *region = (pmm_region_t *) HHDM(base);
     region->base = base;
-    region->page_count = length / PAGE_SIZE;
+    region->page_count = size / ARCH_PAGE_SIZE;
 
     for(size_t i = 0; i < region->page_count; i++) {
-        region->pages[i].paddr = region->base + i * PAGE_SIZE;
+        region->pages[i].paddr = region->base + i * ARCH_PAGE_SIZE;
     }
 
-    size_t used_pages = CEIL(sizeof(pmm_region_t) + sizeof(pmm_page_t) * region->page_count, PAGE_SIZE);
+    size_t used_pages = CEIL(sizeof(pmm_region_t) + sizeof(pmm_page_t) * region->page_count, ARCH_PAGE_SIZE);
     size_t i = 0;
     for(; i < used_pages; i++) {
         region->pages[i].usage = PMM_PAGE_USAGE_WIRED;
@@ -51,6 +51,7 @@ pmm_page_t *pmm_page_alloc(pmm_page_usage_t usage) {
         case PMM_PAGE_USAGE_ANON:
             g_stats.anon_pages++;
             break;
+        case PMM_PAGE_USAGE_VMM:
         case PMM_PAGE_USAGE_WIRED:
             g_stats.wired_pages++;
             break;
@@ -72,6 +73,7 @@ void pmm_page_free(pmm_page_t *page) {
         case PMM_PAGE_USAGE_ANON:
             g_stats.anon_pages--;
             break;
+        case PMM_PAGE_USAGE_VMM:
         case PMM_PAGE_USAGE_WIRED:
             g_stats.wired_pages--;
             break;
