@@ -1,7 +1,6 @@
 #ifndef ARCH_AMD64_MSR_H
 #define ARCH_AMD64_MSR_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 typedef enum {

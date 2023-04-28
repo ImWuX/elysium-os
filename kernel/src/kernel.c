@@ -1,5 +1,3 @@
-#include <stdnoreturn.h>
-#include <stdbool.h>
 #include <tartarus.h>
 #include <panic.h>
 #include <stdio.h>
@@ -32,7 +30,7 @@ int putchar(int c) {
     return (char) c;
 }
 
-extern noreturn void kmain(tartarus_parameters_t *boot_params) {
+[[noreturn]] extern void kmain(tartarus_parameters_t *boot_params) {
     if(boot_params->hhdm_start < ARCH_HHDM_START || boot_params->hhdm_end >= ARCH_HHDM_END) panic("KERNEL", "HHDM is not within arch specific boundaries");
     g_hhdm_address = boot_params->hhdm_start;
     uintptr_t hhdm_end = boot_params->hhdm_end;

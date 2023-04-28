@@ -1,7 +1,7 @@
 CC = /usr/local/x86_64elfgcc/bin/x86_64-elf-gcc
 LD = /usr/local/x86_64elfgcc/bin/x86_64-elf-ld
 ASMC = /bin/nasm
-CFLAGS = -ffreestanding -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable -O2 -D __ARCH_${ARCH}
+CFLAGS = -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable -O2 -D __ARCH_${ARCH}
 
 # Sources
 ASM_SOURCES = $(shell find src/ -type f -name '*.asm' -not -path "src/arch/*")
