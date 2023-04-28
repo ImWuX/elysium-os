@@ -2,7 +2,6 @@
 #define MEMORY_PMM_H
 
 #include <stdint.h>
-#include <stdbool.h>
 #include <stddef.h>
 
 typedef enum {

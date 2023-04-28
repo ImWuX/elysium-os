@@ -27,7 +27,7 @@ typedef struct {
 static gdt_tss_t g_tss;
 
 static gdt_entry_t g_gdt[] = {
-    {0},
+    {},
     {
         .limit = 0,
         .base_low = 0,
@@ -60,7 +60,7 @@ static gdt_entry_t g_gdt[] = {
         .flags = 0b00100000,
         .base_high = 0
     },
-    {0}, {0}
+    {}, {}
 };
 
 void gdt_initialize() {

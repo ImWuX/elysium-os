@@ -1,5 +1,4 @@
 #include "stdio.h"
-#include <stdbool.h>
 #include <stddef.h>
 #include <math.h>
 
@@ -265,7 +264,7 @@ int vprintf(const char *format, va_list list) {
                 goto lbl_normal;
             case 'X':
                 flags |= FLAG_UPPERCASE;
-                __attribute__((fallthrough));
+                [[fallthrough]];
             case 'x':
                 if(precision < 0) precision = 1;
                 if(flags & FLAG_ALTERNATIVE) {

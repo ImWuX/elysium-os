@@ -13,9 +13,8 @@ typedef struct pmm_region {
 } pmm_region_t;
 
 static pmm_region_t *g_regions = 0;
-static pmm_stats_t g_stats = {0};
-
 static pmm_page_t *g_pages_free = 0;
+static pmm_stats_t g_stats = {};
 
 void pmm_region_add(uintptr_t base, size_t size) {
     pmm_region_t *region = (pmm_region_t *) HHDM(base);

@@ -1,5 +1,4 @@
 #include "heap.h"
-#include <stdbool.h>
 #include <panic.h>
 #include <arch/types.h>
 #include <memory/pmm.h>
@@ -13,6 +12,8 @@ typedef struct heap_entry {
     struct heap_entry *next;
     struct heap_entry *prev;
 } heap_entry_t;
+
+static_assert(sizeof(heap_entry_t) < ARCH_PAGE_SIZE);
 
 static uintptr_t g_heap_start;
 static uintptr_t g_heap_end;

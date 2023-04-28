@@ -2,7 +2,6 @@
 #define MEMORY_VMM_H
 
 #include <stdint.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <arch/types.h>
 #include <memory/pmm.h>
@@ -18,8 +17,9 @@ typedef enum {
 } vmm_flags_t;
 
 typedef struct vmm_anon {
-    pmm_page_t *page;
     struct vmm_anon *next;
+    uintptr_t offset;
+    pmm_page_t *page;
 } vmm_anon_t;
 
 typedef struct vmm_range {
