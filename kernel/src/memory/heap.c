@@ -13,7 +13,7 @@ typedef struct heap_entry {
     struct heap_entry *prev;
 } heap_entry_t;
 
-static_assert(sizeof(heap_entry_t) < ARCH_PAGE_SIZE);
+static_assert(sizeof(heap_entry_t) < ARCH_PAGE_SIZE, "Arch page size is smaller than a heap entry");
 
 static uintptr_t g_heap_start;
 static uintptr_t g_heap_end;

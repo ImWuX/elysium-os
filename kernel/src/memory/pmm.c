@@ -13,7 +13,11 @@ typedef struct pmm_region {
 } pmm_region_t;
 
 static pmm_region_t *g_regions = 0;
+
 static pmm_page_t *g_pages_free = 0;
+static pmm_page_t *g_pages_wired = 0;
+static pmm_page_t *g_pages_active = 0;
+
 static pmm_stats_t g_stats = {};
 
 void pmm_region_add(uintptr_t base, size_t size) {
@@ -61,8 +65,14 @@ pmm_page_t *pmm_page_alloc(pmm_page_usage_t usage) {
     }
     g_stats.free_pages--;
     g_pages_free = page->next;
+    if(usage == PMM_PAGE_USAGE_WIRED) {
+        page->next = g_pages_wired;
+        g_pages_wired = page;
+    } else {
+        page->next = g_pages_active;
+        g_pages_active = page;
+    }
     page->usage = usage;
-    page->next = 0;
     page->state = PMM_PAGE_STATE_WIRED;
     return page;
 }
@@ -82,6 +92,16 @@ void pmm_page_free(pmm_page_t *page) {
         default: panic("PMM", "Cannot free a free page");
     }
     g_stats.free_pages++;
+    pmm_page_t *cur;
+    if(page->usage == PMM_PAGE_USAGE_WIRED) {
+        cur = g_pages_wired;
+    } else {
+        cur = g_pages_active;
+    }
+    while(cur) {
+        if(cur->next == page) cur->next = page->next;
+        cur = cur->next;
+    }
     page->usage = PMM_PAGE_USAGE_FREE;
     page->next = g_pages_free;
     g_pages_free = page;
