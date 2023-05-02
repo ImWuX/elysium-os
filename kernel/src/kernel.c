@@ -40,7 +40,6 @@ int putchar(int c) {
     g_ctx.height = boot_params->framebuffer->height;
     g_ctx.pitch = boot_params->framebuffer->pitch / (boot_params->framebuffer->bpp / 8);
 
-    arch_init(boot_params);
 
     for(uint16_t i = 0; i < boot_params->memory_map_length; i++) {
         tartarus_memap_entry_t entry = boot_params->memory_map[i];
@@ -61,6 +60,8 @@ int putchar(int c) {
     arch_vmm_create_kernel_address_space(&kernel_address_space);
     arch_vmm_load_address_space(&kernel_address_space);
     heap_initialize(&kernel_address_space, ARCH_KHEAP_START, ARCH_KHEAP_END);
+
+    arch_init(boot_params);
 
     printf(" _____ _         _           _____ _____ \n");
     printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");

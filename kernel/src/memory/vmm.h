@@ -22,13 +22,19 @@ typedef struct vmm_anon {
     pmm_page_t *page;
 } vmm_anon_t;
 
+typedef struct {
+    
+} vmm_object_t;
+
 typedef struct vmm_range {
     uintptr_t start;
     uintptr_t end;
     uint64_t flags;
     bool is_anon;
+    bool is_direct;
     union {
         vmm_anon_t *anon;
+        uintptr_t paddr;
     };
     struct vmm_range *next;
 } vmm_range_t;
@@ -48,6 +54,17 @@ typedef struct {
  * @return 0 on success, negative errno on failure
  */
 int vmm_alloc_wired(vmm_address_space_t *address_space, uintptr_t vaddr, size_t npages, uint64_t flags);
+
+/**
+ * @brief Map a range of virtual memory to a specific physical address.
+ * 
+ * @param address_space Address space
+ * @param vaddr Virtual address of range
+ * @param paddr Physical address to map into
+ * @param size Size of range
+ * @return 0 on success, negative errno on failure
+ */
+int vmm_map_direct(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, size_t size);
 
 /**
  * @brief Allocate a range of anonymous memory in a particular address space.
