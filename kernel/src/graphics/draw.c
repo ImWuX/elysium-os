@@ -13,9 +13,9 @@ inline static draw_color_t getpixel(draw_context_t *ctx, uint64_t offset) {
 
 draw_color_t draw_color(draw_context_t *ctx, uint8_t r, uint8_t g, uint8_t b) {
     return
-        ((r & ((1 << ctx->colormask->red_size) - 1)) << ctx->colormask->red_shift) |
-        ((g & ((1 << ctx->colormask->green_size) - 1)) << ctx->colormask->green_shift) |
-        ((b & ((1 << ctx->colormask->blue_size) - 1)) << ctx->colormask->blue_shift);
+        ((r & ((1 << 8) - 1)) << 16) |
+        ((g & ((1 << 8) - 1)) << 8) |
+        ((b & ((1 << 8) - 1)) << 0);
 }
 
 draw_color_t draw_getpixel(draw_context_t *ctx, int x, int y) {

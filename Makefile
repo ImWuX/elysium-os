@@ -21,10 +21,7 @@ $(BUILD)/disk.img: $(BUILD)/kernel.elf $(BUILD)/ksymbols.txt
 	../tartarus-bootloader/deploy.sh $@
 	mcopy -i $@ $(BUILD)/kernel.elf "::kernel.sys"
 	mcopy -i $@ $(BUILD)/ksymbols.txt "::ksymbols.txt"
-	mcopy -i $@ $(BUILD)/test.txt "::test.txt"
-	mcopy -i $@ $(BUILD)/universe.tga "::univ.tga"
 	mcopy -i $@ trtrs.cfg "::trtrs.cfg"
-	mcopy -i $@ userspace/test_program "::test_program"
 
 # Clean Targets
 clean:
