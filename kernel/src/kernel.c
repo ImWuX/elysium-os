@@ -38,22 +38,13 @@ static draw_context_t g_fb_context;
 noreturn void exception_handler(interrupt_frame_t *regs);
 
 extern noreturn void kmain(tartarus_parameters_t *boot_params) {
-    g_hhdm_address = boot_params->hhdm_address;
+    g_hhdm_address = boot_params->hhdm_start;
 
-    g_fb_colormask = (draw_colormask_t) {
-        .red_size = boot_params->framebuffer->mask_red_size,
-        .red_shift = boot_params->framebuffer->mask_red_shift,
-        .green_size = boot_params->framebuffer->mask_green_size,
-        .green_shift = boot_params->framebuffer->mask_green_shift,
-        .blue_size = boot_params->framebuffer->mask_blue_size,
-        .blue_shift = boot_params->framebuffer->mask_blue_shift
-    };
     g_fb_context = (draw_context_t) {
         .width = boot_params->framebuffer->width,
         .height = boot_params->framebuffer->height,
         .pitch = boot_params->framebuffer->pitch / 4,
         .address = (void *) HHDM(boot_params->framebuffer->address),
-        .colormask = &g_fb_colormask,
         .invalidated = true
     };
 
