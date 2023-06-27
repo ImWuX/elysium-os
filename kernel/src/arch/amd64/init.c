@@ -7,7 +7,7 @@
 #include <arch/amd64/pic8259.h>
 #include <arch/amd64/cpuid.h>
 
-void arch_init(tartarus_parameters_t *boot_params) {
+void arch_init(tartarus_boot_info_t *boot_info) {
     gdt_initialize();
 
     if(!cpuid_feature(CPUID_FEAT_MSR)) panic("ARCH/AMD64", "MSRS are not supported on this system");

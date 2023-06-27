@@ -1,37 +1,81 @@
 #!/bin/bash
 
 sim="qemu"
+bios=1
 
 while [ 1 ]; do
-    read -n 1 -s -p $'\e[94mPress any key to continue. 1 for QEMU. 2 for BOCHS. Q to quit.\e[0m' key
-    if [ "$key" == "q" ]; then
-        clear
-        break
-    fi
-    if [ "$key" == "1" ]; then
-        sim="qemu"
-    fi
-    if [ "$key" == "2" ]; then
-        sim="bochs"
-    fi
     clear
+    echo -e "┌───────────────────────────────────"
+    echo -e "│ Simulator: $sim | Bios: $bios"
+    echo -e "│ 1) Cycle Simulator"
+    echo -e "│ 2) Toggle Bios"
+    echo -e "│ Q) Quit"
+    echo -e "│ Any other key to run"
+    read -n 1 -s -p $'\e[94m>> \e[0m' key
+    echo -ne "\n"
+    case "$key" in
+        "q")
+            break
+            ;;
+        "1")
+            if [ "$sim" == "qemu" ]; then
+                sim="bochs"
+                bios=1
+            else
+                sim="qemu"
+            fi
+            continue
+            ;;
+        "2")
+            if [ "$sim" == "bochs" ]; then
+                continue
+            fi
+            bios=$((1-$bios))
+            continue
+            ;;
+    esac
 
     # Building OS
-    make ARCH=AMD64
+    if [ "$bios" -eq 1 ]; then
+        make ARCH=AMD64 BIOS=1
+    else
+        make ARCH=AMD64
+    fi
     if [ $? -eq 0 ]; then
         if [ "$sim" == "qemu" ]; then
             # Running QEMU
-            echo -e "\e[32mRunning QEMU in VNC\e[0m"
+            if [ "$bios" -eq 1 ]; then
+            echo -e "\e[32mRunning QEMU in VNC using BIOS\e[0m"
             qemu-system-x86_64 \
-                -D ./log.txt -d int \
                 -m 256M \
-                -drive format=raw,file=build/disk.img \
-                -vnc :0,websocket=on \
                 -machine q35 \
-                -k en-us \
-                -serial stdio \
+                -drive format=raw,file=build/disk.img \
+                -smp cores=4 \
+                -vnc :0,websocket=on \
+                -D ./log.txt -d int \
                 -M smm=off \
-                -s
+                -k en-us \
+                -serial file:/dev/stdout \
+                -monitor stdio \
+                -no-reboot \
+                -net none
+            else
+            echo -e "\e[32mRunning QEMU in VNC using UEFI\e[0m"
+            qemu-system-x86_64 \
+                -m 256M \
+                -machine q35 \
+                -drive format=raw,file=build/disk.img \
+                -smp cores=4 \
+                -vnc :0,websocket=on \
+                -D ./log.txt -d int \
+                -M smm=off \
+                -k en-us \
+                -serial file:/dev/stdout \
+                -monitor stdio \
+                -no-reboot \
+                -net none \
+                -bios /usr/share/ovmf/OVMF.fd
+            fi
         else
             # Running Bochs
             echo -e "\e[32mRunning BOCHS in VNC\e[0m"
@@ -42,4 +86,5 @@ while [ 1 ]; do
         echo -e "\e[31mMake failed. Cleaning up\e[0m"
         make clean
     fi
+    read -n 1 -s -p $'\e[94mPress any key to continue\e[0m' key
 done
