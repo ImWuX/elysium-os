@@ -30,21 +30,19 @@ int putchar(int c) {
     return (char) c;
 }
 
-[[noreturn]] extern void kmain(tartarus_parameters_t *boot_params) {
-    if(boot_params->hhdm_start < ARCH_HHDM_START || boot_params->hhdm_end >= ARCH_HHDM_END) panic("KERNEL", "HHDM is not within arch specific boundaries");
-    g_hhdm_address = boot_params->hhdm_start;
-    uintptr_t hhdm_end = boot_params->hhdm_end;
+[[noreturn]] extern void kmain(tartarus_boot_info_t *boot_info) {
+    if(boot_info->hhdm_base < ARCH_HHDM_START || boot_info->hhdm_base + boot_info->hhdm_size >= ARCH_HHDM_END) panic("KERNEL", "HHDM is not within arch specific boundaries");
+    g_hhdm_address = boot_info->hhdm_base;
 
-    g_ctx.address = (void *) HHDM(boot_params->framebuffer->address);
-    g_ctx.width = boot_params->framebuffer->width;
-    g_ctx.height = boot_params->framebuffer->height;
-    g_ctx.pitch = boot_params->framebuffer->pitch / (boot_params->framebuffer->bpp / 8);
+    g_ctx.address = (void *) HHDM(boot_info->framebuffer.address);
+    g_ctx.width = boot_info->framebuffer.width;
+    g_ctx.height = boot_info->framebuffer.height;
+    g_ctx.pitch = boot_info->framebuffer.pitch;
 
-
-    for(uint16_t i = 0; i < boot_params->memory_map_length; i++) {
-        tartarus_memap_entry_t entry = boot_params->memory_map[i];
+    for(int i = 0; i < boot_info->memory_map_size; i++) {
+        tartarus_mmap_entry_t entry = boot_info->memory_map[i];
         if(entry.type != TARTARUS_MEMAP_TYPE_USABLE) continue;
-        pmm_region_add(entry.base_address, entry.length);
+        pmm_region_add(entry.base, entry.length);
     }
 
 #ifdef __ARCH_AMD64
@@ -61,7 +59,7 @@ int putchar(int c) {
     arch_vmm_load_address_space(&kernel_address_space);
     heap_initialize(&kernel_address_space, ARCH_KHEAP_START, ARCH_KHEAP_END);
 
-    arch_init(boot_params);
+    arch_init(boot_info);
 
     printf(" _____ _         _           _____ _____ \n");
     printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");

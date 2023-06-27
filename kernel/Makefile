@@ -1,7 +1,7 @@
 CC = /usr/local/x86_64elfgcc/bin/x86_64-elf-gcc
 LD = /usr/local/x86_64elfgcc/bin/x86_64-elf-ld
 ASMC = /bin/nasm
-CFLAGS = -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable -O2 -D __ARCH_${ARCH}
+CFLAGS = -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable -fno-stack-protector -fno-stack-check -fno-omit-frame-pointer -O2 -D __ARCH_${ARCH}
 
 # Sources
 ASM_SOURCES = $(shell find src/ -type f -name '*.asm' -not -path "src/arch/*")
@@ -21,9 +21,9 @@ src/kernel.elf: ${ASM_SOURCES:.asm=_s.o} ${C_SOURCES:.c=.o}
 	${ASMC} -isrc $< -f elf64 -o $@
 
 %.o: %.c
-	${CC} ${CFLAGS} -Isrc -Isrc/klibc -I../../tartarus-bootloader/shared -c $< -o $@
+	${CC} ${CFLAGS} -Isrc -Isrc/klibc -I../../tartarus-bootloader -c $< -o $@
 
-# TODO: Change -I../../tartarus-bootloader/shared
+# TODO: Change -I../../tartarus-bootloader
 
 # Clean Targets
 clean:
