@@ -4,13 +4,6 @@
 #include <memory/vmm.h>
 
 /**
- * @brief Create the initial kernel address space.
- * 
- * @param out Kernel address space
- */
-void arch_vmm_create_kernel_address_space(vmm_address_space_t *out);
-
-/**
  * @brief Load a virtual address space.
  * 
  * @param address_space Address space

@@ -4,15 +4,18 @@ sim="qemu"
 bios=1
 
 while [ 1 ]; do
-    clear
-    echo -e "┌───────────────────────────────────"
-    echo -e "│ Simulator: $sim | Bios: $bios"
-    echo -e "│ 1) Cycle Simulator"
-    echo -e "│ 2) Toggle Bios"
-    echo -e "│ Q) Quit"
-    echo -e "│ Any other key to run"
+    echo -e "┌───────────────────────────────────┐"
+    echo -ne "│ Simulator: $sim | Bios: $bios        "
+    if [ "$sim" == "qemu" ]; then
+    echo -ne " "
+    fi
+    echo -e "│\n│ 1) Cycle Simulator                │"
+    echo -e "│ 2) Toggle Bios                    │"
+    echo -e "│ Q) Quit                           │"
+    echo -e "│ Any other key to run              │"
+    echo -e "└───────────────────────────────────┘"
     read -n 1 -s -p $'\e[94m>> \e[0m' key
-    echo -ne "\n"
+    clear
     case "$key" in
         "q")
             break
@@ -37,9 +40,9 @@ while [ 1 ]; do
 
     # Building OS
     if [ "$bios" -eq 1 ]; then
-        make ARCH=AMD64 BIOS=1
+        make ARCH=amd64 BIOS=1
     else
-        make ARCH=AMD64
+        make ARCH=amd64
     fi
     if [ $? -eq 0 ]; then
         if [ "$sim" == "qemu" ]; then
@@ -86,5 +89,4 @@ while [ 1 ]; do
         echo -e "\e[31mMake failed. Cleaning up\e[0m"
         make clean
     fi
-    read -n 1 -s -p $'\e[94mPress any key to continue\e[0m' key
 done
