@@ -1,5 +1,5 @@
 #include "pic8259.h"
-#include <arch/amd64/io.h>
+#include <arch/amd64/port.h>
 
 #define MASTER_CMD 0x20
 #define MASTER_DATA 0x21
@@ -7,24 +7,24 @@
 #define SLAVE_DATA 0xA1
 
 void pic8259_remap() {
-    io_port_outb(MASTER_CMD, 0x11);
-    io_port_outb(SLAVE_CMD, 0x11);
-    io_port_outb(MASTER_DATA, 0x20);
-    io_port_outb(SLAVE_DATA, 0x28);
-    io_port_outb(MASTER_DATA, 0x04);
-    io_port_outb(SLAVE_DATA, 0x02);
-    io_port_outb(MASTER_DATA, 0x01);
-    io_port_outb(SLAVE_DATA, 0x01);
-    io_port_outb(MASTER_DATA, 0x0);
-    io_port_outb(SLAVE_DATA, 0x0);
+    port_outb(MASTER_CMD, 0x11);
+    port_outb(SLAVE_CMD, 0x11);
+    port_outb(MASTER_DATA, 0x20);
+    port_outb(SLAVE_DATA, 0x28);
+    port_outb(MASTER_DATA, 0x04);
+    port_outb(SLAVE_DATA, 0x02);
+    port_outb(MASTER_DATA, 0x01);
+    port_outb(SLAVE_DATA, 0x01);
+    port_outb(MASTER_DATA, 0x0);
+    port_outb(SLAVE_DATA, 0x0);
 }
 
 void pic8259_disable() {
-    io_port_outb(MASTER_DATA, 0xFF);
-    io_port_outb(SLAVE_DATA, 0xFF);
+    port_outb(MASTER_DATA, 0xFF);
+    port_outb(SLAVE_DATA, 0xFF);
 }
 
 void pic8259_eoi(uint8_t interrupt_vector) {
-    if(interrupt_vector >= 40) io_port_outb(SLAVE_CMD, 0x20);
-    io_port_outb(MASTER_CMD, 0x20);
+    if(interrupt_vector >= 40) port_outb(SLAVE_CMD, 0x20);
+    port_outb(MASTER_CMD, 0x20);
 }

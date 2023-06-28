@@ -1,6 +1,6 @@
 #include <arch/vmm.h>
 #include <string.h>
-#include <arch/amd64/types.h>
+#include <arch/types.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
 
@@ -52,7 +52,7 @@ static uint64_t arch_independent_flags_to_x86(uint64_t flags) {
     return x86_flags;
 }
 
-void arch_vmm_create_kernel_address_space(vmm_address_space_t *out) {
+void vmm_create_kernel_address_space(vmm_address_space_t *out) {
     out->ranges = 0;
     out->archdep.cr3 = read_cr3();
     memset((void *) HHDM(out->archdep.cr3), 0, 0x800);

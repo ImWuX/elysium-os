@@ -1,7 +1,7 @@
-BUILD = ${realpath ./build}
-FILES = ${realpath ./files}
-TARTARUS = ${realpath ../tartarus-bootloader/}
-ARCH ?= AMD64
+BUILD = $(realpath ./build)
+FILES = $(realpath ./files)
+TARTARUS = $(realpath ../tartarus-bootloader)
+ARCH ?= amd64
 
 # Phony Targets
 .PHONY: all clean $(BUILD)/kernel.elf $(BUILD)/ksymbols.txt $(BUILD)/disk.img
@@ -20,7 +20,7 @@ $(BUILD)/ksymbols.txt: $(BUILD)/kernel.elf
 $(BUILD)/disk.img: $(BUILD)/kernel.elf $(BUILD)/ksymbols.txt
 	@ echo "\e[33m>> Creating Disk Image\e[0m"
 	cp $(BUILD)/empty.img $@
-ifeq ($(ARCH), AMD64)
+ifeq ($(ARCH), amd64)
 ifdef BIOS
 	$(MAKE) -C $(TARTARUS)/core tartarus.sys TARGET=amd64-bios
 	sgdisk -n=1:2048:`echo $$((($$(wc -c $(TARTARUS)/core/tartarus.sys | awk '{print $$1}') + 512) / 512 + 2048))` $@
