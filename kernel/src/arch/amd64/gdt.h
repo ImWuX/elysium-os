@@ -3,6 +3,11 @@
 
 #include <stdint.h>
 
+#define GDT_CODE_RING0 0x8
+#define GDT_DATA_RING0 0x10
+#define GDT_CODE_RING3 0x20
+#define GDT_DATA_RING3 0x18
+
 typedef struct {
 	uint32_t rsv0;
 	uint32_t rsp0_lower;

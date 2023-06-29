@@ -4,7 +4,7 @@
 #include <arch/types.h>
 
 void common_init(draw_context_t *ctx) {
-    draw_rect(ctx, 0, 0, ctx->width, ctx->height, draw_color(48, 199, 196));
+    draw_rect(ctx, 0, 0, ctx->width, ctx->height, draw_color(20, 20, 25));
     printf(" _____ _         _           _____ _____ \n");
     printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
     printf("|   __| | | |_ -| | | |     |  |  |__   |\n");

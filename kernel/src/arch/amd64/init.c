@@ -9,8 +9,10 @@
 #include <arch/amd64/vmm.h>
 #include <arch/amd64/gdt.h>
 #include <arch/amd64/msr.h>
-#include <arch/amd64/pic8259.h>
 #include <arch/amd64/cpuid.h>
+#include <arch/amd64/pic8259.h>
+#include <arch/amd64/apic.h>
+#include <arch/amd64/interrupt.h>
 #include <graphics/draw.h>
 #include <graphics/basicfont.h>
 
@@ -68,12 +70,20 @@ int putchar(int c) {
     pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
     msr_write(MSR_PAT, pat);
 
+    interrupt_initialize();
     pic8259_remap();
     if(!cpuid_feature(CPUID_FEAT_APIC)) {
+        g_interrupt_irq_eoi = pic8259_eoi;
         panic("ARCH/AMD64", "Legacy PIC is not supported at the moment");
     } else {
         pic8259_disable();
+        g_interrupt_irq_eoi = apic_eoi;
+        apic_initialize();
     }
+    for(int i = 0; i < 32; i++) {
+        interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, panic_exception);
+    }
+    asm volatile("sti");
 
     common_init(&g_ctx);
 
