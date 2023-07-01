@@ -18,10 +18,8 @@ isr_stub:
     push r14
     push r15
 
-    mov rax, rsp                            ; Save the RSP that is pointing to the int frame
+    mov rdi, rsp                            ; RDI to be used as a pointer to the int frame
     and rsp, ~0xf                           ; Align stack to 16bytes for C //TODO: Do we also need to unalign it after the C call?
-
-    mov rdi, rax                            ; RDI to be used as a pointer to the int frame
     call interrupt_handler                  ; Call interrupt handler
 
     pop r15                                 ; Restore CPU state

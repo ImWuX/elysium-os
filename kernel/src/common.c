@@ -14,5 +14,4 @@ void common_init(draw_context_t *ctx) {
 
     pmm_stats_t *stats = pmm_stats();
     printf("PMM Stats (in pages of %#lx):\n  >> Free: %lu\n  >> Wired: %lu\n  >> Anon: %lu\n  >> Backed: %lu\n", ARCH_PAGE_SIZE, stats->free_pages, stats->wired_pages, stats->anon_pages, stats->backed_pages);
-
 }

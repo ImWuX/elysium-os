@@ -5,6 +5,7 @@
 #include <common.h>
 #include <memory/hhdm.h>
 #include <memory/heap.h>
+#include <drivers/acpi.h>
 #include <arch/vmm.h>
 #include <arch/amd64/vmm.h>
 #include <arch/amd64/gdt.h>
@@ -13,6 +14,9 @@
 #include <arch/amd64/pic8259.h>
 #include <arch/amd64/apic.h>
 #include <arch/amd64/interrupt.h>
+#include <arch/amd64/drivers/ioapic.h>
+#include <arch/amd64/drivers/ps2.h>
+#include <arch/amd64/drivers/ps2kb.h>
 #include <graphics/draw.h>
 #include <graphics/basicfont.h>
 
@@ -32,6 +36,10 @@ int putchar(int c) {
             break;
     }
     return (char) c;
+}
+
+static void test_kb(uint8_t c) {
+    putchar(c);
 }
 
 [[noreturn]] extern void kinit(tartarus_boot_info_t *boot_info) {
@@ -70,6 +78,9 @@ int putchar(int c) {
     pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
     msr_write(MSR_PAT, pat);
 
+    acpi_initialize(boot_info->acpi_rsdp);
+    acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
+
     interrupt_initialize();
     pic8259_remap();
     if(!cpuid_feature(CPUID_FEAT_APIC)) {
@@ -77,15 +88,24 @@ int putchar(int c) {
         panic("ARCH/AMD64", "Legacy PIC is not supported at the moment");
     } else {
         pic8259_disable();
-        g_interrupt_irq_eoi = apic_eoi;
         apic_initialize();
+        g_interrupt_irq_eoi = apic_eoi;
     }
     for(int i = 0; i < 32; i++) {
         interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, panic_exception);
     }
+
+    acpi_sdt_header_t *madt = acpi_find_table((uint8_t *) "APIC");
+    if(madt) ioapic_initialize(madt);
+
     asm volatile("sti");
 
     common_init(&g_ctx);
+
+    if(fadt && (acpi_revision() == 0 || (fadt->boot_architecture_flags & (1 << 1)))) {
+        ps2kb_set_handler((ps2kb_handler_t) test_kb);
+        ps2_initialize();
+    }
 
     for(;;) asm volatile("hlt");
     __builtin_unreachable();
