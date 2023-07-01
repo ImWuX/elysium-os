@@ -67,7 +67,7 @@ void gdt_initialize() {
     gdt_descriptor_t gdtr;
     gdtr.limit = sizeof(g_gdt) - 1;
     gdtr.base = (uint64_t) &g_gdt;
-    asm volatile("lgdt %0" : : "m" (gdtr));
+    asm volatile("lgdt %0\npush $0x8\nlea 1f(%%rip), %%rax\npush %%rax\nlretq\n1:\nmov $0x10, %%rax\nmov %%rax, %%ds\nmov %%rax, %%ss\nmov %%rax, %%es\nmov %%rax, %%fs\nmov %%rax, %%gs\n" : : "m" (gdtr) : "rax", "memory");
 }
 
 // void gdt_tss_initialize() {

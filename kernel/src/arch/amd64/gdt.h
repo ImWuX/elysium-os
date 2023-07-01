@@ -42,6 +42,7 @@ typedef struct {
  * @brief Initialize GDT.
  */
 void gdt_initialize();
+
 // void gdt_tss_initialize();
 
 #endif
