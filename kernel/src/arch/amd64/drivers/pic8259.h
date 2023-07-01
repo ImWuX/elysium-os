@@ -1,5 +1,5 @@
-#ifndef ARCH_AMD64_PIC8259_H
-#define ARCH_AMD64_PIC8259_H
+#ifndef ARCH_AMD64_DRIVERS_PIC8259_H
+#define ARCH_AMD64_DRIVERS_PIC8259_H
 
 #include <stdint.h>
 
