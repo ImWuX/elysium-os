@@ -11,9 +11,9 @@
 #include <arch/amd64/gdt.h>
 #include <arch/amd64/msr.h>
 #include <arch/amd64/cpuid.h>
-#include <arch/amd64/pic8259.h>
 #include <arch/amd64/apic.h>
 #include <arch/amd64/interrupt.h>
+#include <arch/amd64/drivers/pic8259.h>
 #include <arch/amd64/drivers/ioapic.h>
 #include <arch/amd64/drivers/ps2.h>
 #include <arch/amd64/drivers/ps2kb.h>
