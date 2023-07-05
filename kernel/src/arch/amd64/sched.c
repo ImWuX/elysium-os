@@ -71,7 +71,6 @@ void arch_sched_set_current_thread(sched_thread_t *thread) {
 void arch_sched_init_kernel_thread(sched_thread_t *thread, void *entry) {
     memset(thread, 0, sizeof(sched_thread_t));
     thread->this = thread;
-    thread->id = 0;
     thread->context.registers.cs = GDT_CODE_RING0;
     thread->context.registers.ss = GDT_DATA_RING0;
     thread->context.registers.rflags = (1 << 9) | (1 << 1);

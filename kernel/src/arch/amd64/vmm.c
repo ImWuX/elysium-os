@@ -24,21 +24,21 @@ typedef enum {
     PAT_WRITE_PROTECTED = PTE_FLAG_PAT | PTE_FLAG_WRITETHROUGH
 } vmm_pt_pat_t;
 
-inline static void pte_set_address(uint64_t *entry, uintptr_t address) {
+static inline void pte_set_address(uint64_t *entry, uintptr_t address) {
     address &= 0x000FFFFFFFFFF000;
     *entry &= 0xFFF0000000000FFF;
     *entry |= address;
 }
 
-inline static uintptr_t pte_get_address(uint64_t entry) {
+static inline uintptr_t pte_get_address(uint64_t entry) {
     return entry & 0x000FFFFFFFFFF000;
 }
 
-inline static void write_cr3(uint64_t value) {
+static inline void write_cr3(uint64_t value) {
     asm volatile("movq %0, %%cr3" : : "r" (value) : "memory");
 }
 
-inline static uint64_t read_cr3() {
+static inline uint64_t read_cr3() {
     uint64_t value;
     asm volatile("movq %%cr3, %0" : "=r" (value));
     return value;
