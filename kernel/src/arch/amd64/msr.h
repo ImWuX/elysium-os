@@ -35,7 +35,7 @@ inline uint64_t msr_read(uint64_t msr) {
  * @param msr MSR number
  * @param value Value out
  */
-inline static void msr_write(uint64_t msr, uint64_t value) {
+inline void msr_write(uint64_t msr, uint64_t value) {
     asm volatile("wrmsr" : : "a" ((uint32_t) value), "d" ((uint32_t) (value >> 32)), "c" (msr));
 }
 

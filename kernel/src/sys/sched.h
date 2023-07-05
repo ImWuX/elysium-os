@@ -8,9 +8,10 @@ typedef struct sched_thread {
     struct sched_thread *this;
     uint32_t id;
     int lock;
+    uint8_t priority;
+    arch_cpu_local_t *cpu_local;
     arch_cpu_context_t context;
     vmm_address_space_t *address_space;
-    arch_cpu_local_t *cpu_local;
     struct sched_thread *next;
 } sched_thread_t;
 

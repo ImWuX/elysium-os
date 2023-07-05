@@ -1,12 +1,12 @@
 #include "draw.h"
 #include <graphics/basicfont.h>
 
-inline static void putpixel(draw_context_t *ctx, uint64_t offset, draw_color_t color) {
+static inline void putpixel(draw_context_t *ctx, uint64_t offset, draw_color_t color) {
     if(offset > ctx->height * ctx->pitch * sizeof(draw_color_t)) return;
     ((draw_color_t *) ctx->address)[offset] = color;
 }
 
-inline static draw_color_t getpixel(draw_context_t *ctx, uint64_t offset) {
+static inline draw_color_t getpixel(draw_context_t *ctx, uint64_t offset) {
     if(offset > ctx->height * ctx->pitch * sizeof(draw_color_t)) return 0;
     return ((draw_color_t *) ctx->address)[offset];
 }

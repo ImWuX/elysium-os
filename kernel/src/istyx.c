@@ -103,7 +103,7 @@ static void command_handler(char *input) {
                 uint8_t sub_class = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, sub_class));
                 uint8_t prog_if = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, program_interface));
                 if(device->segment > 0) printf("Seg %i ", device->segment);
-                printf("%i:%i.%i Vendor: %x, Class: %x, SubClass: %x, ProgIf: %x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
+                printf("%i:%i.%i\tVendor: %#x, Class: %#x, SubClass: %#x, ProgIf: %#x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
                 device = device->list;
             }
         } else if(strcmp(command, "hexdump") == 0) {
@@ -215,7 +215,7 @@ int putchar(int c) {
             break;
         case '\b':
             g_x -= BASICFONT_WIDTH;
-            if(g_x < 0) g_x = 0;
+            if(g_x < SCR_INDENT) g_x = SCR_INDENT;
             draw_rect(g_ctx, g_x, g_y, BASICFONT_WIDTH, BASICFONT_HEIGHT, g_bg);
             break;
         case '\n':

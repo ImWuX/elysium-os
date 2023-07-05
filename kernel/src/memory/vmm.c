@@ -2,15 +2,6 @@
 #include <arch/vmm.h>
 #include <memory/heap.h>
 
-static vmm_range_t *find(vmm_address_space_t *address_space, uintptr_t vaddr, size_t size) {
-    vmm_range_t *range = address_space->ranges;
-    while(range) {
-        if(vaddr + size >= range->start && vaddr < range->end) return range;
-        range = range->next;
-    }
-    return 0;
-}
-
 int vmm_alloc_wired(vmm_address_space_t *address_space, uintptr_t vaddr, size_t npages, uint64_t flags) {
     for(size_t i = 0; i < npages; i++) {
         pmm_page_t *page = pmm_page_alloc(PMM_PAGE_USAGE_WIRED);
@@ -50,9 +41,10 @@ int vmm_alloc(vmm_address_space_t *address_space, uintptr_t vaddr, size_t size) 
     vmm_range_t *range = heap_alloc(sizeof(vmm_range_t));
     range->start = vaddr;
     range->end = vaddr + size;
-    range->is_anon = true;
-    range->anon = prev;
     range->flags = VMM_DEFAULT_KERNEL_FLAGS;
+    range->is_anon = true;
+    range->is_direct = false;
+    range->anon = prev;
     range->next = address_space->ranges;
     address_space->ranges = range;
     return 0;
