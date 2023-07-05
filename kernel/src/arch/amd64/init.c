@@ -100,9 +100,6 @@ static void init_common() {
 
     if(!cpuid_feature(CPUID_FEAT_MSR)) panic("ARCH/AMD64", "MSRS are not supported on this system");
 
-    acpi_initialize(boot_info->acpi_rsdp);
-    acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
-
     interrupt_initialize();
     for(int i = 0; i < 32; i++) {
         interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, panic_exception);
@@ -123,11 +120,12 @@ static void init_common() {
         g_interrupt_irq_eoi = lapic_eoi;
     }
 
+    common_init(boot_info->acpi_rsdp);
+
     acpi_sdt_header_t *madt = acpi_find_table((uint8_t *) "APIC");
     if(madt) ioapic_initialize(madt);
 
-    common_init();
-
+    acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
     if(fadt && (acpi_revision() == 0 || (fadt->boot_architecture_flags & (1 << 1)))) {
         ps2kb_set_handler((ps2kb_handler_t) istyx_simple_input);
         ps2_initialize();

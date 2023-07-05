@@ -4,6 +4,7 @@
 #include <graphics/basicfont.h>
 #include <memory/heap.h>
 #include <memory/hhdm.h>
+#include <drivers/pci.h>
 
 #define PREFIX "> "
 #define TAB_WIDTH 4
@@ -94,6 +95,17 @@ static void command_handler(char *input) {
     if(command[0]) {
         if(strcmp(command, "clear") == 0) {
             clear();
+        } else if(strcmp(command, "pcidev") == 0) {
+            pci_device_t *device = g_pci_devices;
+            while(device) {
+                uint16_t vendor_id = pci_config_read_word(device, __builtin_offsetof(pci_device_header_t, vendor_id));
+                uint8_t class = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, class));
+                uint8_t sub_class = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, sub_class));
+                uint8_t prog_if = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, program_interface));
+                if(device->segment > 0) printf("Seg %i ", device->segment);
+                printf("%i:%i.%i Vendor: %x, Class: %x, SubClass: %x, ProgIf: %x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
+                device = device->list;
+            }
         } else if(strcmp(command, "hexdump") == 0) {
             if(arg_count < 3) {
                 printf("Missing arguments\n");
