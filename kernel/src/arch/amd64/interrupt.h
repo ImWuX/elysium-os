@@ -5,6 +5,8 @@
 #include <stdbool.h>
 
 typedef struct {
+    uint64_t ds;
+    uint64_t es;
     uint64_t r15;
     uint64_t r14;
     uint64_t r13;
@@ -46,6 +48,11 @@ extern interrupt_irq_eoi_t g_interrupt_irq_eoi;
  * @brief Initialize the IDT and interrupt management
  */
 void interrupt_initialize();
+
+/**
+ * @brief Load IDT
+ */
+void interrupt_load_idt();
 
 /**
  * @brief Set a handler onto an interrupt vector

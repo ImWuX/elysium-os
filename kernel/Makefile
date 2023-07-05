@@ -5,6 +5,9 @@ endif
 
 CFLAGS = -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable -fno-stack-protector -fno-stack-check -fno-omit-frame-pointer -O2 -D __ARCH_$(shell echo $(ARCH) | tr a-z A-Z)
 
+# Debug Symbols
+CFLAGS += -g
+
 # Sources
 ASM_SOURCES = $(shell find src/ -type f -name "*.asm" -not -path "src/arch/*")
 ASM_SOURCES += $(shell find src/arch/$(ARCH)/* -type f -name "*.asm")

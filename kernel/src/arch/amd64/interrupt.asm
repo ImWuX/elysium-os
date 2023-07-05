@@ -2,6 +2,7 @@ extern interrupt_handler
 
 isr_stub:
     cld                                     ; Clear direction flag
+
     push rax                                ; Save CPU state
     push rbx
     push rcx
@@ -18,9 +19,19 @@ isr_stub:
     push r14
     push r15
 
+    mov rax, es
+    push rax
+    mov rax, ds
+    push rax
+
+    xor rbp, rbp
     mov rdi, rsp                            ; RDI to be used as a pointer to the int frame
-    and rsp, ~0xf                           ; Align stack to 16bytes for C //TODO: Do we also need to unalign it after the C call?
     call interrupt_handler                  ; Call interrupt handler
+
+    pop rax
+    mov ds, rax
+    pop rax
+    mov es, rax
 
     pop r15                                 ; Restore CPU state
     pop r14
@@ -38,7 +49,7 @@ isr_stub:
     pop rbx
     pop rax
 
-    add rsp, 16                             ; Discard interrupt number and error code
+    add rsp, 8*2                            ; Discard interrupt number and error code
     iretq
 
 %macro ISR 2

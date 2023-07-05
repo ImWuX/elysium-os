@@ -1,5 +1,6 @@
 #include "panic.h"
 #include <stdio.h>
+#include <arch/amd64/lapic.h>
 
 typedef struct stack_frame {
     struct stack_frame *rbp;
@@ -50,7 +51,7 @@ static char *g_exception_messages[] = {
 [[noreturn]] void panic_exception(interrupt_frame_t *frame) {
     uint64_t cr2_value;
     asm volatile("movq %%cr2, %0" : "=r" (cr2_value));
-    printf("UNHANDLED EXCEPTION\n%s\n", g_exception_messages[frame->int_no]);
+    printf("UNHANDLED EXCEPTION (CPU %i)\n%s\n", lapic_id(), g_exception_messages[frame->int_no]);
     printf("r15: %#lx\n", frame->r15);
     printf("r14: %#lx\n", frame->r14);
     printf("r13: %#lx\n", frame->r13);
