@@ -14,24 +14,4 @@ extern uint8_t g_sched_vector;
  */
 void sched_entry(interrupt_frame_t *frame);
 
-/**
- * @brief Retrieve the current CPUs thread
- * 
- * @return Current thread
- */
-static inline sched_thread_t *sched_get_current_thread() {
-    sched_thread_t *thread = 0;
-    asm volatile("mov %%gs:0, %0" : "=r" (thread));
-    return thread;
-}
-
-/**
- * @brief Set the current CPUs thread
- * 
- * @param thread Current thread
- */
-static inline void sched_set_current_thread(sched_thread_t *thread) {
-    msr_write(MSR_GS_BASE, (uint64_t) thread);
-}
-
 #endif

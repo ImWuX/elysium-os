@@ -50,7 +50,7 @@ extern interrupt_irq_eoi_t g_interrupt_irq_eoi;
 void interrupt_initialize();
 
 /**
- * @brief Load IDT
+ * @brief Loads IDT
  */
 void interrupt_load_idt();
 

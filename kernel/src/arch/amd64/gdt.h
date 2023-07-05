@@ -39,9 +39,9 @@ typedef struct {
 } __attribute__((packed)) gdt_tss_t;
 
 /**
- * @brief Initialize GDT.
+ * @brief Loads the GDT
  */
-void gdt_initialize();
+void gdt_load();
 
 // void gdt_tss_initialize();
 
