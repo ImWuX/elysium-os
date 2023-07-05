@@ -47,7 +47,9 @@ void interrupt_initialize() {
         set_idt_gate(i, (uintptr_t) isr_stubs[i], GDT_CODE_RING0, FLAGS_NORMAL);
         g_entries[i].free = true;
     }
+}
 
+void interrupt_load_idt() {
     idt_descriptor_t idtr;
     idtr.limit = sizeof(idt_entry_t) * IDT_SIZE - 1;
     idtr.base = (uint64_t) &g_idt;

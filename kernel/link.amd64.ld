@@ -1,6 +1,6 @@
 OUTPUT_ARCH(i386:x86-64)
 OUTPUT_FORMAT(elf64-x86-64)
-ENTRY(kinit)
+ENTRY(init)
 
 ld_kernel_start = 0xFFFFFFFF80000000;
 

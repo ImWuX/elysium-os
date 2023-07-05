@@ -33,7 +33,7 @@ enum {
 static const uint8_t lookup[][26] = {
     { // NONE
         [HASH('c')] = INT, [HASH('s')] = PTR, [HASH('d')] = INT, [HASH('i')] = INT,
-        [HASH('o')] = UINT, [HASH('x')] = UINT, [HASH('u')] = UINT, 
+        [HASH('o')] = UINT, [HASH('x')] = UINT, [HASH('u')] = UINT,
         [HASH('f')] = DOUBLE, [HASH('e')] = DOUBLE, [HASH('a')] = DOUBLE, [HASH('g')] = DOUBLE,
         [HASH('n')] = PTR, [HASH('p')] = PTR
     },

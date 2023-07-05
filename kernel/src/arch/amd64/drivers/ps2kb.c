@@ -1,7 +1,7 @@
 #include "ps2kb.h"
 #include <panic.h>
 #include <arch/amd64/interrupt.h>
-#include <arch/amd64/apic.h>
+#include <arch/amd64/lapic.h>
 #include <arch/amd64/drivers/ioapic.h>
 
 static int8_t g_scancodes[128];
@@ -44,7 +44,7 @@ static uint8_t g_layout_us[128] = {
 
 static void kb_interrupt_handler(interrupt_frame_t *registers __attribute__((unused))) {
     uint8_t scancode = ps2_port_read(false);
-    apic_eoi(g_interrupt_vector);
+    lapic_eoi(g_interrupt_vector);
 
     if(scancode >= 0x80) {
         g_scancodes[scancode - 0x80] = 0;
@@ -63,8 +63,7 @@ void ps2kb_initialize(ps2_ports_t port) {
     g_interrupt_vector = vector;
     uint8_t irq = PS2_PORT_ONE_IRQ;
     if(port == PS2_PORT_TWO) irq = PS2_PORT_TWO_IRQ;
-    printf("PS2KB on port %i(%i) with vector %i and apic id of %i\n", port, irq, vector, apic_id());
-    ioapic_map_legacy_irq(irq, apic_id(), false, true, g_interrupt_vector);
+    ioapic_map_legacy_irq(irq, lapic_id(), false, true, g_interrupt_vector);
     ps2_port_enable(port);
 }
 
