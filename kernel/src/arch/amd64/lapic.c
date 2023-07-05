@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <memory/vmm.h>
 #include <memory/hhdm.h>
-#include <arch/amd64/sched.h>
+#include <arch/sched.h>
 #include <arch/amd64/msr.h>
 
 #define BASE_MASK 0xFFFFFFFFFF000
@@ -41,7 +41,7 @@ void lapic_timer_oneshot(uint8_t vector, uint64_t us) {
     lapic_timer_stop();
     lapic_write(REG_LVT_TIMER, vector);
     lapic_write(REG_TIMER_DIV, 0);
-    lapic_write(REG_TIMER_INITIAL_COUNT, us * (sched_get_current_thread()->cpu_local->lapic_timer_freq / 1'000'000));
+    lapic_write(REG_TIMER_INITIAL_COUNT, us * (arch_sched_get_current_thread()->cpu_local->lapic_timer_freq / 1'000'000));
 }
 
 void lapic_timer_stop() {

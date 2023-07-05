@@ -63,7 +63,7 @@ static gdt_entry_t g_gdt[] = {
     {}, {}
 };
 
-void gdt_initialize() {
+void gdt_load() {
     gdt_descriptor_t gdtr;
     gdtr.limit = sizeof(g_gdt) - 1;
     gdtr.base = (uint64_t) &g_gdt;

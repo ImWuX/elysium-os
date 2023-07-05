@@ -1,17 +1,13 @@
 #include "common.h"
 #include <stdio.h>
-#include <memory/pmm.h>
 #include <arch/types.h>
+#include <arch/sched.h>
+#include <memory/heap.h>
+#include <sys/sched.h>
+#include <istyx.h>
 
-void common_init(draw_context_t *ctx) {
-    draw_rect(ctx, 0, 0, ctx->width, ctx->height, draw_color(20, 20, 25));
-    printf(" _____ _         _           _____ _____ \n");
-    printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
-    printf("|   __| | | |_ -| | | |     |  |  |__   |\n");
-    printf("|_____|_|_  |___|_|___|_|_|_|_____|_____|\n");
-    printf("        |___|                            \n\n");
-    printf("Welcome to Elysium OS\n");
-
-    pmm_stats_t *stats = pmm_stats();
-    printf("PMM Stats (in pages of %#lx):\n  >> Free: %lu\n  >> Wired: %lu\n  >> Anon: %lu\n  >> Backed: %lu\n", ARCH_PAGE_SIZE, stats->free_pages, stats->wired_pages, stats->anon_pages, stats->backed_pages);
+void common_init() {
+    sched_thread_t *istyx_thread = heap_alloc(sizeof(sched_thread_t));
+    arch_sched_init_kernel_thread(istyx_thread, istyx_thread_init);
+    sched_add(istyx_thread);
 }
