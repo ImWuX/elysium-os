@@ -1,5 +1,5 @@
 #include "istyx.h"
-#include <stdio.h>
+#include <lib/kprint.h>
 #include <string.h>
 #include <graphics/basicfont.h>
 #include <memory/heap.h>
@@ -102,20 +102,20 @@ static void command_handler(char *input) {
                 uint8_t class = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, class));
                 uint8_t sub_class = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, sub_class));
                 uint8_t prog_if = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, program_interface));
-                if(device->segment > 0) printf("Seg %i ", device->segment);
-                printf("%i:%i.%i\tVendor: %#x, Class: %#x, SubClass: %#x, ProgIf: %#x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
+                if(device->segment > 0) kprintf("Seg %i ", device->segment);
+                kprintf("%i:%i.%i\tVendor: %#x, Class: %#x, SubClass: %#x, ProgIf: %#x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
                 device = device->list;
             }
         } else if(strcmp(command, "hexdump") == 0) {
             if(arg_count < 3) {
-                printf("Missing arguments\n");
+                kprintf("Missing arguments\n");
             } else {
                 uint64_t usephys;
                 uint64_t address;
                 uint64_t count;
                 if(get_arg_num(input, 3, &usephys) || usephys > 1) usephys = 0;
                 if(get_arg_num(input, 1, &address) || get_arg_num(input, 2, &count)) {
-                    printf("Invalid arguments");
+                    kprintf("Invalid arguments");
                 } else {
                     if(usephys) address = HHDM(address);
                     bool star = false;
@@ -135,29 +135,36 @@ static void command_handler(char *input) {
 
                         if(!identical) {
                             star = false;
-                            printf("%#18.16lx:  ", address + y * 10);
+                            kprintf("%#18.16lx:  ", address + y * 10);
                             for(int x = 0; x < row_length; x++) {
-                                printf("%.2x ", *(uint8_t *) (address + y * 10 + x));
+                                kprintf("%.2x ", *(uint8_t *) (address + y * 10 + x));
                             }
-                            for(int x = row_length; x < 10; x++) printf("   ");
+                            for(int x = row_length; x < 10; x++) kprintf("   ");
 
-                            printf("  ");
+                            kprintf("  ");
                             for(int x = 0; x < row_length; x++) {
                                 char c = *(char *) (address + y * 10 + x);
                                 if(c < 32 || c > 126) c = '.';
-                                printf("%c ", c);
+                                kprintf("%c ", c);
                             }
-                            printf("\n");
+                            kprintf("\n");
                         } else {
                             if(star) continue;
-                            printf("*\n");
+                            kprintf("*\n");
                             star = true;
                         }
                     }
                 }
             }
+        } else if(strcmp(command, "help") == 0 || strcmp(command, "?") == 0) {
+            kprintf(
+                "Integrated Styx Help\n"
+                "\tclear - Clears the screen\n"
+                "\tpcidev - Displays the PCI devices\n"
+                "\thexdump <address> <count> [physical] - Dumps memory\n"
+            );
         } else {
-            printf("Unknown command: \"%s\"\n", command);
+            kprintf("Unknown command: \"%s\"\n", command);
         }
     }
 
@@ -185,7 +192,7 @@ void istyx_simple_input(uint8_t ch) {
             g_chars[g_chars_written] = 0;
             command_handler(g_chars);
             g_chars_written = 0;
-            printf("%s", PREFIX);
+            kprintf("%s", PREFIX);
             return;
         default:
             if(g_chars_written > MAX_CHARS) return;
@@ -197,13 +204,13 @@ void istyx_simple_input(uint8_t ch) {
 }
 
 void istyx_thread_init() {
-    printf(" _____ _         _           _____ _____ \n");
-    printf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
-    printf("|   __| | | |_ -| | | |     |  |  |__   |\n");
-    printf("|_____|_|_  |___|_|___|_|_|_|_____|_____|\n");
-    printf("        |___|                            \n\n");
-    printf("Welcome to Integrated Styx V1.0 running on Elysium OS\n");
-    printf("%s", PREFIX);
+    kprintf(" _____ _         _           _____ _____ \n");
+    kprintf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
+    kprintf("|   __| | | |_ -| | | |     |  |  |__   |\n");
+    kprintf("|_____|_|_  |___|_|___|_|_|_|_____|_____|\n");
+    kprintf("        |___|                            \n\n");
+    kprintf("Welcome to Integrated Styx V1.0 running on Elysium OS\n");
+    kprintf("%s", PREFIX);
 
     while(true);
 }

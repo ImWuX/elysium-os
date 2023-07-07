@@ -1,5 +1,5 @@
 #include "lapic.h"
-#include <stdio.h>
+#include <lib/kprint.h>
 #include <memory/vmm.h>
 #include <memory/hhdm.h>
 #include <arch/sched.h>

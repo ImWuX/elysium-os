@@ -1,4 +1,4 @@
-#include "stdio.h"
+#include "kprint.h"
 #include <stddef.h>
 #include <math.h>
 
@@ -86,15 +86,15 @@ typedef union {
 
 static const char *prefixes = "\0000x\0000X\0+\0 ";
 
-int printf(const char *format, ...) {
+int kprintf(const char *format, ...) {
 	va_list list;
 	va_start(list, format);
-	int ret = vprintf(format, list);
+	int ret = kprintv(format, list);
 	va_end(list);
 	return ret;
 }
 
-int vprintf(const char *format, va_list list) {
+int kprintv(const char *format, va_list list) {
     char *fmt = (char *) format;
     char *fallback;
 

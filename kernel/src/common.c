@@ -1,5 +1,5 @@
 #include "common.h"
-#include <stdio.h>
+#include <lib/kprint.h>
 #include <arch/types.h>
 #include <arch/sched.h>
 #include <memory/heap.h>
