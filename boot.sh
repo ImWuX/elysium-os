@@ -1,69 +1,67 @@
 #!/bin/bash
+POSITIONAL_ARGS=()
 
-sim="qemu"
-bios=1
+COLI="\e[96m"
+COLE="\e[31m"
+COLU="\e[4m"
+COLR="\e[0m"
 
-while [ 1 ]; do
-    echo -e "┌───────────────────────────────────┐"
-    echo -ne "│ Simulator: $sim | Bios: $bios        "
-    if [ "$sim" == "qemu" ]; then
-    echo -ne " "
-    fi
-    echo -e "│\n│ 1) Cycle Simulator                │"
-    echo -e "│ 2) Toggle Bios                    │"
-    echo -e "│ Q) Quit                           │"
-    echo -e "│ Any other key to run              │"
-    echo -e "└───────────────────────────────────┘"
-    read -n 1 -s -p $'\e[94m>> \e[0m' key
-    clear
-    case "$key" in
-        "q")
-            break
+log() {
+    echo -e "$@"
+}
+log_important() {
+    echo -e ""$COLI"$@"$COLR""
+}
+log_error() {
+    echo -e ""$COLE"$@"$COLR""
+}
+
+SIM="qemu"
+BIOS=1
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -s|--sim)
+            SIM="$2"
+            shift
             ;;
-        "1")
-            if [ "$sim" == "qemu" ]; then
-                sim="bochs"
-                bios=1
-            else
-                sim="qemu"
-            fi
-            continue
+        --uefi)
+            BIOS=0
             ;;
-        "2")
-            if [ "$sim" == "bochs" ]; then
-                continue
-            fi
-            bios=$((1-$bios))
-            continue
+        -?|--help)
+            log "┌────────────────────────────────────────────────────────────────────────"
+            log "│ ElysiumOS Boot"
+            log "│ Usage: ./boot [options]"
+            log "│ Options:"
+            log "│ \t-s, --sim <simulator>\n│ \t\t\tSpecify simulator. Supported simulator: "$COLU"qemu"$COLR", bochs\n│ "
+            log "│ \t--uefi\n│ \t\t\tUse uefi to boot Elysium instead of bios\n│ "
+            log "│ \t-?, --help\n│ \t\t\tDisplay usage help for Elysium boot\n│ "
+            exit 1
+            ;;
+        -*|--*)
+            log_error "Unknown option \"$1\""
+            exit 1
+            ;;
+        *)
+            POSITIONAL_ARGS+=("$1") # save positional arg
             ;;
     esac
+    shift
+done
 
-    # Building OS
-    if [ "$bios" -eq 1 ]; then
-        make ARCH=amd64 BIOS=1
-    else
-        make ARCH=amd64
-    fi
-    if [ $? -eq 0 ]; then
-        if [ "$sim" == "qemu" ]; then
-            # Running QEMU
-            if [ "$bios" -eq 1 ]; then
-            echo -e "\e[32mRunning QEMU in VNC using BIOS\e[0m"
-            qemu-system-x86_64 \
-                -m 256M \
-                -machine q35 \
-                -drive format=raw,file=build/disk.img \
-                -smp cores=4 \
-                -vnc :0,websocket=on \
-                -D ./log.txt -d int \
-                -M smm=off \
-                -k en-us \
-                -serial file:/dev/stdout \
-                -monitor stdio \
-                -no-reboot \
-                -net none
-            else
-            echo -e "\e[32mRunning QEMU in VNC using UEFI\e[0m"
+set -- "${POSITIONAL_ARGS[@]}"
+
+if [ "$BIOS" -eq 1 ]; then
+    make ARCH=amd64 BIOS=1
+else
+    make ARCH=amd64
+fi
+
+case $SIM in
+    qemu)
+        # Running QEMU
+        if [ "$BIOS" -eq 1 ]; then
+            log_important "Running QEMU in VNC using BIOS"
             qemu-system-x86_64 \
                 -m 256M \
                 -machine q35 \
@@ -77,16 +75,32 @@ while [ 1 ]; do
                 -monitor stdio \
                 -no-reboot \
                 -net none \
-                -bios /usr/share/ovmf/OVMF.fd
-            fi
+                -gdb tcp::1234
         else
-            # Running Bochs
-            echo -e "\e[32mRunning BOCHS in VNC\e[0m"
-            bochs -f ./conf.bxrc -q
+            log_important "Running QEMU in VNC using UEFI"
+            qemu-system-x86_64 \
+                -m 256M \
+                -machine q35 \
+                -drive format=raw,file=build/disk.img \
+                -smp cores=4 \
+                -vnc :0,websocket=on \
+                -D ./log.txt -d int \
+                -M smm=off \
+                -k en-us \
+                -serial file:/dev/stdout \
+                -monitor stdio \
+                -no-reboot \
+                -net none \
+                -gdb tcp::1234 \
+                -bios /usr/share/ovmf/OVMF.fd
         fi
-    else
-        # Cleanup after fail
-        echo -e "\e[31mMake failed. Cleaning up\e[0m"
-        make clean
-    fi
-done
+        ;;
+    bochs)
+        # Running Bochs
+        log_important "Running BOCHS in VNC"
+        bochs -f ./conf.bxrc -q
+        ;;
+    *)
+        log_error "Unsupported simulator ($SIM)"
+        ;;
+esac
