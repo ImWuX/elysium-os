@@ -55,7 +55,7 @@ while [ 1 ]; do
                 -drive format=raw,file=build/disk.img \
                 -smp cores=4 \
                 -vnc :0,websocket=on \
-                -D ./log.txt -d int,guest_errors \
+                -D ./log.txt -d int \
                 -M smm=off \
                 -k en-us \
                 -serial file:/dev/stdout \
@@ -70,7 +70,7 @@ while [ 1 ]; do
                 -drive format=raw,file=build/disk.img \
                 -smp cores=4 \
                 -vnc :0,websocket=on \
-                -D ./log.txt -d int,guest_errors \
+                -D ./log.txt -d int \
                 -M smm=off \
                 -k en-us \
                 -serial file:/dev/stdout \

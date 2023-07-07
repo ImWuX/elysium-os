@@ -1,12 +1,10 @@
-#ifndef KLIBC_STDIO_H
-#define KLIBC_STDIO_H
+#ifndef LIB_KPRINTF_H
+#define LIB_KPRINTF_H
 
 #include <stdint.h>
 #include <stdarg.h>
 
 extern int putchar(int character);
-
-typedef unsigned long size_t;
 
 /**
  * @brief Prints a formatted string. Takes varargs as values.
@@ -15,7 +13,7 @@ typedef unsigned long size_t;
  * @param ... Varargs
  * @return Count of characters written
  */
-int printf(const char *fmt, ...);
+int kprintf(const char *fmt, ...);
 
 /**
  * @brief Prints a formatted string. Takes a vararg list as values.
@@ -24,6 +22,6 @@ int printf(const char *fmt, ...);
  * @param list Vararg list
  * @return Count of characters written
  */
-int vprintf(const char *format, va_list list);
+int kprintv(const char *format, va_list list);
 
 #endif

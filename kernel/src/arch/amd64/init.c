@@ -1,9 +1,9 @@
 #include <tartarus.h>
 #include <string.h>
-#include <stdio.h>
 #include <cpuid.h>
 #include <panic.h>
 #include <common.h>
+#include <lib/kprint.h>
 #include <memory/hhdm.h>
 #include <memory/heap.h>
 #include <drivers/acpi.h>
@@ -47,8 +47,8 @@ static void init_common() {
 
     sched_thread_t *thread = heap_alloc(sizeof(sched_thread_t));
     thread->this = thread;
-    thread->lock = 1;
     thread->cpu_local = cpu_local;
+    thread->state = SCHED_THREAD_EXIT;
     arch_sched_set_current_thread(thread);
 
     asm volatile("sti");
@@ -107,7 +107,7 @@ static void init_common() {
     interrupt_load_idt();
 
     int sched_vector = interrupt_request(INTERRUPT_PRIORITY_KERNHIGH, sched_entry);
-    if(sched_vector < 0) panic("ARCH/AMD64", "Unable to aquire an interrupt vector for the scheduler");
+    if(sched_vector < 0) panic("ARCH/AMD64", "Unable to acquire an interrupt vector for the scheduler");
     g_sched_vector = sched_vector;
 
     pic8259_remap();

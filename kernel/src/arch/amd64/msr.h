@@ -22,7 +22,7 @@ typedef enum {
  * @param msr MSR number
  * @return Value in
  */
-inline uint64_t msr_read(uint64_t msr) {
+static inline uint64_t msr_read(uint64_t msr) {
     uint32_t low;
     uint32_t high;
     asm volatile("rdmsr" : "=a" (low), "=d" (high) : "c" (msr));
@@ -35,7 +35,7 @@ inline uint64_t msr_read(uint64_t msr) {
  * @param msr MSR number
  * @param value Value out
  */
-inline void msr_write(uint64_t msr, uint64_t value) {
+static inline void msr_write(uint64_t msr, uint64_t value) {
     asm volatile("wrmsr" : : "a" ((uint32_t) value), "d" ((uint32_t) (value >> 32)), "c" (msr));
 }
 
