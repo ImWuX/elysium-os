@@ -100,6 +100,22 @@ static void command_handler(char *input) {
         } else if(strcmp(command, "ud2") == 0) {
             asm volatile("ud2");
 #endif
+        } else if(strcmp(command, "alloc-wired-page") == 0) {
+            kprintf("Page %#lx\n", pmm_page_alloc(PMM_PAGE_USAGE_WIRED)->paddr);
+        } else if(strcmp(command, "alloc") == 0) {
+            uint64_t count;
+            if(get_arg_num(input, 1, &count)) {
+                kprintf("Missing argument(s)\n");
+            } else {
+                kprintf("Address %#lx\n", (uint64_t) heap_alloc(count));
+            }
+        } else if(strcmp(command, "free") == 0) {
+            uint64_t address;
+            if(get_arg_num(input, 1, &address)) {
+                kprintf("Missing argument(s)\n");
+            } else {
+                heap_free((void *) address);
+            }
         } else if(strcmp(command, "pcidev") == 0) {
             list_t *entry;
             list_foreach(entry, &g_pci_devices) {
@@ -113,14 +129,14 @@ static void command_handler(char *input) {
             }
         } else if(strcmp(command, "hexdump") == 0) {
             if(arg_count < 3) {
-                kprintf("Missing arguments\n");
+                kprintf("Missing argument(s)\n");
             } else {
                 uint64_t usephys;
                 uint64_t address;
                 uint64_t count;
                 if(get_arg_num(input, 3, &usephys) || usephys > 1) usephys = 0;
                 if(get_arg_num(input, 1, &address) || get_arg_num(input, 2, &count)) {
-                    kprintf("Invalid arguments");
+                    kprintf("Invalid argument(s)\n");
                 } else {
                     if(usephys) address = HHDM(address);
                     bool star = false;
@@ -170,6 +186,9 @@ static void command_handler(char *input) {
 #endif
                 "\tpcidev - Displays the PCI devices\n"
                 "\thexdump <address> <count> [physical] - Dumps memory\n"
+                "\talloc-wired-page - Allocates a wired page\n"
+                "\talloc <count> - Allocates memory on the heap\n"
+                "\tfree <address> - Frees a block of memory off the stack\n"
             );
         } else {
             kprintf("Unknown command: \"%s\"\n", command);
