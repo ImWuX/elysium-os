@@ -82,7 +82,7 @@ static void writeb(uint16_t segment, uint8_t bus, uint8_t device, uint8_t func, 
 
 static void check_bus(uint16_t segment, uint8_t bus);
 static void check_function(uint16_t segment, uint8_t bus, uint8_t device, uint8_t func) {
-    uint16_t vendor_id = readw(segment, bus, device, func, __builtin_offsetof(pci_device_header_t, vendor_id));
+    uint16_t vendor_id = readw(segment, bus, device, func, offsetof(pci_device_header_t, vendor_id));
     if(vendor_id == VENDOR_INVALID) return;
 
     pci_device_t *pci_device = heap_alloc(sizeof(pci_device_t));
@@ -92,9 +92,9 @@ static void check_function(uint16_t segment, uint8_t bus, uint8_t device, uint8_
     pci_device->func = func;
     list_insert_behind(&g_pci_devices, &pci_device->list);
 
-    uint8_t class = readb(segment, bus, device, func, __builtin_offsetof(pci_device_header_t, class));
-    uint8_t sub_class = readb(segment, bus, device, func, __builtin_offsetof(pci_device_header_t, sub_class));
-    uint8_t prog_if = readb(segment, bus, device, func, __builtin_offsetof(pci_device_header_t, program_interface));
+    uint8_t class = readb(segment, bus, device, func, offsetof(pci_device_header_t, class));
+    uint8_t sub_class = readb(segment, bus, device, func, offsetof(pci_device_header_t, sub_class));
+    uint8_t prog_if = readb(segment, bus, device, func, offsetof(pci_device_header_t, program_interface));
     switch(class) {
         case 0x1:
             switch(sub_class) {
@@ -110,7 +110,7 @@ static void check_function(uint16_t segment, uint8_t bus, uint8_t device, uint8_
         case 0x6:
             switch(sub_class) {
                 case 0x4:
-                    check_bus(segment, (uint8_t) (readb(segment, bus, device, func, __builtin_offsetof(pci_header1_t, secondary_bus)) >> 8));
+                    check_bus(segment, (uint8_t) (readb(segment, bus, device, func, offsetof(pci_header1_t, secondary_bus)) >> 8));
                     break;
             }
             break;
@@ -119,15 +119,15 @@ static void check_function(uint16_t segment, uint8_t bus, uint8_t device, uint8_
 
 static void check_bus(uint16_t segment, uint8_t bus) {
     for(uint8_t device = 0; device < 32; device++) {
-        if(readw(segment, bus, device, 0, __builtin_offsetof(pci_device_header_t, vendor_id)) == VENDOR_INVALID) continue;
-        for(uint8_t func = 0; func < ((readb(segment, bus, device, 0, __builtin_offsetof(pci_device_header_t, header_type)) & HEADER_TYPE_MULTIFUNC) ? 8 : 1); func++) check_function(segment, bus, device, func);
+        if(readw(segment, bus, device, 0, offsetof(pci_device_header_t, vendor_id)) == VENDOR_INVALID) continue;
+        for(uint8_t func = 0; func < ((readb(segment, bus, device, 0, offsetof(pci_device_header_t, header_type)) & HEADER_TYPE_MULTIFUNC) ? 8 : 1); func++) check_function(segment, bus, device, func);
     }
 }
 
 static void check_segment(uint16_t segment) {
-    if(readb(segment, 0, 0, 0, __builtin_offsetof(pci_device_header_t, header_type)) & HEADER_TYPE_MULTIFUNC) {
+    if(readb(segment, 0, 0, 0, offsetof(pci_device_header_t, header_type)) & HEADER_TYPE_MULTIFUNC) {
         for(uint8_t func = 0; func < 8; func++) {
-            if(readw(segment, 0, 0, func, __builtin_offsetof(pci_device_header_t, vendor_id)) == VENDOR_INVALID) break;
+            if(readw(segment, 0, 0, func, offsetof(pci_device_header_t, vendor_id)) == VENDOR_INVALID) break;
             check_bus(segment, func);
         }
     } else {
