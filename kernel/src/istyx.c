@@ -96,6 +96,10 @@ static void command_handler(char *input) {
     if(command[0]) {
         if(strcmp(command, "clear") == 0) {
             clear();
+#ifdef __ARCH_AMD64
+        } else if(strcmp(command, "ud2") == 0) {
+            asm volatile("ud2");
+#endif
         } else if(strcmp(command, "pcidev") == 0) {
             list_t *entry;
             list_foreach(entry, &g_pci_devices) {
@@ -161,6 +165,9 @@ static void command_handler(char *input) {
             kprintf(
                 "Integrated Styx Help\n"
                 "\tclear - Clears the screen\n"
+#ifdef __ARCH_AMD64
+                "\tud2 - Executes an UD2 instruction\n"
+#endif
                 "\tpcidev - Displays the PCI devices\n"
                 "\thexdump <address> <count> [physical] - Dumps memory\n"
             );

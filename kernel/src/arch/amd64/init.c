@@ -14,6 +14,7 @@
 #include <arch/amd64/msr.h>
 #include <arch/amd64/cpuid.h>
 #include <arch/amd64/lapic.h>
+#include <arch/amd64/exception.h>
 #include <arch/amd64/interrupt.h>
 #include <arch/amd64/sched.h>
 #include <arch/amd64/drivers/pic8259.h>
@@ -102,7 +103,7 @@ static void init_common() {
 
     interrupt_initialize();
     for(int i = 0; i < 32; i++) {
-        interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, panic_exception);
+        interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_unhandled);
     }
     interrupt_load_idt();
 
