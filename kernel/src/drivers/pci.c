@@ -24,7 +24,7 @@ typedef struct {
 } __attribute__((packed)) pcie_segment_entry_t;
 
 static pcie_segment_entry_t *g_segments;
-pci_device_t *g_pci_devices;
+list_t g_pci_devices = LIST_INIT;
 
 static uint32_t readd(uint16_t segment, uint8_t bus, uint8_t device, uint8_t func, uint8_t offset) {
     if(g_segments) bus -= g_segments[segment].start_bus_number;
@@ -90,8 +90,7 @@ static void check_function(uint16_t segment, uint8_t bus, uint8_t device, uint8_
     pci_device->bus = bus;
     pci_device->slot = device;
     pci_device->func = func;
-    pci_device->list = g_pci_devices;
-    g_pci_devices = pci_device;
+    list_insert_behind(&g_pci_devices, &pci_device->list);
 
     uint8_t class = readb(segment, bus, device, func, __builtin_offsetof(pci_device_header_t, class));
     uint8_t sub_class = readb(segment, bus, device, func, __builtin_offsetof(pci_device_header_t, sub_class));

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <drivers/acpi.h>
+#include <lib/list.h>
 
 typedef struct {
     uint16_t vendor_id;
@@ -74,14 +75,14 @@ typedef struct {
 } __attribute__((packed)) pci_header1_t;
 
 typedef struct pci_device {
-    struct pci_device *list;
     uint16_t segment;
     uint8_t bus;
     uint8_t slot;
     uint8_t func;
+    list_t list;
 } pci_device_t;
 
-extern pci_device_t *g_pci_devices;
+extern list_t g_pci_devices;
 
 void pci_enumerate(acpi_sdt_header_t *mcfg);
 

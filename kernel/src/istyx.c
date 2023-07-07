@@ -1,6 +1,7 @@
 #include "istyx.h"
-#include <lib/kprint.h>
 #include <string.h>
+#include <lib/kprint.h>
+#include <lib/list.h>
 #include <graphics/basicfont.h>
 #include <memory/heap.h>
 #include <memory/hhdm.h>
@@ -96,15 +97,15 @@ static void command_handler(char *input) {
         if(strcmp(command, "clear") == 0) {
             clear();
         } else if(strcmp(command, "pcidev") == 0) {
-            pci_device_t *device = g_pci_devices;
-            while(device) {
+            list_t *entry;
+            list_foreach(entry, &g_pci_devices) {
+                pci_device_t *device = list_get(entry, pci_device_t, list);
                 uint16_t vendor_id = pci_config_read_word(device, __builtin_offsetof(pci_device_header_t, vendor_id));
                 uint8_t class = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, class));
                 uint8_t sub_class = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, sub_class));
                 uint8_t prog_if = pci_config_read_byte(device, __builtin_offsetof(pci_device_header_t, program_interface));
                 if(device->segment > 0) kprintf("Seg %i ", device->segment);
                 kprintf("%i:%i.%i\tVendor: %#x, Class: %#x, SubClass: %#x, ProgIf: %#x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
-                device = device->list;
             }
         } else if(strcmp(command, "hexdump") == 0) {
             if(arg_count < 3) {
