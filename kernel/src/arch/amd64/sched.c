@@ -81,7 +81,7 @@ void arch_sched_init_kernel_thread(sched_thread_t *thread, void *entry) {
     thread->context.registers.cs = GDT_CODE_RING0;
     thread->context.registers.ss = GDT_DATA_RING0;
     thread->context.registers.rflags = (1 << 9) | (1 << 1);
-    thread->context.registers.rsp = HHDM(pmm_page_alloc(PMM_PAGE_USAGE_WIRED)->paddr + ARCH_PAGE_SIZE);
+    thread->context.registers.rsp = HHDM(pmm_alloc_page()->paddr + ARCH_PAGE_SIZE);
     thread->context.registers.rip = (uint64_t) entry;
     thread->address_space = &g_kernel_address_space;
 }

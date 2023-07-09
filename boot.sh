@@ -17,7 +17,8 @@ log_error() {
 }
 
 SIM="qemu"
-BIOS=1
+UEFI=0
+DEBUG=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -26,7 +27,10 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --uefi)
-            BIOS=0
+            UEFI=1
+            ;;
+        --debug)
+            DEBUG=1
             ;;
         -?|--help)
             log "┌────────────────────────────────────────────────────────────────────────"
@@ -51,7 +55,7 @@ done
 
 set -- "${POSITIONAL_ARGS[@]}"
 
-if [ "$BIOS" -eq 1 ]; then
+if [ "$UEFI" -eq 0 ]; then
     make ARCH=amd64 BIOS=1
 else
     make ARCH=amd64
@@ -60,40 +64,25 @@ fi
 case $SIM in
     qemu)
         # Running QEMU
-        if [ "$BIOS" -eq 1 ]; then
-            log_important "Running QEMU in VNC using BIOS"
-            qemu-system-x86_64 \
-                -m 256M \
-                -machine q35 \
-                -drive format=raw,file=build/disk.img \
-                -smp cores=4 \
-                -vnc :0,websocket=on \
-                -D ./log.txt -d int \
-                -M smm=off \
-                -k en-us \
-                -serial file:/dev/stdout \
-                -monitor stdio \
-                -no-reboot \
-                -net none \
-                -gdb tcp::1234
-        else
-            log_important "Running QEMU in VNC using UEFI"
-            qemu-system-x86_64 \
-                -m 256M \
-                -machine q35 \
-                -drive format=raw,file=build/disk.img \
-                -smp cores=4 \
-                -vnc :0,websocket=on \
-                -D ./log.txt -d int \
-                -M smm=off \
-                -k en-us \
-                -serial file:/dev/stdout \
-                -monitor stdio \
-                -no-reboot \
-                -net none \
-                -gdb tcp::1234 \
-                -bios /usr/share/ovmf/OVMF.fd
-        fi
+        log_important "Running QEMU in VNC using BIOS"
+        qemu_args=()
+        qemu_args+=(-m 256M)
+        qemu_args+=(-machine q35)
+        qemu_args+=(-drive format=raw,file=build/disk.img)
+        qemu_args+=(-smp cores=4)
+        qemu_args+=(-vnc :0,websocket=on)
+        qemu_args+=(-D ./log.txt)
+        qemu_args+=(-d int)
+        qemu_args+=(-M smm=off)
+        qemu_args+=(-k en-us)
+        qemu_args+=(-serial file:/dev/stdout)
+        qemu_args+=(-monitor stdio)
+        qemu_args+=(-no-reboot)
+        qemu_args+=(-net none)
+        [[ "$UEFI" -eq 1 ]] && qemu_args+=(-bios /usr/share/ovmf/OVMF.fd)
+        [[ "$DEBUG" -eq 1 ]] && qemu_args+=(-s -S)
+
+        qemu-system-x86_64 "${qemu_args[@]}"
         ;;
     bochs)
         # Running Bochs

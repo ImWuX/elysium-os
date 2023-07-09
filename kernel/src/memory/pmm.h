@@ -3,33 +3,25 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <lib/list.h>
 
-typedef enum {
-    PMM_PAGE_USAGE_FREE,
-    PMM_PAGE_USAGE_WIRED,
-    PMM_PAGE_USAGE_VMM,
-    PMM_PAGE_USAGE_ANON,
-    PMM_PAGE_USAGE_BACKED
-} pmm_page_usage_t;
-
-typedef enum {
-    PMM_PAGE_STATE_WIRED
-} pmm_page_state_t;
+#define PMM_MAX_ORDER 7
 
 typedef struct pmm_page {
-    struct pmm_page *next;
+    list_t list;
+    struct pmm_region *region;
     uintptr_t paddr;
-    pmm_page_usage_t usage : 3;
-    pmm_page_state_t state : 2;
-    int rsv0 : 3;
+    uint8_t order : 7;
+    uint8_t free : 1;
 } pmm_page_t;
 
-typedef struct {
-    size_t free_pages;
-    size_t wired_pages;
-    size_t anon_pages;
-    size_t backed_pages;
-} pmm_stats_t;
+typedef struct pmm_region {
+    list_t list;
+    uintptr_t base;
+    size_t page_count;
+    size_t free_count;
+    pmm_page_t pages[];
+} pmm_region_t;
 
 /**
  * @brief Adds a block of memory to be managed by the PMM.
@@ -40,25 +32,25 @@ typedef struct {
 void pmm_region_add(uintptr_t base, size_t size);
 
 /**
+ * @brief Allocates a block of size order^2 pages
+ * 
+ * @param order Block size
+ * @return First page of the allocated block
+ */
+pmm_page_t *pmm_alloc(uint8_t order);
+
+/**
  * @brief Allocates a page of memory.
  *
- * @param usage What the page will be used for
  * @returns The allocated page
  */
-pmm_page_t *pmm_page_alloc(pmm_page_usage_t usage);
+pmm_page_t *pmm_alloc_page();
 
 /**
  * @brief Frees a previously allocated page.
  *
- * @param page The page to be free'd
+ * @param page The page/block to be freed
  */
-void pmm_page_free(pmm_page_t *page);
-
-/**
- * @brief Returns statistics for physical memory
- * 
- * @returns The structure containing the stats
- */
-pmm_stats_t *pmm_stats();
+void pmm_free(pmm_page_t *page);
 
 #endif

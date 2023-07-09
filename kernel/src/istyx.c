@@ -100,16 +100,32 @@ static void command_handler(char *input) {
         } else if(strcmp(command, "ud2") == 0) {
             asm volatile("ud2");
 #endif
-        } else if(strcmp(command, "alloc-wired-page") == 0) {
-            kprintf("Page %#lx\n", pmm_page_alloc(PMM_PAGE_USAGE_WIRED)->paddr);
-        } else if(strcmp(command, "alloc") == 0) {
+        } else if(strcmp(command, "pmm-alloc") == 0) {
+            uint64_t order;
+            if(get_arg_num(input, 1, &order)) {
+                kprintf("Missing argument(s)");
+            } else {
+                pmm_page_t *page = pmm_alloc(order);
+                kprintf("Order %lu^2 page(%#lx) >> %#lx\n", order, (uint64_t) page, page->paddr);
+            }
+        } else if(strcmp(command, "pmm-free") == 0) {
+            uint64_t address;
+            if(get_arg_num(input, 1, &address)) {
+                kprintf("Missing argument(s)");
+            } else {
+                pmm_page_t *page = (pmm_page_t *) address;
+                uint8_t order = page->order;
+                pmm_free(page);
+                kprintf("Freed order %u^2 page\n", order);
+            }
+        } else if(strcmp(command, "heap-alloc") == 0) {
             uint64_t count;
             if(get_arg_num(input, 1, &count)) {
                 kprintf("Missing argument(s)\n");
             } else {
                 kprintf("Address %#lx\n", (uint64_t) heap_alloc(count));
             }
-        } else if(strcmp(command, "free") == 0) {
+        } else if(strcmp(command, "heap-free") == 0) {
             uint64_t address;
             if(get_arg_num(input, 1, &address)) {
                 kprintf("Missing argument(s)\n");
@@ -118,8 +134,8 @@ static void command_handler(char *input) {
             }
         } else if(strcmp(command, "pcidev") == 0) {
             list_t *entry;
-            list_foreach(entry, &g_pci_devices) {
-                pci_device_t *device = list_get(entry, pci_device_t, list);
+            LIST_FOREACH(entry, &g_pci_devices) {
+                pci_device_t *device = LIST_GET(entry, pci_device_t, list);
                 uint16_t vendor_id = pci_config_read_word(device, offsetof(pci_device_header_t, vendor_id));
                 uint8_t class = pci_config_read_byte(device, offsetof(pci_device_header_t, class));
                 uint8_t sub_class = pci_config_read_byte(device, offsetof(pci_device_header_t, sub_class));
@@ -186,9 +202,10 @@ static void command_handler(char *input) {
 #endif
                 "\tpcidev - Displays the PCI devices\n"
                 "\thexdump <address> <count> [physical] - Dumps memory\n"
-                "\talloc-wired-page - Allocates a wired page\n"
-                "\talloc <count> - Allocates memory on the heap\n"
-                "\tfree <address> - Frees a block of memory off the stack\n"
+                "\tpmm-alloc <order> - Allocates a block\n"
+                "\tpmm-free <page address> - Frees a block"
+                "\theap-alloc <count> - Allocates memory on the heap\n"
+                "\theap-free <address> - Frees a block of memory off the stack\n"
             );
         } else {
             kprintf("Unknown command: \"%s\"\n", command);
