@@ -2,11 +2,13 @@
 #include <panic.h>
 #include <arch/types.h>
 #include <memory/hhdm.h>
+#include <lib/slock.h>
 
 #define DIVUP(VAL, DIVISOR) (((VAL) + (DIVISOR) - 1) / (DIVISOR))
 
 static list_t g_regions = LIST_INIT;
 static list_t g_lists[PMM_MAX_ORDER + 1] = {};
+static slock_t g_lock = SLOCK_INIT;
 
 static inline size_t get_local_pfn(pmm_page_t *page) {
     return (page->paddr - page->region->base) / ARCH_PAGE_SIZE;
@@ -61,6 +63,7 @@ void pmm_region_add(uintptr_t base, size_t size) {
 pmm_page_t *pmm_alloc(uint8_t order) {
     uint8_t avl_order = order;
     if(avl_order > PMM_MAX_ORDER) panic("PMM", "Invalid order");
+    slock_acquire(&g_lock);
     while(list_is_empty(&g_lists[avl_order])) {
         if(++avl_order > PMM_MAX_ORDER) panic("PMM", "Exceeded maximum order");
     }
@@ -71,6 +74,7 @@ pmm_page_t *pmm_alloc(uint8_t order) {
         buddy->order = avl_order - 1;
         list_insert_behind(&g_lists[avl_order - 1], &buddy->list);
     }
+    slock_release(&g_lock);
     page->order = order;
     page->free = false;
     page->region->free_count -= order_to_pagecount(order);
@@ -84,6 +88,7 @@ pmm_page_t *pmm_alloc_page() {
 void pmm_free(pmm_page_t *page) {
     size_t data_base = page->region->base + DIVUP(sizeof(pmm_region_t) + sizeof(pmm_page_t) * page->region->page_count, ARCH_PAGE_SIZE) * ARCH_PAGE_SIZE;
     page->free = true;
+    slock_acquire(&g_lock);
     for(;;) {
         if(page->order >= PMM_MAX_ORDER) break;
         size_t buddy_addr = data_base + ((page->paddr - data_base) ^ (order_to_pagecount(page->order) * ARCH_PAGE_SIZE));
@@ -97,4 +102,5 @@ void pmm_free(pmm_page_t *page) {
         if(buddy->paddr < page->paddr) page = buddy;
     }
     list_insert_behind(&g_lists[page->order], &page->list);
+    slock_release(&g_lock);
 }
