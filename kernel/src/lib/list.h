@@ -48,7 +48,7 @@ bool list_is_empty(list_t *list);
  * @param member Name of list embedded in container
  * @return Pointer to container
  */
-#define list_get(node, type, member) ((type *) ((uintptr_t) (node) - offsetof(type, member)))
+#define LIST_GET(node, type, member) ((type *) ((uintptr_t) (node) - offsetof(type, member)))
 
 /**
  * @brief Iterate over a list
@@ -56,6 +56,6 @@ bool list_is_empty(list_t *list);
  * @param entryptr list_t* to be used as iterator
  * @param list List to iterate over
  */
-#define list_foreach(entryptr, list) for((entryptr) = (list)->next; (entryptr) && (entryptr) != (list); (entryptr) = (entryptr)->next)
+#define LIST_FOREACH(entryptr, list) for((entryptr) = (list)->next; (entryptr) && (entryptr) != (list); (entryptr) = (entryptr)->next)
 
 #endif

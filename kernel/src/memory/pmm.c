@@ -3,110 +3,98 @@
 #include <arch/types.h>
 #include <memory/hhdm.h>
 
-#define CEIL(val, div) (((val) + (div) - 1) / (div))
+#define DIVUP(VAL, DIVISOR) (((VAL) + (DIVISOR) - 1) / (DIVISOR))
 
-typedef struct pmm_region {
-    struct pmm_region *next;
-    uintptr_t base;
-    size_t page_count;
-    pmm_page_t pages[];
-} pmm_region_t;
+static list_t g_regions = LIST_INIT;
+static list_t g_lists[PMM_MAX_ORDER + 1] = {};
 
-static pmm_region_t *g_regions = 0;
+static inline size_t get_local_pfn(pmm_page_t *page) {
+    return (page->paddr - page->region->base) / ARCH_PAGE_SIZE;
+}
 
-static pmm_page_t *g_pages_free = 0;
-static pmm_page_t *g_pages_wired = 0;
-static pmm_page_t *g_pages_active = 0;
+static inline uint8_t pagecount_to_order(size_t pages) {
+    if(pages == 1) return 0;
+    return (uint8_t) ((sizeof(unsigned long long) * 8) - __builtin_clzll(pages - 1));
+}
 
-static pmm_stats_t g_stats = {};
+static inline size_t order_to_pagecount(uint8_t order) {
+    return (size_t) 1 << order;
+}
 
 void pmm_region_add(uintptr_t base, size_t size) {
     pmm_region_t *region = (pmm_region_t *) HHDM(base);
     region->base = base;
     region->page_count = size / ARCH_PAGE_SIZE;
 
+    size_t used_pages = DIVUP(sizeof(pmm_region_t) + sizeof(pmm_page_t) * region->page_count, ARCH_PAGE_SIZE);
+    region->free_count = region->page_count - used_pages;
+
     for(size_t i = 0; i < region->page_count; i++) {
-        region->pages[i].paddr = region->base + i * ARCH_PAGE_SIZE;
+        region->pages[i] = (pmm_page_t) {
+            .region = region,
+            .free = true,
+            .paddr = region->base + i * ARCH_PAGE_SIZE
+        };
     }
 
-    size_t used_pages = CEIL(sizeof(pmm_region_t) + sizeof(pmm_page_t) * region->page_count, ARCH_PAGE_SIZE);
-    size_t i = 0;
-    for(; i < used_pages; i++) {
-        region->pages[i].usage = PMM_PAGE_USAGE_WIRED;
-        g_stats.wired_pages++;
+    for(size_t i = 0; i < used_pages; i++) {
+        region->pages[i].free = false;
     }
 
-    for(; i < region->page_count; i++) {
-        region->pages[i].usage = PMM_PAGE_USAGE_FREE;
-        region->pages[i].next = g_pages_free;
-        g_pages_free = &region->pages[i];
-        g_stats.free_pages++;
+    for(size_t i = used_pages, free_pages = region->free_count; free_pages;) {
+        uint8_t order = pagecount_to_order(free_pages);
+        if(free_pages & (free_pages - 1)) order--;
+        if(order > PMM_MAX_ORDER) order = PMM_MAX_ORDER;
+
+        pmm_page_t *page = &region->pages[i];
+        page->order = order;
+        list_insert_behind(&g_lists[order], &page->list);
+
+        size_t order_size = order_to_pagecount(order);
+        free_pages -= order_size;
+        i += order_size;
     }
 
-    region->next = g_regions;
-    g_regions = region;
+    list_insert_behind(&g_regions, &region->list);
 }
 
-pmm_page_t *pmm_page_alloc(pmm_page_usage_t usage) {
-    pmm_page_t *page = g_pages_free;
-    if(!page) panic("PMM", "Out of physical memory");
-    switch(usage) {
-        case PMM_PAGE_USAGE_ANON:
-            g_stats.anon_pages++;
-            break;
-        case PMM_PAGE_USAGE_VMM:
-        case PMM_PAGE_USAGE_WIRED:
-            g_stats.wired_pages++;
-            break;
-        case PMM_PAGE_USAGE_BACKED:
-            g_stats.backed_pages++;
-            break;
-        default: panic("PMM", "Invalid usage for alloc");
+pmm_page_t *pmm_alloc(uint8_t order) {
+    uint8_t avl_order = order;
+    if(avl_order > PMM_MAX_ORDER) panic("PMM", "Invalid order");
+    while(list_is_empty(&g_lists[avl_order])) {
+        if(++avl_order > PMM_MAX_ORDER) panic("PMM", "Exceeded maximum order");
     }
-    g_stats.free_pages--;
-    g_pages_free = page->next;
-    if(usage == PMM_PAGE_USAGE_WIRED) {
-        page->next = g_pages_wired;
-        g_pages_wired = page;
-    } else {
-        page->next = g_pages_active;
-        g_pages_active = page;
+    pmm_page_t *page = LIST_GET(g_lists[avl_order].next, pmm_page_t, list);
+    list_delete(&page->list);
+    for(; avl_order > order; avl_order--) {
+        pmm_page_t *buddy = &page->region->pages[get_local_pfn(page) + (order_to_pagecount(avl_order - 1))];
+        buddy->order = avl_order - 1;
+        list_insert_behind(&g_lists[avl_order - 1], &buddy->list);
     }
-    page->usage = usage;
-    page->state = PMM_PAGE_STATE_WIRED;
+    page->order = order;
+    page->free = false;
+    page->region->free_count -= order_to_pagecount(order);
     return page;
 }
 
-void pmm_page_free(pmm_page_t *page) {
-    switch(page->usage) {
-        case PMM_PAGE_USAGE_ANON:
-            g_stats.anon_pages--;
-            break;
-        case PMM_PAGE_USAGE_VMM:
-        case PMM_PAGE_USAGE_WIRED:
-            g_stats.wired_pages--;
-            break;
-        case PMM_PAGE_USAGE_BACKED:
-            g_stats.backed_pages--;
-            break;
-        default: panic("PMM", "Cannot free a free page");
-    }
-    g_stats.free_pages++;
-    pmm_page_t *cur;
-    if(page->usage == PMM_PAGE_USAGE_WIRED) {
-        cur = g_pages_wired;
-    } else {
-        cur = g_pages_active;
-    }
-    while(cur) {
-        if(cur->next == page) cur->next = page->next;
-        cur = cur->next;
-    }
-    page->usage = PMM_PAGE_USAGE_FREE;
-    page->next = g_pages_free;
-    g_pages_free = page;
+pmm_page_t *pmm_alloc_page() {
+    return pmm_alloc(0);
 }
 
-pmm_stats_t *pmm_stats() {
-    return &g_stats;
+void pmm_free(pmm_page_t *page) {
+    size_t data_base = page->region->base + DIVUP(sizeof(pmm_region_t) + sizeof(pmm_page_t) * page->region->page_count, ARCH_PAGE_SIZE) * ARCH_PAGE_SIZE;
+    page->free = true;
+    for(;;) {
+        if(page->order >= PMM_MAX_ORDER) break;
+        size_t buddy_addr = data_base + ((page->paddr - data_base) ^ (order_to_pagecount(page->order) * ARCH_PAGE_SIZE));
+        if(buddy_addr >= page->region->base + page->region->page_count * ARCH_PAGE_SIZE) break;
+        pmm_page_t *buddy = &page->region->pages[(buddy_addr - page->region->base) / ARCH_PAGE_SIZE];
+        if(!buddy->free || buddy->order != page->order) break;
+
+        list_delete(&buddy->list);
+        buddy->order++;
+        page->order++;
+        if(buddy->paddr < page->paddr) page = buddy;
+    }
+    list_insert_behind(&g_lists[page->order], &page->list);
 }

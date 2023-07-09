@@ -17,7 +17,7 @@ sched_thread_t *sched_next_thread() {
         slock_release(&g_sched_lock);
         return 0;
     }
-    sched_thread_t *thread = list_get(g_queue.next, sched_thread_t, list);
+    sched_thread_t *thread = LIST_GET(g_queue.next, sched_thread_t, list);
     list_delete(&thread->list);
     slock_release(&g_sched_lock);
     thread->state = SCHED_THREAD_ACTIVE;

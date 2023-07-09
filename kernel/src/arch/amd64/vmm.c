@@ -60,7 +60,7 @@ void vmm_create_kernel_address_space(vmm_address_space_t *out) {
     uint64_t *pml4 = (uint64_t *) HHDM(out->archdep.cr3);
     for(int i = 256; i < 512; i++) {
         if(pml4[i] & PTE_FLAG_PRESENT) continue;
-        pmm_page_t *page = pmm_page_alloc(PMM_PAGE_USAGE_VMM);
+        pmm_page_t *page = pmm_alloc_page();
         memset((void *) HHDM(page->paddr), 0, ARCH_PAGE_SIZE);
         pml4[i] = PTE_FLAG_PRESENT | PTE_FLAG_NX;
         pte_set_address(&pml4[i], page->paddr);
@@ -80,7 +80,7 @@ void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t
         if(current_table[index] & PTE_FLAG_PRESENT) {
             if(!(flags & PTE_FLAG_NX)) current_table[index] &= ~PTE_FLAG_NX;
         } else {
-            pmm_page_t *page = pmm_page_alloc(PMM_PAGE_USAGE_VMM);
+            pmm_page_t *page = pmm_alloc_page();
             memset((void *) HHDM(page->paddr), 0, ARCH_PAGE_SIZE);
             current_table[index] = PTE_FLAG_PRESENT;
             pte_set_address(&current_table[index], page->paddr);
