@@ -33,7 +33,7 @@ void pmm_region_add(uintptr_t base, size_t size);
 
 /**
  * @brief Allocates a block of size order^2 pages
- * 
+ *
  * @param order Block size
  * @return First page of the allocated block
  */

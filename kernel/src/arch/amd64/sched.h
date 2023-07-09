@@ -9,7 +9,7 @@ extern uint8_t g_sched_vector;
 
 /**
  * @brief Scheduler entry from interrupt
- * 
+ *
  * @param frame CPU state at the time of interrupt
  */
 void sched_entry(interrupt_frame_t *frame);

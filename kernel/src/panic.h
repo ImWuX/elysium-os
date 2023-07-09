@@ -5,7 +5,7 @@
 
 /**
  * @brief Log an issue and halt the core
- * 
+ *
  * @param location The location where the issue was encountered
  * @param msg A message explaining the issue
 */

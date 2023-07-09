@@ -84,13 +84,65 @@ typedef struct pci_device {
 
 extern list_t g_pci_devices;
 
+/**
+ * @brief Enumerate PCI devices
+ *
+ * @param mcfg MCFG table
+ */
 void pci_enumerate(acpi_sdt_header_t *mcfg);
 
+/**
+ * @brief Read byte from device config
+ *
+ * @param device PCI device
+ * @param offset Config offset
+ * @return Byte read from config
+ */
 uint8_t pci_config_read_byte(pci_device_t *device, uint8_t offset);
+
+/**
+ * @brief Read word from device config
+ *
+ * @param device PCI device
+ * @param offset Config offset
+ * @return Word read from config
+ */
 uint16_t pci_config_read_word(pci_device_t *device, uint8_t offset);
+
+/**
+ * @brief Read doubleword from device config
+ *
+ * @param device PCI device
+ * @param offset Config offset
+ * @return Doubleword read from config
+ */
 uint32_t pci_config_read_double(pci_device_t *device, uint8_t offset);
+
+/**
+ * @brief Write byte to device config
+ *
+ * @param device PCI device
+ * @param offset Config offset
+ * @param data Byte to write to config
+ */
 void pci_config_write_byte(pci_device_t *device, uint8_t offset, uint8_t data);
+
+/**
+ * @brief Write word to device config
+ *
+ * @param device PCI device
+ * @param offset Config offset
+ * @param data Word to write to config
+ */
 void pci_config_write_word(pci_device_t *device, uint8_t offset, uint16_t data);
+
+/**
+ * @brief Write doubleword to device config
+ *
+ * @param device PCI device
+ * @param offset Config offset
+ * @param data Doubleword to write to config
+ */
 void pci_config_write_double(pci_device_t *device, uint8_t offset, uint32_t data);
 
 #endif

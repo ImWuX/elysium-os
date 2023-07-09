@@ -5,7 +5,7 @@
 
 /**
  * @brief Port in (byte).
- * 
+ *
  * @param port Port number
  * @return Value in
  */
@@ -17,7 +17,7 @@ static inline uint8_t port_inb(uint16_t port) {
 
 /**
  * @brief Port out (byte)
- * 
+ *
  * @param port Port number
  * @param value Value out
  */
@@ -27,7 +27,7 @@ static inline void port_outb(uint16_t port, uint8_t value) {
 
 /**
  * @brief Port in (word).
- * 
+ *
  * @param port Port number
  * @return Value in
  */
@@ -39,7 +39,7 @@ static inline uint32_t port_inl(uint16_t port) {
 
 /**
  * @brief Port out (word).
- * 
+ *
  * @param port Port number
  * @param value Value out
  */

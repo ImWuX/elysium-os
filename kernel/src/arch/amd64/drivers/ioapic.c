@@ -127,12 +127,12 @@ void ioapic_initialize(acpi_sdt_header_t *apic_header) {
     g_ioapic = (uint32_t *) HHDM(ioapic_address);
 }
 
-void ioapic_map_gsi(uint8_t gsi, uint8_t apic_id, bool low_polarity, bool edge, uint8_t vector) {
+void ioapic_map_gsi(uint8_t gsi, uint8_t apic_id, bool low_polarity, bool trigger_mode, uint8_t vector) {
     uint32_t iored_low = IOREDx(gsi);
 
     uint32_t low_entry = vector;
     if(low_polarity) low_entry |= IOREDx_INTPOL;
-    if(!edge) low_entry |= IOREDx_TRIGGERMODE;
+    if(!trigger_mode) low_entry |= IOREDx_TRIGGERMODE;
     ioapic_write(iored_low, low_entry);
 
     uint32_t high_data = ioapic_read(iored_low + 1);
@@ -141,7 +141,7 @@ void ioapic_map_gsi(uint8_t gsi, uint8_t apic_id, bool low_polarity, bool edge, 
     ioapic_write(iored_low + 1, high_data);
 }
 
-void ioapic_map_legacy_irq(uint8_t irq, uint8_t apic_id, bool fallback_low_polarity, bool fallback_edge, uint8_t vector) {
+void ioapic_map_legacy_irq(uint8_t irq, uint8_t apic_id, bool fallback_low_polarity, bool fallback_trigger_mode, uint8_t vector) {
     if(irq < 16) {
         switch(g_legacy_irq_map[irq].flags & LEGACY_POLARITY) {
             case LEGACY_POLARITY_LOW:
@@ -153,13 +153,13 @@ void ioapic_map_legacy_irq(uint8_t irq, uint8_t apic_id, bool fallback_low_polar
         }
         switch(g_legacy_irq_map[irq].flags & LEGACY_TRIGGER) {
             case LEGACY_TRIGGER_EDGE:
-                fallback_edge = true;
+                fallback_trigger_mode = true;
                 break;
             case LEGACY_TRIGGER_LEVEL:
-                fallback_edge = false;
+                fallback_trigger_mode = false;
                 break;
         }
         irq = g_legacy_irq_map[irq].gsi;
     }
-    ioapic_map_gsi(irq, apic_id, fallback_low_polarity, fallback_edge, vector);
+    ioapic_map_gsi(irq, apic_id, fallback_low_polarity, fallback_trigger_mode, vector);
 }

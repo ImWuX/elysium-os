@@ -94,8 +94,26 @@ typedef struct {
     acpi_generic_address_structure_t x_gpe1_block;
 } __attribute__((packed)) acpi_fadt_t;
 
+/**
+ * @brief Initialize ACPI
+ *
+ * @param rsdp Root system description pointer
+ */
 void acpi_initialize(acpi_rsdp_t *rsdp);
+
+/**
+ * @brief Find ACPI table
+ *
+ * @param signature Table signature
+ * @return ACPI table
+ */
 acpi_sdt_header_t *acpi_find_table(uint8_t *signature);
+
+/**
+ * @brief Get ACPI revision
+ *
+ * @return Revision
+ */
 uint8_t acpi_revision();
 
 #endif
