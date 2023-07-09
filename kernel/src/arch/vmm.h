@@ -5,7 +5,7 @@
 
 /**
  * @brief Load a virtual address space.
- * 
+ *
  * @param address_space Address space
  */
 void arch_vmm_load_address_space(vmm_address_space_t *address_space);
@@ -22,7 +22,7 @@ void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t
 
 /**
  * @brief Calculate highest userspace address for arch.
- * 
+ *
  * @returns Highest userspace address
  */
 uintptr_t arch_vmm_highest_userspace_addr();

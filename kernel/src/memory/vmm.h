@@ -57,7 +57,7 @@ int vmm_alloc_wired(vmm_address_space_t *address_space, uintptr_t vaddr, size_t 
 
 /**
  * @brief Map a range of virtual memory to a specific physical address.
- * 
+ *
  * @param address_space Address space
  * @param vaddr Virtual address of range
  * @param paddr Physical address to map into

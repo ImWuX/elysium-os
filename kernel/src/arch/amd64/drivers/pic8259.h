@@ -15,7 +15,7 @@ void pic8259_disable();
 
 /**
  * @brief Issue an end of interrupt to the legacy PIC.
- * 
+ *
  * @param interrupt_vector Vector of the interrupt
  */
 void pic8259_eoi(uint8_t interrupt_vector);

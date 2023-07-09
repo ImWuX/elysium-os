@@ -15,7 +15,7 @@ typedef uint32_t draw_color_t;
 
 /**
  * @brief Packs RGB values into a color value
- * 
+ *
  * @param r Red comp
  * @param g Green comp
  * @param b Blue comp
@@ -25,7 +25,7 @@ draw_color_t draw_color(uint8_t r, uint8_t g, uint8_t b);
 
 /**
  * @brief Retrieves a pixel from a context
- * 
+ *
  * @param ctx The draw context
  * @param x X Coord
  * @param y Y Coord
@@ -35,7 +35,7 @@ draw_color_t draw_getpixel(draw_context_t *ctx, int x, int y);
 
 /**
  * @brief Draws a character to a context
- * 
+ *
  * @param ctx The draw context
  * @param x X Coord
  * @param y Y Coord
@@ -46,7 +46,7 @@ void draw_char(draw_context_t *ctx, int x, int y, char c, draw_color_t color);
 
 /**
  * @brief Draw a simple string to a context
- * 
+ *
  * @param ctx The draw context
  * @param x X Coord
  * @param y Y Coord
@@ -57,7 +57,7 @@ void draw_string_simple(draw_context_t *ctx, int x, int y, char *str, draw_color
 
 /**
  * @brief Draw a pixel to a context
- * 
+ *
  * @param ctx The draw context
  * @param x X Coord
  * @param y Y Coord
@@ -67,7 +67,7 @@ void draw_pixel(draw_context_t *ctx, int x, int y, draw_color_t color);
 
 /**
  * @brief Draw a rectangle to a context
- * 
+ *
  * @param ctx The draw context
  * @param x X Coord
  * @param y Y Coord

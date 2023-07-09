@@ -8,7 +8,7 @@ typedef unsigned char slock_t;
 /**
  * @brief Acquire a spinclock
  * @warning Spins until acquired
- * 
+ *
  * @param lock Spinlock
  */
 void slock_acquire(slock_t *lock);

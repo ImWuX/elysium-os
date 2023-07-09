@@ -73,7 +73,7 @@ typedef enum {
 
 /**
  * @brief Test for a feature exposed in CPUID.
- * 
+ *
  * @param feature A feature in CPUID
  * @retval true Supported
  * @retval false Unsupported
