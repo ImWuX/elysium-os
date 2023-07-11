@@ -21,6 +21,15 @@ void arch_vmm_load_address_space(vmm_address_space_t *address_space);
 void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, uint64_t flags);
 
 /**
+ * @brief Retrieve the physical address from an address space
+ *
+ * @param address_space Address space
+ * @param virtual_address Address space
+ * @return Physical address
+ */
+uintptr_t arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr);
+
+/**
  * @brief Calculate highest userspace address for arch.
  *
  * @returns Highest userspace address

@@ -65,7 +65,7 @@ pmm_page_t *pmm_alloc(uint8_t order) {
     if(avl_order > PMM_MAX_ORDER) panic("PMM", "Invalid order");
     slock_acquire(&g_lock);
     while(list_is_empty(&g_lists[avl_order])) {
-        if(++avl_order > PMM_MAX_ORDER) panic("PMM", "Exceeded maximum order");
+        if(++avl_order > PMM_MAX_ORDER) panic("PMM", "Exceeded maximum order (OUT OF MEMORY)");
     }
     pmm_page_t *page = LIST_GET(g_lists[avl_order].next, pmm_page_t, list);
     list_delete(&page->list);
@@ -79,6 +79,10 @@ pmm_page_t *pmm_alloc(uint8_t order) {
     page->free = false;
     page->region->free_count -= order_to_pagecount(order);
     return page;
+}
+
+pmm_page_t *pmm_alloc_pages(size_t page_count) {
+    return pmm_alloc(pagecount_to_order(page_count));
 }
 
 pmm_page_t *pmm_alloc_page() {

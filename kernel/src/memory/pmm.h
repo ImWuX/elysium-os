@@ -40,6 +40,14 @@ void pmm_region_add(uintptr_t base, size_t size);
 pmm_page_t *pmm_alloc(uint8_t order);
 
 /**
+ * @brief Allocates the smallest block of size N^2 pages to fit size
+ *
+ * @param page_count Page count
+ * @return Block size equal to or larger than page count
+ */
+pmm_page_t *pmm_alloc_pages(size_t page_count);
+
+/**
  * @brief Allocates a page of memory.
  *
  * @returns The allocated page

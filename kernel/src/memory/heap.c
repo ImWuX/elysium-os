@@ -53,29 +53,53 @@ void heap_initialize(vmm_address_space_t *address_space, uintptr_t start, uintpt
     g_head = g_tail;
 }
 
-void *heap_alloc(size_t size) {
+void *heap_alloc_align(size_t size, size_t alignment) {
     heap_entry_t *current_entry = g_head;
     while(current_entry) {
-        if(current_entry->free && current_entry->length >= size) {
-            if(current_entry->length >= size + MIN_SPLIT_SIZE + sizeof(heap_entry_t)) {
-                heap_entry_t *old = current_entry->next;
-                heap_entry_t *new = (heap_entry_t *) ((uintptr_t) current_entry + sizeof(heap_entry_t) + size);
-                current_entry->next = new;
-                new->next = old;
-                new->prev = current_entry;
-                if(old) old->prev = new;
-                new->free = true;
-                new->length = current_entry->length - size - sizeof(heap_entry_t);
-                current_entry->length = size;
-                if(current_entry == g_tail) g_tail = new;
-            }
-            current_entry->free = false;
-            return (void *) current_entry + sizeof(heap_entry_t);
+        if(!current_entry->free) goto next;
+        uintptr_t alignment_mod = ((uintptr_t) current_entry + sizeof(heap_entry_t)) % alignment;
+        uintptr_t alignment_offset = alignment - alignment_mod;
+        if(alignment_mod == 0) alignment_offset = 0;
+        if(current_entry->length < size + alignment_offset) goto next;
+        if(alignment_offset == 0) goto alloc;
+        if(alignment_offset < sizeof(heap_entry_t) + MIN_SPLIT_SIZE) goto next;
+
+        heap_entry_t *new_entry = (heap_entry_t *) ((uintptr_t) current_entry + alignment_offset); // TODO: could be wrong
+        new_entry->next = current_entry->next;
+        new_entry->prev = current_entry;
+        current_entry->next = new_entry;
+        if(new_entry->next) new_entry->next->prev = new_entry;
+        new_entry->free = false;
+        new_entry->length = current_entry->length - alignment_offset; // TODO: could be wrong
+        current_entry->length = alignment_offset - sizeof(heap_entry_t);
+        if(current_entry == g_tail) g_tail = new_entry;
+        current_entry = new_entry;
+
+        alloc:
+        if(current_entry->length >= size + MIN_SPLIT_SIZE + sizeof(heap_entry_t)) {
+            heap_entry_t *old = current_entry->next;
+            heap_entry_t *new = (heap_entry_t *) ((uintptr_t) current_entry + sizeof(heap_entry_t) + size);
+            current_entry->next = new;
+            new->next = old;
+            new->prev = current_entry;
+            if(old) old->prev = new;
+            new->free = true;
+            new->length = current_entry->length - size - sizeof(heap_entry_t);
+            current_entry->length = size;
+            if(current_entry == g_tail) g_tail = new;
         }
+        current_entry->free = false;
+        return (void *) current_entry + sizeof(heap_entry_t);
+
+        next:
         current_entry = current_entry->next;
     }
     expand((size + sizeof(heap_entry_t)) / ARCH_PAGE_SIZE + 1);
-    return heap_alloc(size);
+    return heap_alloc_align(size, alignment);
+}
+
+void *heap_alloc(size_t size) {
+    return heap_alloc_align(size, 1);
 }
 
 void heap_free(void* address) {
