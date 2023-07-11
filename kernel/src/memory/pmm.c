@@ -1,4 +1,5 @@
 #include "pmm.h"
+#include <string.h>
 #include <panic.h>
 #include <arch/types.h>
 #include <memory/hhdm.h>
@@ -44,7 +45,7 @@ void pmm_region_add(uintptr_t base, size_t size) {
     }
 
     for(size_t i = used_pages, free_pages = region->free_count; free_pages;) {
-        uint8_t order = pagecount_to_order(free_pages);
+        pmm_order_t order = pagecount_to_order(free_pages);
         if(free_pages & (free_pages - 1)) order--;
         if(order > PMM_MAX_ORDER) order = PMM_MAX_ORDER;
 
@@ -60,8 +61,8 @@ void pmm_region_add(uintptr_t base, size_t size) {
     list_insert_behind(&g_regions, &region->list);
 }
 
-pmm_page_t *pmm_alloc(uint8_t order) {
-    uint8_t avl_order = order;
+pmm_page_t *pmm_alloc(pmm_order_t order, pmm_allocator_flags_t flags) {
+    pmm_order_t avl_order = order;
     if(avl_order > PMM_MAX_ORDER) panic("PMM", "Invalid order");
     slock_acquire(&g_lock);
     while(list_is_empty(&g_lists[avl_order])) {
@@ -78,15 +79,16 @@ pmm_page_t *pmm_alloc(uint8_t order) {
     page->order = order;
     page->free = false;
     page->region->free_count -= order_to_pagecount(order);
+    if(flags & PMM_AF_ZERO) memset((void *) HHDM(page->paddr), 0, order_to_pagecount(order) * ARCH_PAGE_SIZE);
     return page;
 }
 
-pmm_page_t *pmm_alloc_pages(size_t page_count) {
-    return pmm_alloc(pagecount_to_order(page_count));
+pmm_page_t *pmm_alloc_pages(size_t page_count, pmm_allocator_flags_t flags) {
+    return pmm_alloc(pagecount_to_order(page_count), flags);
 }
 
-pmm_page_t *pmm_alloc_page() {
-    return pmm_alloc(0);
+pmm_page_t *pmm_alloc_page(pmm_allocator_flags_t flags) {
+    return pmm_alloc(0, flags);
 }
 
 void pmm_free(pmm_page_t *page) {
