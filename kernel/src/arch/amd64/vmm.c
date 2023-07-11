@@ -98,7 +98,7 @@ void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t
 }
 
 uintptr_t arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr) {
-    uint64_t *current_table = (uint64_t *) address_space->archdep.cr3;
+    uint64_t *current_table = (uint64_t *) HHDM(address_space->archdep.cr3);
     for(uint8_t i = 4; i > 1; i--) {
         int index = (vaddr >> (i * 9 + 3)) & 0x1FF;
         uint64_t entry = current_table[index];

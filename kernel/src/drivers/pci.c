@@ -1,6 +1,7 @@
 #include "pci.h"
 #include <panic.h>
 #include <drivers/acpi.h>
+#include <drivers/ahci.h>
 #include <memory/hhdm.h>
 #include <memory/heap.h>
 
@@ -101,7 +102,7 @@ static void check_function(uint16_t segment, uint8_t bus, uint8_t device, uint8_
                 case 0x6:
                     switch(prog_if) {
                         case 0x1:
-                            // ahci_initialize_device(pci_device);
+                            ahci_initialize_device(pci_device);
                             break;
                     }
                     break;
