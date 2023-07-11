@@ -4,7 +4,7 @@
 
 int vmm_alloc_wired(vmm_address_space_t *address_space, uintptr_t vaddr, size_t npages, uint64_t flags) {
     for(size_t i = 0; i < npages; i++) {
-        pmm_page_t *page = pmm_alloc_page();
+        pmm_page_t *page = pmm_alloc_page(PMM_AF_NORMAL);
         arch_vmm_map(address_space, vaddr + i * ARCH_PAGE_SIZE, page->paddr, flags);
     }
     return 0;
@@ -31,7 +31,7 @@ int vmm_alloc(vmm_address_space_t *address_space, uintptr_t vaddr, size_t size) 
     vmm_anon_t *prev = 0;
     for(size_t i = 0; i < size; i += ARCH_PAGE_SIZE) {
         vmm_anon_t *anon = heap_alloc(sizeof(vmm_anon_t));
-        anon->page = pmm_alloc_page();
+        anon->page = pmm_alloc_page(PMM_AF_NORMAL);
         arch_vmm_map(address_space, vaddr + i, anon->page->paddr, VMM_DEFAULT_KERNEL_FLAGS);
         anon->offset = i;
         anon->next = prev;

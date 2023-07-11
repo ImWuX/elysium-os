@@ -106,7 +106,7 @@ static void command_handler(char *input) {
             if(get_arg_num(input, 1, &order)) {
                 kprintf("Missing argument(s)");
             } else {
-                pmm_page_t *page = pmm_alloc(order);
+                pmm_page_t *page = pmm_alloc(order, PMM_AF_NORMAL);
                 kprintf("Order %lu^2 page(%#lx) >> %#lx\n", order, (uint64_t) page, page->paddr);
             }
         } else if(strcmp(command, "pmm-free") == 0) {

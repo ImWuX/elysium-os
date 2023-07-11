@@ -7,6 +7,12 @@
 
 #define PMM_MAX_ORDER 7
 
+#define PMM_AF_NORMAL 0
+#define PMM_AF_ZERO (1 << 0)
+
+typedef uint16_t pmm_allocator_flags_t;
+typedef uint8_t pmm_order_t;
+
 typedef struct pmm_page {
     list_t list;
     struct pmm_region *region;
@@ -37,7 +43,7 @@ void pmm_region_add(uintptr_t base, size_t size);
  * @param order Block size
  * @return First page of the allocated block
  */
-pmm_page_t *pmm_alloc(uint8_t order);
+pmm_page_t *pmm_alloc(pmm_order_t order, pmm_allocator_flags_t flags);
 
 /**
  * @brief Allocates the smallest block of size N^2 pages to fit size
@@ -45,14 +51,14 @@ pmm_page_t *pmm_alloc(uint8_t order);
  * @param page_count Page count
  * @return Block size equal to or larger than page count
  */
-pmm_page_t *pmm_alloc_pages(size_t page_count);
+pmm_page_t *pmm_alloc_pages(size_t page_count, pmm_allocator_flags_t flags);
 
 /**
  * @brief Allocates a page of memory.
  *
  * @returns The allocated page
  */
-pmm_page_t *pmm_alloc_page();
+pmm_page_t *pmm_alloc_page(pmm_allocator_flags_t flags);
 
 /**
  * @brief Frees a previously allocated page.
