@@ -6,6 +6,7 @@
 #include <memory/heap.h>
 #include <memory/hhdm.h>
 #include <drivers/pci.h>
+#include <drivers/ahci.h>
 
 #define PREFIX "> "
 #define TAB_WIDTH 4
@@ -120,10 +121,18 @@ static void command_handler(char *input) {
             }
         } else if(strcmp(command, "heap-alloc") == 0) {
             uint64_t count;
+            uint64_t alignment;
+            if(get_arg_num(input, 2, &alignment)) alignment = 0;
             if(get_arg_num(input, 1, &count)) {
                 kprintf("Missing argument(s)\n");
             } else {
-                kprintf("Address %#lx\n", (uint64_t) heap_alloc(count));
+                uint64_t block;
+                if(alignment) {
+                    block = (uintptr_t) heap_alloc_align(count, alignment);
+                } else {
+                    block = (uintptr_t) heap_alloc(count);
+                }
+                kprintf("Address %#lx\n", block);
             }
         } else if(strcmp(command, "heap-free") == 0) {
             uint64_t address;
@@ -131,6 +140,20 @@ static void command_handler(char *input) {
                 kprintf("Missing argument(s)\n");
             } else {
                 heap_free((void *) address);
+            }
+        } else if(strcmp(command, "read") == 0) {
+            if(arg_count < 4) {
+                kprintf("Missing arguments\n");
+            } else {
+                uint64_t sector;
+                uint64_t count;
+                uint64_t dest;
+                if(get_arg_num(input, 1, &sector) || get_arg_num(input, 2, &count) || get_arg_num(input, 3, &dest)) {
+                    kprintf("Invalid arguments\n");
+                } else {
+                    ahci_read(0, sector, count, (void *) dest);
+                    kprintf("Read %li sectors starting at %li into %#lx\n", count, sector, dest);
+                }
             }
         } else if(strcmp(command, "pcidev") == 0) {
             list_t *entry;
@@ -204,8 +227,9 @@ static void command_handler(char *input) {
                 "\thexdump <address> <count> [physical] - Dumps memory\n"
                 "\tpmm-alloc <order> - Allocates a block\n"
                 "\tpmm-free <page address> - Frees a block\n"
-                "\theap-alloc <count> - Allocates memory on the heap\n"
+                "\theap-alloc <count> [alignment] - Allocates memory on the heap\n"
                 "\theap-free <address> - Frees a block of memory off the stack\n"
+                "\tread <sector> <count> <dest> - Reads data from the first block device\n"
             );
         } else {
             kprintf("Unknown command: \"%s\"\n", command);
