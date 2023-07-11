@@ -97,6 +97,20 @@ void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t
     pte_set_address(&current_table[index], paddr);
 }
 
+uintptr_t arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr) {
+    uint64_t *current_table = (uint64_t *) address_space->archdep.cr3;
+    for(uint8_t i = 4; i > 1; i--) {
+        int index = (vaddr >> (i * 9 + 3)) & 0x1FF;
+        uint64_t entry = current_table[index];
+        if(!(current_table[index] & PTE_FLAG_PRESENT)) return 0;
+        current_table = (uint64_t *) HHDM(pte_get_address(entry));
+    }
+    int index = (vaddr >> 12) & 0x1FF;
+    uint64_t entry = current_table[index];
+    if(!(current_table[index] & PTE_FLAG_PRESENT)) return 0;
+    return pte_get_address(entry);
+}
+
 uintptr_t arch_vmm_highest_userspace_addr() {
     static uintptr_t highest_address;
     if(!highest_address) highest_address = ((uintptr_t) 1 << 48) - ARCH_PAGE_SIZE - 1;

@@ -15,17 +15,26 @@
 void heap_initialize(vmm_address_space_t *address_space, uintptr_t start, uintptr_t end);
 
 /**
- * @brief Allocate a block memory in the heap.
+ * @brief Allocate a block of memory in the heap, without an alignment.
  *
  * @param size Size of block to allocate in bytes
- * @return Address of the allocated memory
+ * @return Address of the allocated block
  */
 void *heap_alloc(size_t size);
 
 /**
+ * @brief Allocate a block of memory in the heap, with an alignment.
+ *
+ * @param size Size of block to allocate in bytes
+ * @param alignment Alignment of the block
+ * @return Address of the allocated block
+ */
+void *heap_alloc_align(size_t size, size_t alignment);
+
+/**
  * @brief Free a block of memory in the heap.
  *
- * @param address Address of the block of memory
+ * @param address Address of the block to free
  */
 void heap_free(void* address);
 

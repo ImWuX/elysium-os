@@ -203,7 +203,7 @@ static void command_handler(char *input) {
                 "\tpcidev - Displays the PCI devices\n"
                 "\thexdump <address> <count> [physical] - Dumps memory\n"
                 "\tpmm-alloc <order> - Allocates a block\n"
-                "\tpmm-free <page address> - Frees a block"
+                "\tpmm-free <page address> - Frees a block\n"
                 "\theap-alloc <count> - Allocates memory on the heap\n"
                 "\theap-free <address> - Frees a block of memory off the stack\n"
             );
