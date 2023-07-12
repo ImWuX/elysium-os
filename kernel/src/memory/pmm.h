@@ -3,15 +3,37 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <lib/slock.h>
 #include <lib/list.h>
 
 #define PMM_MAX_ORDER 7
 
-#define PMM_AF_NORMAL 0
+#define PMM_ZONE_COUNT 2
+#define PMM_ZONE_AF_SHIFT 6
+#define PMM_ZONE_AF_MASK 0b11
+#define PMM_ZONE_INDEX_NORMAL 0
+#define PMM_ZONE_INDEX_DMA 1
+
 #define PMM_AF_ZERO (1 << 0)
+#define PMM_AF_ZONE_DMA (PMM_ZONE_INDEX_DMA << PMM_ZONE_AF_SHIFT)
+#define PMM_AF_ZONE_NORMAL (PMM_ZONE_INDEX_NORMAL << PMM_ZONE_AF_SHIFT)
+
+#define PMM_GENERAL (PMM_AF_ZONE_NORMAL)
+#define PMM_DMA (PMM_AF_ZONE_DMA)
 
 typedef uint16_t pmm_allocator_flags_t;
 typedef uint8_t pmm_order_t;
+
+typedef struct {
+    slock_t lock;
+    list_t regions;
+    list_t lists[PMM_MAX_ORDER + 1];
+    size_t page_count;
+    size_t free_count;
+    uintptr_t start;
+    uintptr_t end;
+    char *name;
+} pmm_zone_t;
 
 typedef struct pmm_page {
     list_t list;
@@ -23,19 +45,33 @@ typedef struct pmm_page {
 
 typedef struct pmm_region {
     list_t list;
+    pmm_zone_t *zone;
     uintptr_t base;
     size_t page_count;
     size_t free_count;
     pmm_page_t pages[];
 } pmm_region_t;
 
+extern pmm_zone_t g_pmm_zones[PMM_ZONE_COUNT];
+
+/**
+ * @brief Create a memory zone
+ *
+ * @param zone_index Zone index
+ * @param name Zone name
+ * @param start Zone base address
+ * @param end Zone end address
+ */
+void pmm_zone_create(int zone_index, char *name, uintptr_t start, uintptr_t end);
+
 /**
  * @brief Adds a block of memory to be managed by the PMM.
  *
+ * @param zone_index Index of zone the region belongs to
  * @param base Base address of memory block
  * @param size Size of the block in bytes
  */
-void pmm_region_add(uintptr_t base, size_t size);
+void pmm_region_add(int zone_index, uintptr_t base, size_t size);
 
 /**
  * @brief Allocates a block of size order^2 pages

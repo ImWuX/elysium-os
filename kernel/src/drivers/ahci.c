@@ -178,7 +178,7 @@ void ahci_read(uint8_t port, uint64_t lba, uint16_t count, void *dest) {
     command->prd_table_length = (count + SPP - 1) / SPP;
 
     int command_table_page_count = (0x80 + command->prd_table_length * 4 + PAGE_SIZE - 1) / PAGE_SIZE;
-    pmm_page_t *command_table = pmm_alloc_pages(command_table_page_count, PMM_AF_ZERO); // TODO: Consider static allocations for PRDT
+    pmm_page_t *command_table = pmm_alloc_pages(command_table_page_count, PMM_GENERAL | PMM_AF_ZERO); // TODO: Consider static allocations for PRDT
     command->command_table_descriptor_base_address = (uint32_t) (uintptr_t) command_table->paddr;
     command->command_table_descriptor_base_address_upper = (uint32_t) ((uintptr_t) command_table->paddr >> 32);
 
@@ -254,7 +254,7 @@ void ahci_initialize_device(pci_device_t *device) {
     uint8_t port_count = CAP_NP(ghc->host_capabilities) + 1;
     for(uint8_t i = 0; i < port_count; i++) {
         size_t command_list_size = sizeof(ahci_command_header_t) * 32;
-        pmm_page_t *command_header = pmm_alloc_pages((command_list_size + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE, PMM_AF_ZERO);
+        pmm_page_t *command_header = pmm_alloc_pages((command_list_size + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE, PMM_GENERAL | PMM_AF_ZERO);
         g_command_lists[i] = (uintptr_t) command_header->paddr;
     }
 
@@ -265,7 +265,7 @@ void ahci_initialize_device(pci_device_t *device) {
         port->command_list_base_address = (uint32_t) g_command_lists[i];
         port->command_list_base_address_upper = (uint32_t) (g_command_lists[i] >> 32);
 
-        pmm_page_t *page = pmm_alloc_pages((256 + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE, PMM_AF_ZERO);
+        pmm_page_t *page = pmm_alloc_pages((256 + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE, PMM_GENERAL | PMM_AF_ZERO);
         port->fis_base_address = (uint32_t) (uintptr_t) page->paddr;
         port->fis_base_address_upper = (uint32_t) ((uintptr_t) page->paddr >> 32);
 
