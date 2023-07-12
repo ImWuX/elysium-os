@@ -64,13 +64,13 @@ void *heap_alloc_align(size_t size, size_t alignment) {
         if(alignment_offset == 0) goto alloc;
         if(alignment_offset < sizeof(heap_entry_t) + MIN_SPLIT_SIZE) goto next;
 
-        heap_entry_t *new_entry = (heap_entry_t *) ((uintptr_t) current_entry + alignment_offset); // TODO: could be wrong
+        heap_entry_t *new_entry = (heap_entry_t *) ((uintptr_t) current_entry + alignment_offset);
         new_entry->next = current_entry->next;
         new_entry->prev = current_entry;
         current_entry->next = new_entry;
         if(new_entry->next) new_entry->next->prev = new_entry;
         new_entry->free = false;
-        new_entry->length = current_entry->length - alignment_offset; // TODO: could be wrong
+        new_entry->length = current_entry->length - alignment_offset;
         current_entry->length = alignment_offset - sizeof(heap_entry_t);
         if(current_entry == g_tail) g_tail = new_entry;
         current_entry = new_entry;

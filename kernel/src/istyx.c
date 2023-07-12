@@ -13,15 +13,20 @@
 #define SCR_INDENT 25
 #define MAX_CHARS 512
 
-static draw_color_t g_bg, g_fg;
-static draw_context_t *g_ctx;
-static int g_x, g_y;
+static draw_color_t g_bg, g_fg, g_cg;
 
+static draw_context_t *g_ctx;
+
+static int g_x, g_y;
 static char g_chars[MAX_CHARS];
 static int g_chars_written = 0;
 
+static int g_cursor_x = 0, g_cursor_y = 0;
+static draw_color_t g_cursor_buffer[9];
+
 static void clear() {
-    draw_rect(g_ctx, 0, 0, g_ctx->width, g_ctx->height, draw_color(20, 20, 25));
+    draw_rect(g_ctx, 0, 0, g_ctx->width, g_ctx->height, g_bg);
+    for(int i = 0; i < 9; i++) g_cursor_buffer[i] = g_bg;
     g_x = SCR_INDENT;
     g_y = SCR_INDENT;
 }
@@ -241,14 +246,13 @@ static void command_handler(char *input) {
 
 void istyx_early_initialize(draw_context_t *draw_context) {
     g_ctx = draw_context;
-    g_x = SCR_INDENT;
-    g_y = SCR_INDENT;
     g_bg = draw_color(20, 20, 25);
     g_fg = draw_color(230, 230, 230);
-    draw_rect(g_ctx, 0, 0, g_ctx->width, g_ctx->height, g_bg);
+    g_cg = draw_color(100, 100, 200);
+    clear();
 }
 
-void istyx_simple_input(uint8_t ch) {
+void istyx_simple_input_kb(uint8_t ch) {
     switch(ch) {
         case 0: return;
         case '\b':
@@ -269,6 +273,27 @@ void istyx_simple_input(uint8_t ch) {
             break;
     }
     putchar(ch);
+}
+
+void istyx_simple_input_mouse(int16_t rel_x, int16_t rel_y, bool buttons[3]) {
+    for(int x = 0; x < 3; x++) {
+        for(int y = 0; y < 3; y++) {
+            if(!buttons[2]) draw_pixel(g_ctx, g_cursor_x + x, g_cursor_y + y, g_cursor_buffer[y * 3 + x]);
+        }
+    }
+    g_cursor_x += rel_x;
+    g_cursor_y += -rel_y;
+    if(g_cursor_x < 0) g_cursor_x = 0;
+    if(g_cursor_y < 0) g_cursor_y = 0;
+    if(g_cursor_x >= g_ctx->width) g_cursor_x = g_ctx->width - 1;
+    if(g_cursor_y >= g_ctx->height) g_cursor_y = g_ctx->height - 1;
+
+    for(int x = 0; x < 3; x++) {
+        for(int y = 0; y < 3; y++) {
+            g_cursor_buffer[y * 3 + x] = draw_getpixel(g_ctx, g_cursor_x + x, g_cursor_y + y);
+            draw_pixel(g_ctx, g_cursor_x + x, g_cursor_y + y, g_cg);
+        }
+    }
 }
 
 void istyx_thread_init() {

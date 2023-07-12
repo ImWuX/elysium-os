@@ -16,10 +16,19 @@ void istyx_early_initialize(draw_context_t *draw_context);
 void istyx_thread_init();
 
 /**
- * @brief A simple method for the kernel to provide keyboard input to styx
+ * @brief A simple method for the kernel to provide keyboard input to istyx
  *
  * @param ch Character
  */
-void istyx_simple_input(uint8_t ch);
+void istyx_simple_input_kb(uint8_t ch);
+
+/**
+ * @brief A simple method for the kernel to provide mouse input to istyx
+ * 
+ * @param rel_x Relative X
+ * @param rel_y Relative Y
+ * @param buttons Mouse buttons
+ */
+void istyx_simple_input_mouse(int16_t rel_x, int16_t rel_y, bool buttons[3]);
 
 #endif
