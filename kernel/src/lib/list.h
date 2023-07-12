@@ -1,8 +1,8 @@
 #ifndef LIB_LIST_H
 #define LIB_LIST_H
 
-#define LIST_INIT { .next = 0, .prev = 0 }
-#define LIST_INIT_CIRCULAR(NAME) { .next = &(NAME), .prev = &(NAME) }
+#define LIST_INIT (list_t) { .next = 0, .prev = 0 }
+#define LIST_INIT_CIRCULAR(NAME) (list_t) { .next = &(NAME), .prev = &(NAME) }
 
 typedef struct list {
     struct list *next;

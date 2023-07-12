@@ -109,15 +109,15 @@ static void command_handler(char *input) {
         } else if(strcmp(command, "pmm-alloc") == 0) {
             uint64_t order;
             if(get_arg_num(input, 1, &order)) {
-                kprintf("Missing argument(s)");
+                kprintf("Missing argument(s)\n");
             } else {
-                pmm_page_t *page = pmm_alloc(order, PMM_AF_NORMAL);
+                pmm_page_t *page = pmm_alloc(order, PMM_GENERAL);
                 kprintf("Order %lu^2 page(%#lx) >> %#lx\n", order, (uint64_t) page, page->paddr);
             }
         } else if(strcmp(command, "pmm-free") == 0) {
             uint64_t address;
             if(get_arg_num(input, 1, &address)) {
-                kprintf("Missing argument(s)");
+                kprintf("Missing argument(s)\n");
             } else {
                 pmm_page_t *page = (pmm_page_t *) address;
                 uint8_t order = page->order;
@@ -158,6 +158,16 @@ static void command_handler(char *input) {
                 } else {
                     ahci_read(0, sector, count, (void *) dest);
                     kprintf("Read %li sectors starting at %li into %#lx\n", count, sector, dest);
+                }
+            }
+        } else if(strcmp(command, "meminfo") == 0) {
+            for(int i = 0; i < PMM_ZONE_COUNT; i++) {
+                pmm_zone_t *zone = &g_pmm_zones[i];
+                kprintf("| Zone (%s) %#lx pages\n", zone->name, zone->page_count);
+                list_t *entry;
+                LIST_FOREACH(entry, &zone->regions) {
+                    pmm_region_t *region = LIST_GET(entry, pmm_region_t, list);
+                    kprintf("\t| Region %#lx pages\n", region->page_count);
                 }
             }
         } else if(strcmp(command, "pcidev") == 0) {
@@ -235,6 +245,7 @@ static void command_handler(char *input) {
                 "\theap-alloc <count> [alignment] - Allocates memory on the heap\n"
                 "\theap-free <address> - Frees a block of memory off the stack\n"
                 "\tread <sector> <count> <dest> - Reads data from the first block device\n"
+                "\tmeminfo - Displays physical memory tree\n"
             );
         } else {
             kprintf("Unknown command: \"%s\"\n", command);
@@ -311,7 +322,7 @@ void istyx_thread_init() {
 int putchar(int c) {
     switch(c) {
         case '\t':
-            g_x += (TAB_WIDTH - (g_x / BASICFONT_WIDTH) % TAB_WIDTH) * BASICFONT_WIDTH;
+            g_x += (TAB_WIDTH - ((g_x - SCR_INDENT) / BASICFONT_WIDTH) % TAB_WIDTH) * BASICFONT_WIDTH;
             break;
         case '\b':
             g_x -= BASICFONT_WIDTH;
