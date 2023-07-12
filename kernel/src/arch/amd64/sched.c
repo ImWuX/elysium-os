@@ -61,7 +61,7 @@ void sched_entry(interrupt_frame_t *frame) {
     arch_sched_set_current_thread(next_thread);
 
     no_switch:
-    lapic_eoi(frame->int_no);
+    interrupt_irq_eoi(frame->int_no);
     lapic_timer_oneshot(g_sched_vector, 1'000'000);
 }
 

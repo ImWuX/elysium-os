@@ -2,6 +2,7 @@
 #include <panic.h>
 #include <arch/amd64/port.h>
 #include <arch/amd64/drivers/ps2kb.h>
+#include <arch/amd64/drivers/ps2mouse.h>
 
 #define TIMEOUT 100000
 #define ACK 0xFA
@@ -20,6 +21,9 @@
 
 #define KB_ID1 0xAB
 #define KB_ID2 0x83
+
+#define MOUSE_ID1 0x0
+#define MOUSE_ID2 0x0
 
 static bool g_port_one_operational;
 static bool g_port_two_operational;
@@ -67,6 +71,9 @@ void ps2_port_enable(ps2_ports_t port) {
 }
 
 static void port_initialize_drivers(ps2_ports_t port) {
+    if(g_port_ids[port][0] == MOUSE_ID1 && g_port_ids[port][1] == MOUSE_ID2) {
+        ps2mouse_initialize(port);
+    }
     if(g_port_ids[port][0] == KB_ID1 && g_port_ids[port][1] == KB_ID2) {
         if(port == PS2_PORT_ONE) {
             ps2_write(PS2_CMDSTS, 0x20);
