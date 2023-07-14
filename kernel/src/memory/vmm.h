@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <arch/types.h>
 #include <memory/pmm.h>
+#include <lib/slock.h>
 
 #define EOCCUPIED 4000
 
@@ -40,9 +41,12 @@ typedef struct vmm_range {
 } vmm_range_t;
 
 typedef struct {
+    slock_t lock;
     vmm_range_t *ranges;
     arch_vmm_address_space_t archdep;
 } vmm_address_space_t;
+
+extern vmm_address_space_t g_kernel_address_space;
 
 /**
  * @brief Allocate a number of wired pages.

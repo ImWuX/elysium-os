@@ -4,6 +4,7 @@
 #include <arch/sched.h>
 #include <arch/types.h>
 #include <arch/vmm.h>
+#include <memory/vmm.h>
 #include <memory/heap.h>
 #include <memory/hhdm.h>
 #include <arch/amd64/lapic.h>
@@ -37,8 +38,6 @@
 
 #define FRAME_TO_REGS(FRAME, REGS) R((FRAME)->, (REGS).)
 #define REGS_TO_FRAME(REGS, FRAME) R((REGS)., (FRAME)->)
-
-extern vmm_address_space_t g_kernel_address_space;
 
 uint8_t g_sched_vector;
 

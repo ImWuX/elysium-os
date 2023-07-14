@@ -162,8 +162,6 @@ static void stop_port(ahci_port_registers_t *port) {
     while(port->command_and_status & (PxCMD_FR | PxCMD_CR));
 }
 
-extern vmm_address_space_t g_kernel_address_space;
-
 void ahci_read(uint8_t port, uint64_t lba, uint16_t count, void *dest) {
     if(!count) return;
     if((uintptr_t) dest & 0xFFF) panic("AHCI", "Unaligned dest address");
