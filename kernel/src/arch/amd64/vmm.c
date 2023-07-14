@@ -1,4 +1,5 @@
 #include <arch/vmm.h>
+#include <memory/vmm.h>
 #include <string.h>
 #include <arch/types.h>
 #include <memory/hhdm.h>
@@ -52,12 +53,13 @@ static uint64_t arch_independent_flags_to_x86(uint64_t flags) {
     return x86_flags;
 }
 
-void vmm_create_kernel_address_space(vmm_address_space_t *out) {
-    out->ranges = 0;
-    out->archdep.cr3 = read_cr3();
-    memset((void *) HHDM(out->archdep.cr3), 0, 0x800);
+void arch_vmm_init() {
+    g_kernel_address_space.lock = SLOCK_INIT;
+    g_kernel_address_space.ranges = 0;
+    g_kernel_address_space.archdep.cr3 = read_cr3();
+    memset((void *) HHDM(g_kernel_address_space.archdep.cr3), 0, 0x800);
 
-    uint64_t *pml4 = (uint64_t *) HHDM(out->archdep.cr3);
+    uint64_t *pml4 = (uint64_t *) HHDM(g_kernel_address_space.archdep.cr3);
     for(int i = 256; i < 512; i++) {
         if(pml4[i] & PTE_FLAG_PRESENT) continue;
         pmm_page_t *page = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);

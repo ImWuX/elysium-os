@@ -316,7 +316,7 @@ void istyx_thread_init() {
     kprintf("Welcome to Integrated Styx V1.0 running on Elysium OS\n");
     kprintf("%s", PREFIX);
 
-    while(true);
+    for(;;);
 }
 
 int putchar(int c) {

@@ -9,7 +9,6 @@
 #include <drivers/acpi.h>
 #include <arch/vmm.h>
 #include <arch/sched.h>
-#include <arch/amd64/vmm.h>
 #include <arch/amd64/gdt.h>
 #include <arch/amd64/msr.h>
 #include <arch/amd64/cpuid.h>
@@ -29,7 +28,6 @@
 #define LAPIC_CALIBRATION_TICKS 0x10000
 
 uintptr_t g_hhdm_address;
-vmm_address_space_t g_kernel_address_space;
 static draw_context_t g_fb_context;
 static volatile int g_cpus_initialized;
 
@@ -105,7 +103,7 @@ static void init_common() {
     asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp" : : "rm" (g_hhdm_address) : "rax", "memory");
     asm volatile("mov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (g_hhdm_address) : "rax", "memory");
 
-    vmm_create_kernel_address_space(&g_kernel_address_space);
+    arch_vmm_init();
     arch_vmm_load_address_space(&g_kernel_address_space);
     heap_initialize(&g_kernel_address_space, ARCH_KHEAP_START, ARCH_KHEAP_END);
 

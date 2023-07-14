@@ -2,15 +2,20 @@
 #include <arch/vmm.h>
 #include <memory/heap.h>
 
+vmm_address_space_t g_kernel_address_space;
+
 int vmm_alloc_wired(vmm_address_space_t *address_space, uintptr_t vaddr, size_t npages, uint64_t flags) {
+    slock_acquire(&address_space->lock);
     for(size_t i = 0; i < npages; i++) {
         pmm_page_t *page = pmm_alloc_page(PMM_GENERAL);
         arch_vmm_map(address_space, vaddr + i * ARCH_PAGE_SIZE, page->paddr, flags);
     }
+    slock_release(&address_space->lock);
     return 0;
 }
 
 int vmm_map_direct(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, size_t size) {
+    slock_acquire(&address_space->lock);
     for(size_t i = 0; i < size; i += ARCH_PAGE_SIZE) {
         arch_vmm_map(address_space, vaddr + i, paddr + i, VMM_DEFAULT_KERNEL_FLAGS);
     }
@@ -24,10 +29,12 @@ int vmm_map_direct(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_
     range->paddr = paddr;
     range->next = address_space->ranges;
     address_space->ranges = range;
+    slock_release(&address_space->lock);
     return 0;
 }
 
 int vmm_alloc(vmm_address_space_t *address_space, uintptr_t vaddr, size_t size) {
+    slock_acquire(&address_space->lock);
     vmm_anon_t *prev = 0;
     for(size_t i = 0; i < size; i += ARCH_PAGE_SIZE) {
         vmm_anon_t *anon = heap_alloc(sizeof(vmm_anon_t));
@@ -47,6 +54,7 @@ int vmm_alloc(vmm_address_space_t *address_space, uintptr_t vaddr, size_t size) 
     range->anon = prev;
     range->next = address_space->ranges;
     address_space->ranges = range;
+    slock_release(&address_space->lock);
     return 0;
 }
 

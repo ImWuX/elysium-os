@@ -4,6 +4,11 @@
 #include <memory/vmm.h>
 
 /**
+ * @brief Initialize the VMM
+ */
+void arch_vmm_init();
+
+/**
  * @brief Load a virtual address space.
  *
  * @param address_space Address space
