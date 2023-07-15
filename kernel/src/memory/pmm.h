@@ -39,7 +39,7 @@ typedef struct pmm_page {
     list_t list;
     struct pmm_region *region;
     uintptr_t paddr;
-    uint8_t order : 7;
+    uint8_t order : 3;
     uint8_t free : 1;
 } pmm_page_t;
 
