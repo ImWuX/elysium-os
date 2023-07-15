@@ -4,17 +4,17 @@
 #include <stdint.h>
 
 /**
- * @brief Remap the legacy PIC irqs.
+ * @brief Remap the legacy PIC irqs
  */
 void pic8259_remap();
 
 /**
- * @brief Disable the legacy PIC (mask all irqs).
+ * @brief Disable the legacy PIC (mask all irqs)
  */
 void pic8259_disable();
 
 /**
- * @brief Issue an end of interrupt to the legacy PIC.
+ * @brief Issue an end of interrupt to the legacy PIC
  *
  * @param interrupt_vector Vector of the interrupt
  */

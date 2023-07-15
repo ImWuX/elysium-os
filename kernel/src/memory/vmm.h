@@ -49,7 +49,7 @@ typedef struct {
 extern vmm_address_space_t g_kernel_address_space;
 
 /**
- * @brief Allocate a number of wired pages.
+ * @brief Allocate a number of wired pages
  *
  * @param address_space Address space
  * @param vaddr Virtual address for pages
@@ -60,7 +60,7 @@ extern vmm_address_space_t g_kernel_address_space;
 int vmm_alloc_wired(vmm_address_space_t *address_space, uintptr_t vaddr, size_t npages, uint64_t flags);
 
 /**
- * @brief Map a range of virtual memory to a specific physical address.
+ * @brief Map a range of virtual memory to a specific physical address
  *
  * @param address_space Address space
  * @param vaddr Virtual address of range
@@ -71,7 +71,7 @@ int vmm_alloc_wired(vmm_address_space_t *address_space, uintptr_t vaddr, size_t 
 int vmm_map_direct(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, size_t size);
 
 /**
- * @brief Allocate a range of anonymous memory in a particular address space.
+ * @brief Allocate a range of anonymous memory in a particular address space
  *
  * @param address_space Address space
  * @param vaddr Virtual address of range
@@ -81,7 +81,7 @@ int vmm_map_direct(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_
 int vmm_alloc(vmm_address_space_t *address_space, uintptr_t vaddr, size_t size);
 
 /**
- * @brief Free a range of memory in a particular address space.
+ * @brief Free a range of memory in a particular address space
  *
  * @param address_space Address space
  * @param vaddr Virtual address of range

@@ -9,14 +9,14 @@
 void arch_vmm_init();
 
 /**
- * @brief Load a virtual address space.
+ * @brief Load a virtual address space
  *
  * @param address_space Address space
  */
 void arch_vmm_load_address_space(vmm_address_space_t *address_space);
 
 /**
- * @brief Map a virtual address to a physical address.
+ * @brief Map a virtual address to a physical address
  *
  * @param address_space Address space
  * @param vaddr Virtual address
@@ -35,7 +35,7 @@ void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t
 uintptr_t arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr);
 
 /**
- * @brief Calculate highest userspace address for arch.
+ * @brief Calculate highest userspace address for arch
  *
  * @returns Highest userspace address
  */

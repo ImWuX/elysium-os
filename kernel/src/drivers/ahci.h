@@ -5,14 +5,14 @@
 #include <drivers/pci.h>
 
 /**
- * @brief Initialize AHCI driver for a device.
+ * @brief Initialize AHCI driver for a device
  *
  * @param device PCI device
  */
 void ahci_initialize_device(pci_device_t *device);
 
 /**
- * @brief Read sectors from disk.
+ * @brief Read sectors from disk
  * 
  * @param port Port
  * @param sector LBA
