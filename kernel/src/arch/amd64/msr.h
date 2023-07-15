@@ -17,7 +17,7 @@ typedef enum {
 } msr_t;
 
 /**
- * @brief Read a machine specific register.
+ * @brief Read a machine specific register
  *
  * @param msr MSR number
  * @return Value in
@@ -30,7 +30,7 @@ static inline uint64_t msr_read(uint64_t msr) {
 }
 
 /**
- * @brief Write to a machine specific register.
+ * @brief Write to a machine specific register
  *
  * @param msr MSR number
  * @param value Value out

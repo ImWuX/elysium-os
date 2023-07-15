@@ -65,7 +65,7 @@ extern pmm_zone_t g_pmm_zones[PMM_ZONE_COUNT];
 void pmm_zone_create(int zone_index, char *name, uintptr_t start, uintptr_t end);
 
 /**
- * @brief Adds a block of memory to be managed by the PMM.
+ * @brief Adds a block of memory to be managed by the PMM
  *
  * @param zone_index Index of zone the region belongs to
  * @param base Base address of memory block
@@ -90,14 +90,14 @@ pmm_page_t *pmm_alloc(pmm_order_t order, pmm_allocator_flags_t flags);
 pmm_page_t *pmm_alloc_pages(size_t page_count, pmm_allocator_flags_t flags);
 
 /**
- * @brief Allocates a page of memory.
+ * @brief Allocates a page of memory
  *
  * @returns The allocated page
  */
 pmm_page_t *pmm_alloc_page(pmm_allocator_flags_t flags);
 
 /**
- * @brief Frees a previously allocated page.
+ * @brief Frees a previously allocated page
  *
  * @param page The page/block to be freed
  */

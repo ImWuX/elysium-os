@@ -7,7 +7,7 @@
 extern int putchar(int character);
 
 /**
- * @brief Prints a formatted string. Takes varargs as values.
+ * @brief Prints a formatted string. Takes varargs as values
  *
  * @param fmt Format string
  * @param ... Varargs
@@ -16,7 +16,7 @@ extern int putchar(int character);
 int kprintf(const char *fmt, ...);
 
 /**
- * @brief Prints a formatted string. Takes a vararg list as values.
+ * @brief Prints a formatted string. Takes a vararg list as values
  *
  * @param fmt Format string
  * @param list Vararg list

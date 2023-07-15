@@ -6,7 +6,7 @@
 #include <memory/vmm.h>
 
 /**
- * @brief Initialize the heap.
+ * @brief Initialize the heap
  *
  * @param address_space Address space
  * @param start Starting vaddr for the heap
@@ -15,7 +15,7 @@
 void heap_initialize(vmm_address_space_t *address_space, uintptr_t start, uintptr_t end);
 
 /**
- * @brief Allocate a block of memory in the heap, without an alignment.
+ * @brief Allocate a block of memory in the heap, without an alignment
  *
  * @param size Size of block to allocate in bytes
  * @return Address of the allocated block
@@ -23,7 +23,7 @@ void heap_initialize(vmm_address_space_t *address_space, uintptr_t start, uintpt
 void *heap_alloc(size_t size);
 
 /**
- * @brief Allocate a block of memory in the heap, with an alignment.
+ * @brief Allocate a block of memory in the heap, with an alignment
  *
  * @param size Size of block to allocate in bytes
  * @param alignment Alignment of the block
@@ -32,7 +32,7 @@ void *heap_alloc(size_t size);
 void *heap_alloc_align(size_t size, size_t alignment);
 
 /**
- * @brief Free a block of memory in the heap.
+ * @brief Free a block of memory in the heap
  *
  * @param address Address of the block to free
  */

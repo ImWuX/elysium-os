@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 /**
- * @brief Port in (byte).
+ * @brief Port in (byte)
  *
  * @param port Port number
  * @return Value in
@@ -26,7 +26,7 @@ static inline void port_outb(uint16_t port, uint8_t value) {
 }
 
 /**
- * @brief Port in (word).
+ * @brief Port in (word)
  *
  * @param port Port number
  * @return Value in
@@ -38,7 +38,7 @@ static inline uint32_t port_inl(uint16_t port) {
 }
 
 /**
- * @brief Port out (word).
+ * @brief Port out (word)
  *
  * @param port Port number
  * @param value Value out

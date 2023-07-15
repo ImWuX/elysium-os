@@ -72,7 +72,7 @@ typedef enum {
 } cpuid_features_t;
 
 /**
- * @brief Test for a feature exposed in CPUID.
+ * @brief Test for a feature exposed in CPUID
  *
  * @param feature A feature in CPUID
  * @retval true Supported

@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 /**
- * @brief Retrieve the length of a string. Not including the null terminator.
+ * @brief Retrieve the length of a string. Not including the null terminator
  *
  * @param str String to compute the length of
  * @return Length of the string 
@@ -13,7 +13,7 @@
 size_t strlen(const char *str);
 
 /**
- * @brief Compare two strings. Results in a negative value if the LHS string is greater, a positive number if the RHS is greater, and a zero if they're equal.
+ * @brief Compare two strings. Results in a negative value if the LHS string is greater, a positive number if the RHS is greater, and a zero if they're equal
  *
  * @param lhs Left-hand side string of the comparison
  * @param rhs Right-hand side string of the comparison
@@ -22,7 +22,7 @@ size_t strlen(const char *str);
 int strcmp(const char *lhs, const char *rhs);
 
 /**
- * @brief Copy a string. Including the null terminator.
+ * @brief Copy a string. Including the null terminator
  *
  * @param dest Destination for the string
  * @param src Source string
@@ -31,7 +31,7 @@ int strcmp(const char *lhs, const char *rhs);
 char *strcpy(char *dest, const char *src);
 
 /**
- * @brief Fill memory with a value.
+ * @brief Fill memory with a value
  *
  * @param dest Destination
  * @param ch Value to fill memory with
@@ -41,7 +41,7 @@ char *strcpy(char *dest, const char *src);
 void *memset(void *dest, int ch, size_t count);
 
 /**
- * @brief Copy memory.
+ * @brief Copy memory
  *
  * @param dest Destination for the memory
  * @param src Source of memory
@@ -51,7 +51,7 @@ void *memset(void *dest, int ch, size_t count);
 void *memcpy(void *dest, const void *src, size_t count);
 
 /**
- * @brief Compare two regions of memory. Results in a negative value if the LHS is greater, a positive value if the RHS is greater, and a zero if they're equal.
+ * @brief Compare two regions of memory. Results in a negative value if the LHS is greater, a positive value if the RHS is greater, and a zero if they're equal
  *
  * @param lhs Left-hand side of the comparison
  * @param rhs Right-hand side of the comparison
