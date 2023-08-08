@@ -2,7 +2,7 @@
 #include <panic.h>
 
 static list_t g_queue = LIST_INIT_CIRCULAR(g_queue);
-static uint32_t g_ids = 0;
+static uint32_t g_ids = 1;
 static slock_t g_sched_lock = SLOCK_INIT;
 
 void sched_add(sched_thread_t *thread) {

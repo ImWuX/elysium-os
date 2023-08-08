@@ -11,12 +11,4 @@
 */
 [[noreturn]] void panic(char *location, char *msg);
 
-/**
- * @brief Exception handler that panics and halts the core
- *
- * @param frame Interrupt frame
-*/
-[[noreturn]] void panic_exception(interrupt_frame_t *frame);
-
-
 #endif
