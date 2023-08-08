@@ -23,10 +23,6 @@ typedef struct vmm_anon {
     pmm_page_t *page;
 } vmm_anon_t;
 
-typedef struct {
-    
-} vmm_object_t;
-
 typedef struct vmm_range {
     uintptr_t start;
     uintptr_t end;

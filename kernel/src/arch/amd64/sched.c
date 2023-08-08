@@ -52,6 +52,7 @@ void sched_entry(interrupt_frame_t *frame) {
         heap_free(current_thread);
     } else {
         FRAME_TO_REGS(frame, current_thread->context.registers);
+        current_thread->state = SCHED_THREAD_READY;
         sched_schedule_thread(current_thread);
     }
     REGS_TO_FRAME(next_thread->context.registers, frame);

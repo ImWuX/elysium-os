@@ -22,11 +22,36 @@ static char g_chars[MAX_CHARS];
 static int g_chars_written = 0;
 
 static int g_cursor_x = 0, g_cursor_y = 0;
-static draw_color_t g_cursor_buffer[9];
+static draw_color_t g_cursor_buffer[22*14];
+
+static int g_cursor_template[22][14] = {
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {1,1,0,0,0,0,0,0,0,0,0,0,0,0},
+    {1,1,1,0,0,0,0,0,0,0,0,0,0,0},
+    {1,1,1,1,0,0,0,0,0,0,0,0,0,0},
+    {1,1,1,1,1,0,0,0,0,0,0,0,0,0},
+    {1,1,1,1,1,1,0,0,0,0,0,0,0,0},
+    {1,1,1,1,1,1,1,0,0,0,0,0,0,0},
+    {1,1,1,1,1,1,1,1,0,0,0,0,0,0},
+    {1,1,1,1,1,1,1,1,1,0,0,0,0,0},
+    {1,1,1,1,1,1,1,1,1,1,0,0,0,0},
+    {1,1,1,1,1,1,1,1,1,1,1,0,0,0},
+    {1,1,1,1,1,1,1,1,1,1,1,1,0,0},
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,0},
+    {1,1,1,1,1,1,1,1,0,0,0,0,0,0},
+    {1,1,1,1,1,1,1,1,0,0,0,0,0,0},
+    {1,1,1,0,0,1,1,1,1,0,0,0,0,0},
+    {1,1,0,0,0,1,1,1,1,0,0,0,0,0},
+    {1,0,0,0,0,0,1,1,1,1,0,0,0,0},
+    {0,0,0,0,0,0,1,1,1,1,0,0,0,0},
+    {0,0,0,0,0,0,0,1,1,1,1,0,0,0},
+    {0,0,0,0,0,0,0,1,1,1,1,0,0,0},
+    {0,0,0,0,0,0,0,0,1,1,0,0,0,0}
+};
 
 static void clear() {
     draw_rect(g_ctx, 0, 0, g_ctx->width, g_ctx->height, g_bg);
-    for(int i = 0; i < 9; i++) g_cursor_buffer[i] = g_bg;
+    for(int i = 0; i < 22*14; i++) g_cursor_buffer[i] = g_bg;
     g_x = SCR_INDENT;
     g_y = SCR_INDENT;
 }
@@ -259,7 +284,7 @@ void istyx_early_initialize(draw_context_t *draw_context) {
     g_ctx = draw_context;
     g_bg = draw_color(20, 20, 25);
     g_fg = draw_color(230, 230, 230);
-    g_cg = draw_color(100, 100, 200);
+    g_cg = draw_color(252, 186, 3);
     clear();
 }
 
@@ -287,9 +312,11 @@ void istyx_simple_input_kb(uint8_t ch) {
 }
 
 void istyx_simple_input_mouse(int16_t rel_x, int16_t rel_y, bool buttons[3]) {
-    for(int x = 0; x < 3; x++) {
-        for(int y = 0; y < 3; y++) {
-            if(!buttons[2]) draw_pixel(g_ctx, g_cursor_x + x, g_cursor_y + y, g_cursor_buffer[y * 3 + x]);
+    for(int x = 0; x < 14; x++) {
+        for(int y = 0; y < 22; y++) {
+            if(g_cursor_template[y][x]) draw_pixel(g_ctx, g_cursor_x + x, g_cursor_y + y, g_cursor_buffer[y * 14 + x]);
+            if(x > 3 || y > 3) continue;
+            if(buttons[2]) draw_pixel(g_ctx, g_cursor_x + x, g_cursor_y + y, g_cg);
         }
     }
     g_cursor_x += rel_x;
@@ -299,9 +326,10 @@ void istyx_simple_input_mouse(int16_t rel_x, int16_t rel_y, bool buttons[3]) {
     if(g_cursor_x >= g_ctx->width) g_cursor_x = g_ctx->width - 1;
     if(g_cursor_y >= g_ctx->height) g_cursor_y = g_ctx->height - 1;
 
-    for(int x = 0; x < 3; x++) {
-        for(int y = 0; y < 3; y++) {
-            g_cursor_buffer[y * 3 + x] = draw_getpixel(g_ctx, g_cursor_x + x, g_cursor_y + y);
+    for(int x = 0; x < 14; x++) {
+        for(int y = 0; y < 22; y++) {
+            if(!g_cursor_template[y][x]) continue;
+            g_cursor_buffer[y * 14 + x] = draw_getpixel(g_ctx, g_cursor_x + x, g_cursor_y + y);
             draw_pixel(g_ctx, g_cursor_x + x, g_cursor_y + y, g_cg);
         }
     }
