@@ -3,6 +3,7 @@
 #include <arch/types.h>
 #include <memory/pmm.h>
 #include <lib/list.h>
+#include <lib/err.h>
 
 #define MIN_SPLIT_SIZE 8
 #define INITIAL_PAGES 5
@@ -13,7 +14,7 @@ typedef struct heap_entry {
     list_t list;
 } heap_entry_t;
 
-static_assert(sizeof(heap_entry_t) < ARCH_PAGE_SIZE, "Arch page size is smaller than a heap entry");
+static_assert(sizeof(heap_entry_t) < ARCH_PAGE_SIZE, "ARCH_PAGE_SIZE is smaller than a heap entry");
 
 static uintptr_t g_heap_start;
 static uintptr_t g_heap_end;
@@ -26,7 +27,7 @@ static list_t g_heap = LIST_INIT_CIRCULAR(g_heap);
 static void expand(size_t npages) {
     if(g_heap_start + g_heap_size + npages * ARCH_PAGE_SIZE >= g_heap_end) panic("HHDM", "Heap is full");
     int r = vmm_alloc_wired(g_address_space, g_heap_start + g_heap_size, npages, VMM_DEFAULT_KERNEL_FLAGS);
-    if(r < 0) panic("HEAP", "Failed to allocate wired memory");
+    if(ERR(r)) panic("HEAP", "Failed to allocate wired memory");
     if(!list_is_empty(&g_heap) && LIST_GET(g_heap.prev, heap_entry_t, list)->free) {
         LIST_GET(g_heap.prev, heap_entry_t, list)->length += npages * ARCH_PAGE_SIZE;
     } else {
