@@ -1,9 +1,10 @@
-#include <arch/vmm.h>
-#include <memory/vmm.h>
 #include <string.h>
+#include <arch/vmm.h>
 #include <arch/types.h>
+#include <memory/vmm.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
+#include <lib/list.h>
 
 typedef enum {
     PTE_FLAG_PRESENT = 1,
@@ -54,8 +55,8 @@ static uint64_t arch_independent_flags_to_x86(uint64_t flags) {
 }
 
 void arch_vmm_init() {
+    g_kernel_address_space.segments = LIST_INIT_CIRCULAR(g_kernel_address_space.segments);
     g_kernel_address_space.lock = SLOCK_INIT;
-    g_kernel_address_space.ranges = 0;
     g_kernel_address_space.archdep.cr3 = read_cr3();
     memset((void *) HHDM(g_kernel_address_space.archdep.cr3), 0, 0x800);
 
