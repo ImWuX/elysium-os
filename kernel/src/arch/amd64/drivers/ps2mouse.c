@@ -1,5 +1,5 @@
 #include "ps2mouse.h"
-#include <panic.h>
+#include <lib/panic.h>
 #include <arch/amd64/port.h>
 #include <arch/amd64/lapic.h>
 #include <arch/amd64/interrupt.h>
@@ -39,13 +39,13 @@ void ps2mouse_set_handler(ps2mouse_handler_t mouse_handler) {
 }
 
 void ps2mouse_initialize(ps2_ports_t port) {
-	if(!ps2_port_write(port, 0xF6) || ps2_port_read(true) != 0xFA) panic("MOUSE", "Could not set defaults");
-	if(!ps2_port_write(port, 0xF3) || ps2_port_read(true) != 0xFA) panic("MOUSE", "Could not request a new sample rate");
-	if(!ps2_port_write(port, 0xC8) || ps2_port_read(true) != 0xFA) panic("MOUSE", "Could not set a new sample rate");
-	if(!ps2_port_write(port, 0xF4) || ps2_port_read(true) != 0xFA) panic("MOUSE", "Could not enable data reporting");
+	if(!ps2_port_write(port, 0xF6) || ps2_port_read(true) != 0xFA) panic("MOUSE: Could not set defaults");
+	if(!ps2_port_write(port, 0xF3) || ps2_port_read(true) != 0xFA) panic("MOUSE: Could not request a new sample rate");
+	if(!ps2_port_write(port, 0xC8) || ps2_port_read(true) != 0xFA) panic("MOUSE: Could not set a new sample rate");
+	if(!ps2_port_write(port, 0xF4) || ps2_port_read(true) != 0xFA) panic("MOUSE: Could not enable data reporting");
 
 	int vector = interrupt_request(INTERRUPT_PRIORITY_HID, mouse_handler);
-	if(vector < 0) panic("MOUSE", "Failed to acquire interrupt vector");
+	if(vector < 0) panic("MOUSE: Failed to acquire interrupt vector");
 	g_interrupt_vector = vector;
     uint8_t irq = PS2_PORT_ONE_IRQ;
     if(port == PS2_PORT_TWO) irq = PS2_PORT_TWO_IRQ;

@@ -1,11 +1,6 @@
 #include "exception.h"
-#include <lib/kprint.h>
+#include <lib/panic.h>
 #include <arch/amd64/lapic.h>
-
-typedef struct stack_frame {
-    struct stack_frame *rbp;
-    uint64_t rip;
-} __attribute__((packed)) stack_frame_t;
 
 static char *g_exception_messages[] = {
     "Division by Zero",
@@ -44,32 +39,35 @@ static char *g_exception_messages[] = {
 [[noreturn]] void exception_unhandled(interrupt_frame_t *frame) {
     uint64_t cr2_value;
     asm volatile("movq %%cr2, %0" : "=r" (cr2_value));
-    kprintf("UNHANDLED EXCEPTION (CPU %i)\n%s\n", lapic_id(), g_exception_messages[frame->int_no]);
-    kprintf("r15: %#lx\n", frame->r15);
-    kprintf("r14: %#lx\n", frame->r14);
-    kprintf("r13: %#lx\n", frame->r13);
-    kprintf("r12: %#lx\n", frame->r12);
-    kprintf("r11: %#lx\n", frame->r11);
-    kprintf("r10: %#lx\n", frame->r10);
-    kprintf("r9: %#lx\n", frame->r9);
-    kprintf("r8: %#lx\n", frame->r8);
-    kprintf("rdi: %#lx\n", frame->rdi);
-    kprintf("rsi: %#lx\n", frame->rsi);
-    kprintf("rbp: %#lx\n", frame->rbp);
-    kprintf("rdx: %#lx\n", frame->rdx);
-    kprintf("rcx: %#lx\n", frame->rcx);
-    kprintf("rbx: %#lx\n", frame->rbx);
-    kprintf("rax: %#lx\n", frame->rax);
-    kprintf("int_no: %#lx\n", frame->int_no);
-    kprintf("err_code: %#lx\n", frame->err_code);
-    kprintf("cr2: %#lx\n", cr2_value);
-    kprintf("rip: %#lx\n", frame->rip);
-    kprintf("cs: %#lx\n", frame->cs);
-    kprintf("rflags: %#lx\n", frame->rflags);
-    kprintf("rsp: %#lx\n", frame->rsp);
-    kprintf("ss: %#lx\n", frame->ss);
-    asm volatile("cli");
-    while(true) asm volatile("hlt");
+    panic(
+        "UNHANDLED EXCEPTION (CPU %i)\n%s\nr15: %#lx\nr14: %#lx\nr13: %#lx\nr12: %#lx\nr11: %#lx\nr10: %#lx\nr9: %#lx\nr8: %#lx\n"
+        "rdi: %#lx\nrsi: %#lx\nrbp: %#lx\nrdx: %#lx\nrcx: %#lx\nrbx: %#lx\nrax: %#lx\nint_no: %#lx\nerr_code: %#lx\ncr2: %#lx\nrip: %#lx\ncs: %#lx\n"
+        "rflags: %#lx\nrsp: %#lx\nss: %#lx\n",
+        lapic_id(),
+        g_exception_messages[frame->int_no],
+        frame->r15,
+        frame->r14,
+        frame->r13,
+        frame->r12,
+        frame->r11,
+        frame->r10,
+        frame->r9,
+        frame->r8,
+        frame->rdi,
+        frame->rsi,
+        frame->rbp,
+        frame->rdx,
+        frame->rcx,
+        frame->rbx,
+        frame->rax,
+        frame->int_no,
+        frame->err_code,
+        cr2_value,
+        frame->rip,
+        frame->cs,
+        frame->rflags,
+        frame->rsp,
+        frame->ss
+    );
     __builtin_unreachable();
-
 }

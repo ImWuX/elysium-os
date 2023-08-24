@@ -1,6 +1,6 @@
 #include "sched.h"
 #include <string.h>
-#include <panic.h>
+#include <lib/panic.h>
 #include <arch/sched.h>
 #include <arch/types.h>
 #include <arch/vmm.h>
@@ -46,7 +46,7 @@ void sched_entry(interrupt_frame_t *frame) {
     arch_cpu_local_t *cpu_local = current_thread->cpu_local;
     sched_thread_t *next_thread = sched_next_thread();
     if(!next_thread) goto no_switch;
-    if(current_thread == next_thread) panic("SCHED", "current_thread == next_thread");
+    if(current_thread == next_thread) panic("SCHED: current_thread == next_thread");
 
     if(current_thread->state == SCHED_THREAD_EXIT) {
         heap_free(current_thread);
