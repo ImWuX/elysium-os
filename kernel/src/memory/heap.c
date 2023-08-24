@@ -26,9 +26,9 @@ static vmm_address_space_t *g_address_space;
 static list_t g_heap = LIST_INIT_CIRCULAR(g_heap);
 
 static void expand(size_t npages) {
-    ASSERT(g_heap_start + g_heap_size + npages * ARCH_PAGE_SIZE >= g_heap_end);
+    ASSERT(g_heap_start + g_heap_size + npages * ARCH_PAGE_SIZE < g_heap_end);
     int r = vmm_alloc_wired(g_address_space, g_heap_start + g_heap_size, npages, VMM_DEFAULT_KERNEL_FLAGS);
-    ASSERT(r < 0);
+    ASSERT(r >= 0);
     if(!list_is_empty(&g_heap) && LIST_GET(g_heap.prev, heap_entry_t, list)->free) {
         LIST_GET(g_heap.prev, heap_entry_t, list)->length += npages * ARCH_PAGE_SIZE;
     } else {

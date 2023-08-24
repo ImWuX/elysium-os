@@ -79,7 +79,7 @@ pmm_page_t *pmm_alloc(pmm_order_t order, pmm_allocator_flags_t flags) {
     pmm_zone_t *zone = &g_pmm_zones[(flags >> PMM_ZONE_AF_SHIFT) & PMM_ZONE_AF_MASK];
     slock_acquire(&zone->lock);
     while(list_is_empty(&zone->lists[avl_order])) {
-        ASSERT(++avl_order <= PMM_MAX_ORDER, "Out of memory");
+        ASSERTC(++avl_order <= PMM_MAX_ORDER, "Out of memory");
     }
     pmm_page_t *page = LIST_GET(zone->lists[avl_order].next, pmm_page_t, list);
     list_delete(&page->list);
