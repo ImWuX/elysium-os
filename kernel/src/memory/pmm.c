@@ -1,6 +1,6 @@
 #include "pmm.h"
 #include <string.h>
-#include <panic.h>
+#include <lib/panic.h>
 #include <arch/types.h>
 #include <memory/hhdm.h>
 #include <lib/slock.h>
@@ -74,11 +74,11 @@ void pmm_region_add(int zone_index, uintptr_t base, size_t size) {
 
 pmm_page_t *pmm_alloc(pmm_order_t order, pmm_allocator_flags_t flags) {
     pmm_order_t avl_order = order;
-    if(avl_order > PMM_MAX_ORDER) panic("PMM", "Invalid order");
+    if(avl_order > PMM_MAX_ORDER) panic("PMM: Invalid order");
     pmm_zone_t *zone = &g_pmm_zones[(flags >> PMM_ZONE_AF_SHIFT) & PMM_ZONE_AF_MASK];
     slock_acquire(&zone->lock);
     while(list_is_empty(&zone->lists[avl_order])) {
-        if(++avl_order > PMM_MAX_ORDER) panic("PMM", "Exceeded maximum order (OUT OF MEMORY)");
+        if(++avl_order > PMM_MAX_ORDER) panic("PMM: Exceeded maximum order (OUT OF MEMORY)");
     }
     pmm_page_t *page = LIST_GET(zone->lists[avl_order].next, pmm_page_t, list);
     list_delete(&page->list);

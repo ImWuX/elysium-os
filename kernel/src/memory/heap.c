@@ -1,9 +1,9 @@
 #include "heap.h"
-#include <panic.h>
+#include <lib/panic.h>
+#include <errno.h>
 #include <arch/types.h>
 #include <memory/pmm.h>
 #include <lib/list.h>
-#include <lib/err.h>
 
 #define MIN_SPLIT_SIZE 8
 #define INITIAL_PAGES 5
@@ -25,9 +25,9 @@ static vmm_address_space_t *g_address_space;
 static list_t g_heap = LIST_INIT_CIRCULAR(g_heap);
 
 static void expand(size_t npages) {
-    if(g_heap_start + g_heap_size + npages * ARCH_PAGE_SIZE >= g_heap_end) panic("HHDM", "Heap is full");
+    if(g_heap_start + g_heap_size + npages * ARCH_PAGE_SIZE >= g_heap_end) panic("HHDM: Heap is full");
     int r = vmm_alloc_wired(g_address_space, g_heap_start + g_heap_size, npages, VMM_DEFAULT_KERNEL_FLAGS);
-    if(ERR(r)) panic("HEAP", "Failed to allocate wired memory");
+    if(r < 0) panic("HEAP: Failed to allocate wired memory");
     if(!list_is_empty(&g_heap) && LIST_GET(g_heap.prev, heap_entry_t, list)->free) {
         LIST_GET(g_heap.prev, heap_entry_t, list)->length += npages * ARCH_PAGE_SIZE;
     } else {

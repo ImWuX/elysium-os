@@ -1,5 +1,5 @@
 #include "sched.h"
-#include <panic.h>
+#include <lib/panic.h>
 
 static list_t g_queue = LIST_INIT_CIRCULAR(g_queue);
 static uint32_t g_ids = 1;
@@ -7,7 +7,7 @@ static slock_t g_sched_lock = SLOCK_INIT;
 
 void sched_add(sched_thread_t *thread) {
     thread->id = g_ids++;
-    if(g_ids == UINT32_MAX) panic("SCHED", "Exceeded thread id limit");
+    if(g_ids == UINT32_MAX) panic("SCHED: Exceeded thread id limit");
     sched_schedule_thread(thread);
 }
 

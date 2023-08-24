@@ -1,8 +1,9 @@
 # DevOps
-thoughts.md
+compile_commands.json
 
 # IDE
 .vscode/
+.cache/
 
 # Output
 build/*

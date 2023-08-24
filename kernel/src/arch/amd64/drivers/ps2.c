@@ -1,5 +1,5 @@
 #include "ps2.h"
-#include <panic.h>
+#include <lib/panic.h>
 #include <arch/amd64/port.h>
 #include <arch/amd64/drivers/ps2kb.h>
 #include <arch/amd64/drivers/ps2mouse.h>
@@ -43,12 +43,12 @@ static bool wait_read() {
 
 static void ps2_write(uint16_t port, uint8_t value) {
     if(wait_write()) return port_outb(port, value);
-    panic("PS2", "Controller is not responding (WRITE)");
+    panic("PS2: Controller is not responding (WRITE)");
 }
 
 static uint8_t ps2_read(uint16_t port) {
     if(wait_read()) return port_inb(port);
-    panic("PS2", "Controller is not responding (READ)");
+    panic("PS2: Controller is not responding (READ)");
 }
 
 bool ps2_port_write(ps2_ports_t port, uint8_t value) {
@@ -63,7 +63,7 @@ bool ps2_port_write(ps2_ports_t port, uint8_t value) {
 
 uint8_t ps2_port_read(bool wait) {
     if(!wait || (wait && wait_read())) return port_inb(PS2_DATA);
-    panic("PS2", "Port not responding (READ)");
+    panic("PS2: Port not responding (READ)");
 }
 
 void ps2_port_enable(ps2_ports_t port) {
@@ -135,7 +135,7 @@ void ps2_initialize() {
     // Perform a self test
     ps2_write(PS2_CMDSTS, 0xAA);
     uint8_t self_test = ps2_read(PS2_DATA);
-    if(self_test != 0x55) panic("PS2", "Failed self test");
+    if(self_test != 0x55) panic("PS2: Failed self test");
     ps2_write(PS2_CMDSTS, 0x60);
     ps2_write(PS2_DATA, configuration_byte);
 

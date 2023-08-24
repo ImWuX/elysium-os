@@ -38,7 +38,7 @@ extern vmm_address_space_t g_kernel_address_space;
  * @param vaddr Virtual address for pages
  * @param npages Number of pages
  * @param flags Flags
- * @return 0 on success, negative errno on failure
+ * @return 0 on success, err on failure
  */
 int vmm_alloc_wired(vmm_address_space_t *as, uintptr_t vaddr, size_t npages, uint64_t flags);
 
@@ -50,7 +50,7 @@ int vmm_alloc_wired(vmm_address_space_t *as, uintptr_t vaddr, size_t npages, uin
  * @param npages Number of pages
  * @param paddr Physical address to map
  * @param flags Flags
- * @return 0 on success, negative errno on failure
+ * @return 0 on success, err on failure
  */
 int vmm_alloc_direct(vmm_address_space_t *as, uintptr_t vaddr, size_t npages, uintptr_t paddr, uint64_t flags);
 

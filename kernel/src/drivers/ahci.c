@@ -1,7 +1,7 @@
 #include "ahci.h"
 #include <stdbool.h>
 #include <string.h>
-#include <panic.h>
+#include <lib/panic.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
 #include <memory/heap.h>
@@ -164,7 +164,7 @@ static void stop_port(ahci_port_registers_t *port) {
 
 void ahci_read(uint8_t port, uint64_t lba, uint16_t count, void *dest) {
     if(!count) return;
-    if((uintptr_t) dest & 0xFFF) panic("AHCI", "Unaligned dest address");
+    if((uintptr_t) dest & 0xFFF) panic("AHCI: Unaligned dest address");
     ahci_port_registers_t *port_regs = (ahci_port_registers_t *) (g_bar5 + 0x100 + sizeof(ahci_port_registers_t) * port);
 
     int cmd_slot = -1;
@@ -213,7 +213,7 @@ void ahci_read(uint8_t port, uint64_t lba, uint16_t count, void *dest) {
     while((port_regs->task_file_data & (ATA_DEV_BUSY | ATA_DEV_DRQ))) {
         spin++;
         if(spin >= 1000000) {
-            panic("AHCI", "Port is not responding"); // TODO: This is truly dumb, we need to move away from a spinlock
+            panic("AHCI: Port is not responding"); // TODO: This is truly dumb, we need to move away from a spinlock
             return;
         }
     }
@@ -221,7 +221,7 @@ void ahci_read(uint8_t port, uint64_t lba, uint16_t count, void *dest) {
     port_regs->command_issue = 1 << cmd_slot;
     do {
         if(port_regs->interrupt_status & PxIS_TFES) {
-            panic("AHCI", "Port issued an error");
+            panic("AHCI: Port issued an error");
             return;
         }
     } while((port_regs->command_issue & (1 << cmd_slot)) != 0);
@@ -236,7 +236,7 @@ void ahci_initialize_device(pci_device_t *device) {
     pci_config_write_word(device, __builtin_offsetof(pci_device_header_t, command), cmd | (1 << 2));
 
     generic_host_control_t *ghc = (generic_host_control_t *) g_bar5;
-    if(!(ghc->host_capabilities & CAP_S64A)) panic("AHCI", "Currently 32 bit addressing is not supported.");
+    if(!(ghc->host_capabilities & CAP_S64A)) panic("AHCI: Currently 32 bit addressing is not supported.");
 
     if(ghc->host_capabilities_ext & CAP2_BOH) {
         ghc->bios_handoff_ctrlsts |= BOHC_OOS;
@@ -291,7 +291,7 @@ void ahci_initialize_device(pci_device_t *device) {
         if(port->task_file_data & (PxTFD_STS_BSY | PxTFD_STS_DRQ)) continue;
         if(PxSSTS_DET(port->sata_status) != 0x3) {
             if(PxSSTS_IPM(port->sata_status) <= 0x1) continue;
-            panic("AHCI", "Currently power modes are unsupported.");
+            panic("AHCI: Currently power modes are unsupported.");
         }
 
         port->command_and_status |= PxCMD_ST;

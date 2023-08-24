@@ -1,5 +1,5 @@
 #include "pci.h"
-#include <panic.h>
+#include <lib/panic.h>
 #include <drivers/acpi.h>
 #include <drivers/ahci.h>
 #include <memory/hhdm.h>
@@ -38,7 +38,7 @@ static uint32_t readd(uint16_t segment, uint8_t bus, uint8_t device, uint8_t fun
         port_outl(PORT_CONFIG_ADDRESS, reg | offset | (1 << 31));
         return port_inl(PORT_CONFIG_DATA);
 #else
-        panic("PCI", "Legacy PCI unavailable");
+        panic("PCI: Legacy PCI unavailable");
 #endif
     }
 }
@@ -62,7 +62,7 @@ static void writed(uint16_t segment, uint8_t bus, uint8_t device, uint8_t func, 
         port_outl(PORT_CONFIG_ADDRESS, reg | offset | (1 << 31));
         port_outl(PORT_CONFIG_DATA, value);
 #else
-        panic("PCI", "Legacy PCI unavailable");
+        panic("PCI: Legacy PCI unavailable");
 #endif
     }
 }
@@ -163,7 +163,7 @@ void pci_config_write_double(pci_device_t *device, uint8_t offset, uint32_t data
 void pci_enumerate(acpi_sdt_header_t *mcfg) {
     if(mcfg) g_segments = (pcie_segment_entry_t *) ((uintptr_t) mcfg + sizeof(acpi_sdt_header_t) + 8);
 #ifndef __ARCH_AMD64
-    else panic("PCI", "Legacy PCI unavailable");
+    else panic("PCI: Legacy PCI unavailable");
 #endif
     unsigned int entry_count = 1;
     if(g_segments) entry_count = (mcfg->length - (sizeof(acpi_sdt_header_t) + 8)) / sizeof(pcie_segment_entry_t);

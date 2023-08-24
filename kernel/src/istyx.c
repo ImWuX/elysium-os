@@ -7,6 +7,8 @@
 #include <memory/hhdm.h>
 #include <drivers/pci.h>
 #include <drivers/ahci.h>
+#include <fs/vfs.h>
+#include <fs/tmpfs.h>
 
 #define PREFIX "> "
 #define TAB_WIDTH 4
@@ -256,6 +258,10 @@ static void command_handler(char *input) {
                     }
                 }
             }
+        } else if(strcmp(command, "ls") == 0) {
+            if(arg_count < 0) {
+                
+            }
         } else if(strcmp(command, "help") == 0 || strcmp(command, "?") == 0) {
             kprintf(
                 "Integrated Styx Help\n"
@@ -343,6 +349,8 @@ void istyx_thread_init() {
     kprintf("        |___|                            \n\n");
     kprintf("Welcome to Integrated Styx V1.0 running on Elysium OS\n");
     kprintf("%s", PREFIX);
+
+    vfs_mount(tmpfs_create(), "/", (void *) 0);
 
     for(;;);
 }

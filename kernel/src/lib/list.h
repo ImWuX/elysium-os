@@ -48,7 +48,7 @@ bool list_is_empty(list_t *list);
  * @param member Name of list embedded in container
  * @return Pointer to container
  */
-#define LIST_GET(NODE, TYPE, MEMBER) ((TYPE *) ((uintptr_t) (NODE) - offsetof(TYPE, MEMBER)))
+#define LIST_GET(NODE, TYPE, MEMBER) ((TYPE *) ((uintptr_t) (NODE) - __builtin_offsetof(TYPE, MEMBER)))
 
 /**
  * @brief Iterate over a list
