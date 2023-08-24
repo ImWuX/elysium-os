@@ -1,6 +1,7 @@
 #include "ahci.h"
 #include <stdbool.h>
 #include <string.h>
+#include <lib/assert.h>
 #include <lib/panic.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
@@ -164,7 +165,7 @@ static void stop_port(ahci_port_registers_t *port) {
 
 void ahci_read(uint8_t port, uint64_t lba, uint16_t count, void *dest) {
     if(!count) return;
-    if((uintptr_t) dest & 0xFFF) panic("AHCI: Unaligned dest address");
+    ASSERT((uintptr_t) dest & 0xFFF);
     ahci_port_registers_t *port_regs = (ahci_port_registers_t *) (g_bar5 + 0x100 + sizeof(ahci_port_registers_t) * port);
 
     int cmd_slot = -1;
