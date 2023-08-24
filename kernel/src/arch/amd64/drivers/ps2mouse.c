@@ -40,10 +40,10 @@ void ps2mouse_set_handler(ps2mouse_handler_t mouse_handler) {
 }
 
 void ps2mouse_initialize(ps2_ports_t port) {
-	ASSERTC(!ps2_port_write(port, 0xF6) || ps2_port_read(true) != 0xFA, "Failed setting defaults");
-	ASSERTC(!ps2_port_write(port, 0xF3) || ps2_port_read(true) != 0xFA, "Failed to request sample rate");
-	ASSERTC(!ps2_port_write(port, 0xC8) || ps2_port_read(true) != 0xFA, "Failed to set sample rate");
-	ASSERTC(!ps2_port_write(port, 0xF4) || ps2_port_read(true) != 0xFA, "Failed to enable data reporting");
+	ASSERTC(ps2_port_write(port, 0xF6) && ps2_port_read(true) == 0xFA, "Failed setting defaults");
+	ASSERTC(ps2_port_write(port, 0xF3) && ps2_port_read(true) == 0xFA, "Failed to request sample rate");
+	ASSERTC(ps2_port_write(port, 0xC8) && ps2_port_read(true) == 0xFA, "Failed to set sample rate");
+	ASSERTC(ps2_port_write(port, 0xF4) && ps2_port_read(true) == 0xFA, "Failed to enable data reporting");
 
 	int vector = interrupt_request(INTERRUPT_PRIORITY_HID, mouse_handler);
 	ASSERT(vector >= 0);
