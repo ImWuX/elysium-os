@@ -1,7 +1,8 @@
 #include <tartarus.h>
 #include <string.h>
 #include <cpuid.h>
-#include <panic.h>
+#include <lib/panic.h>
+#include <lib/assert.h>
 #include <common.h>
 #include <lib/kprint.h>
 #include <memory/hhdm.h>
@@ -63,7 +64,7 @@ static void init_common() {
     gdt_load();
     interrupt_load_idt();
 
-    if(!cpuid_feature(CPUID_FEAT_APIC)) panic("ARCH/AMD64/INITAP", "Non-APIC CPUs are not supported");
+    ASSERT(cpuid_feature(CPUID_FEAT_APIC));
     lapic_initialize();
 
     init_common();
@@ -80,7 +81,8 @@ static void init_common() {
     g_fb_context.pitch = boot_info->framebuffer.pitch;
     istyx_early_initialize(&g_fb_context);
 
-    if(boot_info->hhdm_base < ARCH_HHDM_START || boot_info->hhdm_base + boot_info->hhdm_size >= ARCH_HHDM_END) panic("KERNEL", "HHDM is not within arch specific boundaries");
+    ASSERT(boot_info->hhdm_base >= ARCH_HHDM_START);
+    ASSERT(boot_info->hhdm_base + boot_info->hhdm_size < ARCH_HHDM_END);
     g_hhdm_address = boot_info->hhdm_base;
 
     pmm_zone_create(PMM_ZONE_INDEX_DMA, "DMA", 0, 0x100'0000);
@@ -109,7 +111,7 @@ static void init_common() {
 
     gdt_load();
 
-    if(!cpuid_feature(CPUID_FEAT_MSR)) panic("ARCH/AMD64", "MSRS are not supported on this system");
+    ASSERT(cpuid_feature(CPUID_FEAT_MSR));
 
     interrupt_initialize();
     for(int i = 0; i < 32; i++) {
@@ -118,18 +120,14 @@ static void init_common() {
     interrupt_load_idt();
 
     int sched_vector = interrupt_request(INTERRUPT_PRIORITY_KERNHIGH, sched_entry);
-    if(sched_vector < 0) panic("ARCH/AMD64", "Unable to acquire an interrupt vector for the scheduler");
+    ASSERTC(sched_vector >= 0, "Unable to acquire an interrupt vector for the scheduler");
     g_sched_vector = sched_vector;
 
+    ASSERT(cpuid_feature(CPUID_FEAT_APIC));
     pic8259_remap();
-    if(!cpuid_feature(CPUID_FEAT_APIC)) {
-        g_interrupt_irq_eoi = pic8259_eoi;
-        panic("ARCH/AMD64", "Legacy PIC is not supported at the moment");
-    } else {
-        pic8259_disable();
-        lapic_initialize();
-        g_interrupt_irq_eoi = lapic_eoi;
-    }
+    pic8259_disable();
+    lapic_initialize();
+    g_interrupt_irq_eoi = lapic_eoi;
 
     common_init(boot_info->acpi_rsdp);
 
