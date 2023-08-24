@@ -1,4 +1,5 @@
 #include "ps2kb.h"
+#include <lib/assert.h>
 #include <lib/panic.h>
 #include <arch/amd64/interrupt.h>
 #include <arch/amd64/lapic.h>
@@ -59,7 +60,7 @@ static void kb_interrupt_handler(interrupt_frame_t *registers __attribute__((unu
 
 void ps2kb_initialize(ps2_ports_t port) {
     int vector = interrupt_request(INTERRUPT_PRIORITY_HID, kb_interrupt_handler);
-    if(vector < 0) panic("PS2KB: Failed to acquire interrupt vector");
+    ASSERT(vector >= 0);
     g_interrupt_vector = vector;
     uint8_t irq = PS2_PORT_ONE_IRQ;
     if(port == PS2_PORT_TWO) irq = PS2_PORT_TWO_IRQ;

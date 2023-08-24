@@ -1,6 +1,7 @@
 #include "acpi.h"
 #include <stdbool.h>
 #include <string.h>
+#include <lib/assert.h>
 #include <lib/panic.h>
 #include <memory/hhdm.h>
 #include <memory/vmm.h>
@@ -18,7 +19,7 @@ void acpi_initialize(acpi_rsdp_t *rsdp) {
     g_revision = rsdp->revision;
     if(rsdp->revision > 0) {
         acpi_rsdp_ext_t *rsdp_ext = (acpi_rsdp_ext_t *) rsdp;
-        if(!checksum(((uint8_t *) rsdp_ext) + sizeof(acpi_rsdp_t), sizeof(acpi_rsdp_ext_t) - sizeof(acpi_rsdp_t))) panic("ACPI: Checksum for Extended RSDP failed");
+        ASSERT(checksum(((uint8_t *) rsdp_ext) + sizeof(acpi_rsdp_t), sizeof(acpi_rsdp_ext_t) - sizeof(acpi_rsdp_t)));
         g_xsdt = (acpi_sdt_header_t *) HHDM(rsdp_ext->xsdt_address);
     } else {
         g_rsdt = (acpi_sdt_header_t *) HHDM(rsdp->rsdt_address);
