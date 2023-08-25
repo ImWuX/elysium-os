@@ -13,6 +13,39 @@
 #define SCR_INDENT 25
 #define MAX_CHARS 512
 
+typedef struct arg_constructor {
+    char *arg;
+    struct arg_constructor *next;
+} arg_constructor_t;
+
+typedef union {
+    uint64_t u_integer;
+    int64_t integer;
+    char *string;
+    bool boolean;
+} arg_t;
+
+typedef enum {
+    ARG_STRING,
+    ARG_INTEGER,
+    ARG_UNSIGNED_INTEGER,
+    ARG_BOOLEAN
+} command_arg_type_t;
+
+typedef struct {
+    char *name;
+    command_arg_type_t type;
+    bool optional;
+} command_arg_t;
+
+typedef struct {
+    char *name;
+    char *description;
+    void (*func)(arg_t *);
+    command_arg_t *args;
+    int argc;
+} command_t;
+
 static draw_color_t g_bg, g_fg, g_cg;
 
 static draw_context_t *g_ctx;
@@ -56,228 +89,349 @@ static void clear() {
     g_y = SCR_INDENT;
 }
 
-static bool is_whitespace(char c) {
-    return c == ' ' || c == '\t';
-}
-
-static bool get_arg(char *str, int argc, char **value) {
-    int cur = 0;
-    while(*str && cur != argc) {
-        if(is_whitespace(*str)) {
-            while(is_whitespace(*str)) str++;
-            cur++;
-        } else str++;
+static bool parse_int(char *input, int64_t *out) {
+    int64_t value = 0;
+    bool negative = false;
+    bool hex = input[0] == '0' && (input[0] != 0 && input[1] == 'x');
+    if(hex) input += 2;
+    if(!hex) for(; *input == '-'; input++) negative = !negative;
+    for(; *input; input++) {
+        value *= (hex ? 0x10 : 10);
+        if(*input >= '0' && *input <= '9') {
+            value += *input - '0';
+            continue;
+        }
+        if(hex && *input >= 'a' && *input <= 'f') {
+            value += *input - 'a' + 10;
+            continue;
+        }
+        if(hex && *input >= 'A' && *input <= 'F') {
+            value += *input - 'A' + 10;
+            continue;
+        }
+        return true;
     }
-    if(cur != argc) return true;
-
-    int strlen = 0;
-    while(str[strlen] && str[strlen] != ' ') strlen++;
-    if(strlen <= 0) return true;
-    *value = heap_alloc(strlen + 1);
-    memcpy(*value, str, strlen);
-    (*value)[strlen] = 0;
+    if(negative) value *= -1;
+    *out = value;
     return false;
 }
 
-static bool get_arg_num(char *str, int argc, uint64_t *value) {
-    char *arg;
-    if(get_arg(str, argc, &arg)) return true;
-    int argl = strlen(arg);
-    *value = 0;
-    uint64_t pow = 1;
-    if(arg[0] == '0' && arg[1] == 'x') {
-        for(int i = argl - 1; i >= 2; i--) {
-            bool valid = false;
-            if(arg[i] >= '0' && arg[i] <= '9') { *value += (arg[i] - '0') * pow; valid = true; }
-            if(arg[i] >= 'a' && arg[i] <= 'f') { *value += (arg[i] - 'a' + 10) * pow; valid = true; }
-            if(arg[i] >= 'A' && arg[i] <= 'F') { *value += (arg[i] - 'A' + 10) * pow; valid = true; }
-            if(!valid) {
-                heap_free(arg);
-                return true;
-            }
-            pow *= 16;
+static bool parse_uint(char *input, uint64_t *out) {
+    uint64_t value = 0;
+    bool hex = input[0] == '0' && (input[0] != 0 && input[1] == 'x');
+    if(hex) input += 2;
+    for(; *input; input++) {
+        value *= (hex ? 0x10 : 10);
+        if(*input >= '0' && *input <= '9') {
+            value += *input - '0';
+            continue;
         }
+        if(hex && *input >= 'a' && *input <= 'f') {
+            value += *input - 'a' + 10;
+            continue;
+        }
+        if(hex && *input >= 'A' && *input <= 'F') {
+            value += *input - 'A' + 10;
+            continue;
+        }
+        return true;
+    }
+    *out = value;
+    return false;
+}
+
+static void command_help(arg_t *args __attribute__((unused)));
+
+static void command_clear(arg_t *args __attribute__((unused))) {
+    clear();
+}
+
+static void command_pmm_alloc(arg_t *args) {
+    if(args[0].integer < 0 || args[0].integer > PMM_MAX_ORDER) return (void) kprintf("Invalid order\n");
+    pmm_page_t *page = pmm_alloc(args[0].integer, PMM_GENERAL);
+    kprintf("Order %li^2 page(%#lx) >> %#lx\n", args[0].integer, (uint64_t) page, page->paddr);
+}
+
+static void command_pmm_free(arg_t *args) {
+    pmm_page_t *page = (pmm_page_t *) args[0].u_integer;
+    uint8_t order = page->order;
+    pmm_free(page);
+    kprintf("Freed order %u^2 page\n", order);
+}
+
+static void command_heap_alloc(arg_t *args) {
+    uint64_t block;
+    if(args[1].u_integer) {
+        block = (uintptr_t) heap_alloc_align(args[0].u_integer, args[1].u_integer);
     } else {
-        for(int i = argl - 1; i >= 0; i--) {
-            if(arg[i] < '0' || arg[i] > '9') {
-                heap_free(arg);
-                return true;
-            }
-            *value += ((uint64_t) arg[i] - '0') * pow;
-            pow *= 10;
+        block = (uintptr_t) heap_alloc(args[0].u_integer);
+    }
+    kprintf("Address %#lx\n", block);
+}
+
+static void command_heap_free(arg_t *args) {
+    heap_free((void *) args[0].u_integer);
+}
+
+static void command_read(arg_t *args) {
+    ahci_read(0, args[0].u_integer, args[1].u_integer, (void *) args[2].u_integer);
+    kprintf("Read %li sectors starting at %li into %#lx\n", args[1].u_integer, args[0].u_integer, args[2].u_integer);
+}
+
+static void command_meminfo(arg_t *args __attribute__((unused))) {
+    for(int i = 0; i < PMM_ZONE_COUNT; i++) {
+        pmm_zone_t *zone = &g_pmm_zones[i];
+        kprintf("| Zone (%s) %#lx pages\n", zone->name, zone->page_count);
+        list_t *entry;
+        LIST_FOREACH(entry, &zone->regions) {
+            pmm_region_t *region = LIST_GET(entry, pmm_region_t, list);
+            kprintf("\t| Region %#lx pages\n", region->page_count);
         }
     }
-    heap_free(arg);
-    return false;
+}
+
+static void command_pcidev(arg_t *args __attribute__((unused))) {
+    list_t *entry;
+    LIST_FOREACH(entry, &g_pci_devices) {
+        pci_device_t *device = LIST_GET(entry, pci_device_t, list);
+        uint16_t vendor_id = pci_config_read_word(device, offsetof(pci_device_header_t, vendor_id));
+        uint8_t class = pci_config_read_byte(device, offsetof(pci_device_header_t, class));
+        uint8_t sub_class = pci_config_read_byte(device, offsetof(pci_device_header_t, sub_class));
+        uint8_t prog_if = pci_config_read_byte(device, offsetof(pci_device_header_t, program_interface));
+        if(device->segment > 0) kprintf("Seg %i ", device->segment);
+        kprintf("%i:%i.%i\tVendor: %#x, Class: %#x, SubClass: %#x, ProgIf: %#x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
+    }
+}
+
+static void command_hexdump(arg_t *args) {
+    uint64_t address = args[0].u_integer;
+    if(args[2].u_integer) address = HHDM(address);
+    bool star = false;
+    uint8_t last[10];
+    int row_count = ((int) args[1].u_integer + 9) / 10;
+    for(int y = 0; y < row_count; y++) {
+        int row_length = (int) args[1].u_integer - y * 10;
+        if(row_length > 10) row_length = 10;
+        bool identical = (y != 0 && y != row_count - 1);
+        if(identical) {
+            for(int x = 0; x < row_length; x++) {
+                uint8_t value = *(uint8_t *) (address + y * 10 + x);
+                if(last[x] != value) identical = false;
+                last[x] = value;
+            }
+        }
+
+        if(!identical) {
+            star = false;
+            kprintf("%#18.16lx:  ", address + y * 10);
+            for(int x = 0; x < row_length; x++) {
+                kprintf("%.2x ", *(uint8_t *) (address + y * 10 + x));
+            }
+            for(int x = row_length; x < 10; x++) kprintf("   ");
+
+            kprintf("  ");
+            for(int x = 0; x < row_length; x++) {
+                char c = *(char *) (address + y * 10 + x);
+                if(c < 32 || c > 126) c = '.';
+                kprintf("%c ", c);
+            }
+            kprintf("\n");
+        } else {
+            if(star) continue;
+            kprintf("*\n");
+            star = true;
+        }
+    }
+}
+
+static command_t g_command_registry[] = {
+    {
+        .name = "help",
+        .description = "Lists registered commands and their usages",
+        .func = &command_help
+    },
+    {
+        .name = "clear",
+        .description = "Clears the screen",
+        .func = &command_clear,
+    },
+    {
+        .name = "pmm-alloc",
+        .description = "Uses the PMM directly to allocate physical memory",
+        .func = &command_pmm_alloc,
+        .args = (command_arg_t[]) {
+            { .name = "order", .type = ARG_INTEGER }
+        },
+        .argc = 1
+    },
+    {
+        .name = "pmm-free",
+        .description = "Uses the PMM directly to free physical memory",
+        .func = &command_pmm_free,
+        .args = (command_arg_t[]) {
+            { .name = "page address", .type = ARG_UNSIGNED_INTEGER }
+        },
+        .argc = 1
+    },
+    {
+        .name = "heap-alloc",
+        .description = "Uses the heap to allocate memory",
+        .func = &command_heap_alloc,
+        .args = (command_arg_t[]) {
+            { .name = "byte count", .type = ARG_UNSIGNED_INTEGER },
+            { .name = "alignment", .type = ARG_UNSIGNED_INTEGER, .optional = true }
+        },
+        .argc = 2
+    },
+    {
+        .name = "heap-free",
+        .description = "Uses the heap to free memory",
+        .func = &command_heap_free,
+        .args = (command_arg_t[]) {
+            { .name = "address", .type = ARG_UNSIGNED_INTEGER }
+        },
+        .argc = 1
+    },
+    {
+        .name = "read",
+        .description = "Reads memory from disk",
+        .func = &command_read,
+        .args = (command_arg_t[]) {
+            { .name = "LBA", .type = ARG_UNSIGNED_INTEGER },
+            { .name = "sector count", .type = ARG_UNSIGNED_INTEGER },
+            { .name = "destination", .type = ARG_UNSIGNED_INTEGER }
+        },
+        .argc = 3
+    },
+    {
+        .name = "meminfo",
+        .description = "Lists physical memory region availability",
+        .func = &command_meminfo
+    },
+    {
+        .name = "pcidev",
+        .description = "Lists all discovered PCI devices",
+        .func = &command_pcidev
+    },
+    {
+        .name = "hexdump",
+        .description = "Displays physical or virtual memory",
+        .func = &command_hexdump,
+        .args = (command_arg_t[]) {
+            { .name = "address", .type = ARG_UNSIGNED_INTEGER },
+            { .name = "count", .type = ARG_UNSIGNED_INTEGER },
+            { .name = "physical address", .type = ARG_BOOLEAN, .optional = true }
+        }
+    }
+};
+
+static void command_help(arg_t *args __attribute__((unused))) {
+    kprintf("Integrated Styx | Help\n");
+    for(unsigned int cmd_idx = 0; cmd_idx < sizeof(g_command_registry) / sizeof(command_t); cmd_idx++) {
+        kprintf("\t%s", g_command_registry[cmd_idx].name);
+        for(unsigned int arg_idx = 0; arg_idx < g_command_registry[cmd_idx].argc; arg_idx++) {
+            kprintf(g_command_registry[cmd_idx].args[arg_idx].optional ? " [%s]" : " <%s>", g_command_registry[cmd_idx].args[arg_idx].name);
+        }
+        kprintf(" - %s\n", g_command_registry[cmd_idx].description);
+    }
 }
 
 static void command_handler(char *input) {
-    char *s = input;
-    bool last_was_space = false;
-    int arg_count = 1;
-    while(*s++) {
-        if(is_whitespace(*s)) {
-            if(!last_was_space) arg_count++;
-            last_was_space = true;
-        } else last_was_space = false;
-    }
+    if(!input[0]) return;
 
-    char *command = "";
-    get_arg(input, 0, &command);
-    if(command[0]) {
-        if(strcmp(command, "clear") == 0) {
-            clear();
-#ifdef __ARCH_AMD64
-        } else if(strcmp(command, "ud2") == 0) {
-            asm volatile("ud2");
-#endif
-        } else if(strcmp(command, "pmm-alloc") == 0) {
-            uint64_t order;
-            if(get_arg_num(input, 1, &order)) {
-                kprintf("Missing argument(s)\n");
-            } else {
-                pmm_page_t *page = pmm_alloc(order, PMM_GENERAL);
-                kprintf("Order %lu^2 page(%#lx) >> %#lx\n", order, (uint64_t) page, page->paddr);
-            }
-        } else if(strcmp(command, "pmm-free") == 0) {
-            uint64_t address;
-            if(get_arg_num(input, 1, &address)) {
-                kprintf("Missing argument(s)\n");
-            } else {
-                pmm_page_t *page = (pmm_page_t *) address;
-                uint8_t order = page->order;
-                pmm_free(page);
-                kprintf("Freed order %u^2 page\n", order);
-            }
-        } else if(strcmp(command, "heap-alloc") == 0) {
-            uint64_t count;
-            uint64_t alignment;
-            if(get_arg_num(input, 2, &alignment)) alignment = 0;
-            if(get_arg_num(input, 1, &count)) {
-                kprintf("Missing argument(s)\n");
-            } else {
-                uint64_t block;
-                if(alignment) {
-                    block = (uintptr_t) heap_alloc_align(count, alignment);
-                } else {
-                    block = (uintptr_t) heap_alloc(count);
-                }
-                kprintf("Address %#lx\n", block);
-            }
-        } else if(strcmp(command, "heap-free") == 0) {
-            uint64_t address;
-            if(get_arg_num(input, 1, &address)) {
-                kprintf("Missing argument(s)\n");
-            } else {
-                heap_free((void *) address);
-            }
-        } else if(strcmp(command, "read") == 0) {
-            if(arg_count < 4) {
-                kprintf("Missing arguments\n");
-            } else {
-                uint64_t sector;
-                uint64_t count;
-                uint64_t dest;
-                if(get_arg_num(input, 1, &sector) || get_arg_num(input, 2, &count) || get_arg_num(input, 3, &dest)) {
-                    kprintf("Invalid arguments\n");
-                } else {
-                    ahci_read(0, sector, count, (void *) dest);
-                    kprintf("Read %li sectors starting at %li into %#lx\n", count, sector, dest);
-                }
-            }
-        } else if(strcmp(command, "meminfo") == 0) {
-            for(int i = 0; i < PMM_ZONE_COUNT; i++) {
-                pmm_zone_t *zone = &g_pmm_zones[i];
-                kprintf("| Zone (%s) %#lx pages\n", zone->name, zone->page_count);
-                list_t *entry;
-                LIST_FOREACH(entry, &zone->regions) {
-                    pmm_region_t *region = LIST_GET(entry, pmm_region_t, list);
-                    kprintf("\t| Region %#lx pages\n", region->page_count);
-                }
-            }
-        } else if(strcmp(command, "pcidev") == 0) {
-            list_t *entry;
-            LIST_FOREACH(entry, &g_pci_devices) {
-                pci_device_t *device = LIST_GET(entry, pci_device_t, list);
-                uint16_t vendor_id = pci_config_read_word(device, offsetof(pci_device_header_t, vendor_id));
-                uint8_t class = pci_config_read_byte(device, offsetof(pci_device_header_t, class));
-                uint8_t sub_class = pci_config_read_byte(device, offsetof(pci_device_header_t, sub_class));
-                uint8_t prog_if = pci_config_read_byte(device, offsetof(pci_device_header_t, program_interface));
-                if(device->segment > 0) kprintf("Seg %i ", device->segment);
-                kprintf("%i:%i.%i\tVendor: %#x, Class: %#x, SubClass: %#x, ProgIf: %#x\n", device->bus, device->slot, device->func, vendor_id, class, sub_class, prog_if);
-            }
-        } else if(strcmp(command, "hexdump") == 0) {
-            if(arg_count < 3) {
-                kprintf("Missing argument(s)\n");
-            } else {
-                uint64_t usephys;
-                uint64_t address;
-                uint64_t count;
-                if(get_arg_num(input, 3, &usephys) || usephys > 1) usephys = 0;
-                if(get_arg_num(input, 1, &address) || get_arg_num(input, 2, &count)) {
-                    kprintf("Invalid argument(s)\n");
-                } else {
-                    if(usephys) address = HHDM(address);
-                    bool star = false;
-                    uint8_t last[10];
-                    int row_count = ((int) count + 9) / 10;
-                    for(int y = 0; y < row_count; y++) {
-                        int row_length = (int) count - y * 10;
-                        if(row_length > 10) row_length = 10;
-                        bool identical = (y != 0 && y != row_count - 1);
-                        if(identical) {
-                            for(int x = 0; x < row_length; x++) {
-                                uint8_t value = *(uint8_t *) (address + y * 10 + x);
-                                if(last[x] != value) identical = false;
-                                last[x] = value;
-                            }
-                        }
-
-                        if(!identical) {
-                            star = false;
-                            kprintf("%#18.16lx:  ", address + y * 10);
-                            for(int x = 0; x < row_length; x++) {
-                                kprintf("%.2x ", *(uint8_t *) (address + y * 10 + x));
-                            }
-                            for(int x = row_length; x < 10; x++) kprintf("   ");
-
-                            kprintf("  ");
-                            for(int x = 0; x < row_length; x++) {
-                                char c = *(char *) (address + y * 10 + x);
-                                if(c < 32 || c > 126) c = '.';
-                                kprintf("%c ", c);
-                            }
-                            kprintf("\n");
-                        } else {
-                            if(star) continue;
-                            kprintf("*\n");
-                            star = true;
-                        }
-                    }
-                }
-            }
-        } else if(strcmp(command, "help") == 0 || strcmp(command, "?") == 0) {
-            kprintf(
-                "Integrated Styx Help\n"
-                "\tclear - Clears the screen\n"
-#ifdef __ARCH_AMD64
-                "\tud2 - Executes an UD2 instruction\n"
-#endif
-                "\tpcidev - Displays the PCI devices\n"
-                "\thexdump <address> <count> [physical] - Dumps memory\n"
-                "\tpmm-alloc <order> - Allocates a block\n"
-                "\tpmm-free <page address> - Frees a block\n"
-                "\theap-alloc <count> [alignment] - Allocates memory on the heap\n"
-                "\theap-free <address> - Frees a block of memory off the stack\n"
-                "\tread <sector> <count> <dest> - Reads data from the first block device\n"
-                "\tmeminfo - Displays physical memory tree\n"
-            );
-        } else {
-            kprintf("Unknown command: \"%s\"\n", command);
+    int constructor_length = 0;
+    arg_constructor_t *constructor = 0;
+    bool escaped = false;
+    for(int i = 0, start = 0;; i++) {
+        switch(input[i]) {
+            case '"':
+                escaped = !escaped;
+                break;
+            case 0:
+            case ' ':
+                if(!escaped) break;
+            default:
+                goto end;
         }
+        if(i - start > 0) {
+            int segment_length = i - start;
+            char *segment = heap_alloc(segment_length + 1);
+            memcpy(segment, input + start, segment_length);
+            segment[segment_length] = 0;
+
+            arg_constructor_t *entry = heap_alloc(sizeof(arg_constructor_t));
+            entry->arg = segment;
+            entry->next = constructor;
+            constructor = entry;
+            constructor_length++;
+        }
+        start = i + 1;
+
+        end:
+        if(input[i] == 0) break;
+    }
+    if(constructor_length == 0) return;
+
+    constructor_length--;
+    char **strargs = heap_alloc(sizeof(char *) * constructor_length);
+    for(int i = constructor_length - 1; i >= 0; i--) {
+        strargs[i] = constructor->arg;
+        arg_constructor_t *next = constructor->next;
+        heap_free(constructor);
+        constructor = next;
+    }
+    char *command_str = constructor->arg;
+    heap_free(constructor);
+
+    command_t *command = 0;
+    for(unsigned int i = 0; i < sizeof(g_command_registry) / sizeof(command_t); i++) {
+        if(strcmp(g_command_registry[i].name, command_str) != 0) continue;
+        command = &g_command_registry[i];
     }
 
-    heap_free(command);
+    if(command) {
+        arg_t *args = heap_alloc(sizeof(arg_t) * command->argc);
+        for(int i = 0; i < command->argc; i++) {
+            if(i >= constructor_length) {
+                if(!command->args[i].optional) {
+                    kprintf("Missing non-optional paramater(s)\n");
+                    goto invalid;
+                } else {
+                    memset(&args[i], 0, sizeof(arg_t));
+                }
+            } else {
+                switch((command->argc <= i) ? ARG_STRING : command->args[i].type) {
+                    case ARG_STRING:
+                        args[i].string = strargs[i];
+                        break;
+                    case ARG_INTEGER:
+                        if(parse_int(strargs[i], &args[i].integer)) {
+                            kprintf("Invalid parameter, %s is not an integer\n", strargs[i]);
+                            goto invalid;
+                        }
+                        break;
+                    case ARG_UNSIGNED_INTEGER:
+                        if(parse_uint(strargs[i], &args[i].u_integer)) {
+                            kprintf("Invalid parameter, %s is not an unsigned integer\n", strargs[i]);
+                            goto invalid;
+                        }
+                        break;
+                    case ARG_BOOLEAN:
+                        args[i].boolean = strcmp(strargs[i], "true") == 0 || strcmp(strargs[i], "1") == 0;
+                        break;
+                }
+            }
+        }
+        command->func(args);
+
+        invalid:
+        heap_free(args);
+    } else {
+        kprintf("Unknown command: \"%s\"\n", command_str);
+    }
+
+    for(int i = 0; i < constructor_length; i++) heap_free(strargs[i]);
+    heap_free(strargs);
 }
 
 void istyx_early_initialize(draw_context_t *draw_context) {
