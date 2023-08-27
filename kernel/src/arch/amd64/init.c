@@ -137,7 +137,7 @@ static void init_common() {
     acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
     if(fadt && (acpi_revision() == 0 || (fadt->boot_architecture_flags & (1 << 1)))) {
         ps2kb_set_handler((ps2kb_handler_t) istyx_simple_input_kb);
-        ps2mouse_set_handler((ps2mouse_handler_t) istyx_simple_input_mouse);
+        // ps2mouse_set_handler((ps2mouse_handler_t) istyx_simple_input_mouse);
         ps2_initialize();
     }
 
