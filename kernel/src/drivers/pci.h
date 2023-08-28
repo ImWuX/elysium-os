@@ -82,6 +82,13 @@ typedef struct pci_device {
     list_t list;
 } pci_device_t;
 
+typedef struct {
+    void (* initialize)(pci_device_t *device);
+    uint16_t class;
+    uint16_t subclass;
+    uint16_t prog_if;
+} pci_driver_t;
+
 extern list_t g_pci_devices;
 
 /**

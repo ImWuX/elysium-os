@@ -25,6 +25,12 @@ SECTIONS
         *(.bss .bss.*)
     }
 
+    .drivers : {
+        ld_drivers_start = .;
+        KEEP(*(.drivers*));
+        ld_drivers_end = .;
+    }
+
     ld_kernel_end = .;
 
     /DISCARD/ : {

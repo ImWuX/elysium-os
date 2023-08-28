@@ -329,7 +329,7 @@ static void command_help(arg_t *args __attribute__((unused))) {
     kprintf("Integrated Styx | Help\n");
     for(unsigned int cmd_idx = 0; cmd_idx < sizeof(g_command_registry) / sizeof(command_t); cmd_idx++) {
         kprintf("\t%s", g_command_registry[cmd_idx].name);
-        for(unsigned int arg_idx = 0; arg_idx < g_command_registry[cmd_idx].argc; arg_idx++) {
+        for(int arg_idx = 0; arg_idx < g_command_registry[cmd_idx].argc; arg_idx++) {
             kprintf(g_command_registry[cmd_idx].args[arg_idx].optional ? " [%s]" : " <%s>", g_command_registry[cmd_idx].args[arg_idx].name);
         }
         kprintf(" - %s\n", g_command_registry[cmd_idx].description);

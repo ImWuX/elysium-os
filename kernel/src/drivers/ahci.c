@@ -1,4 +1,6 @@
 #include "ahci.h"
+#include <sys/dev.h>
+#include <drivers/pci.h>
 #include <stdbool.h>
 #include <string.h>
 #include <lib/assert.h>
@@ -9,6 +11,7 @@
 #include <memory/vmm.h>
 #include <arch/vmm.h>
 #include <arch/sched.h>
+#include <lib/kprint.h>
 
 #define PAGE_SIZE 0x1000
 #define SECTOR_SIZE 512
@@ -298,3 +301,12 @@ void ahci_initialize_device(pci_device_t *device) {
         port->command_and_status |= PxCMD_ST;
     }
 }
+
+static pci_driver_t ahci_driver = {
+    .initialize = &ahci_initialize_device,
+    .class = 0x1,
+    .subclass = 0x6,
+    .prog_if = 0x1
+};
+
+DEV_REGISTER_PCI(ahci_driver);
