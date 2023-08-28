@@ -1,4 +1,5 @@
 #include "pci.h"
+#include <sys/dev.h>
 #include <lib/panic.h>
 #include <drivers/acpi.h>
 #include <drivers/ahci.h>
@@ -96,25 +97,19 @@ static void check_function(uint16_t segment, uint8_t bus, uint8_t device, uint8_
     uint8_t class = readb(segment, bus, device, func, offsetof(pci_device_header_t, class));
     uint8_t sub_class = readb(segment, bus, device, func, offsetof(pci_device_header_t, sub_class));
     uint8_t prog_if = readb(segment, bus, device, func, offsetof(pci_device_header_t, program_interface));
-    switch(class) {
-        case 0x1:
-            switch(sub_class) {
-                case 0x6:
-                    switch(prog_if) {
-                        case 0x1:
-                            ahci_initialize_device(pci_device);
-                            break;
-                    }
-                    break;
-            }
-            break;
-        case 0x6:
-            switch(sub_class) {
-                case 0x4:
-                    check_bus(segment, (uint8_t) (readb(segment, bus, device, func, offsetof(pci_header1_t, secondary_bus)) >> 8));
-                    break;
-            }
-            break;
+
+    if(class == 0x6 && sub_class == 0x4) {
+        check_bus(segment, (uint8_t) (readb(segment, bus, device, func, offsetof(pci_header1_t, secondary_bus)) >> 8));
+        return;
+    }
+
+    dev_driver_t *driver;
+    DEV_FOREACH(driver) {
+        if(driver->type != DEV_DRIVER_PCI) continue;
+        if(driver->pci->class != class) continue;
+        if(driver->pci->subclass != sub_class) continue;
+        if(driver->pci->prog_if != prog_if) continue;
+        driver->pci->initialize(pci_device);
     }
 }
 

@@ -1,4 +1,5 @@
 #include "common.h"
+#include <sys/dev.h>
 #include <lib/kprint.h>
 #include <arch/types.h>
 #include <arch/sched.h>
@@ -10,8 +11,7 @@
 
 void common_init(void *rsdp) {
     acpi_initialize(rsdp);
-
-    pci_enumerate(acpi_find_table((uint8_t *) "MCFG"));
+    dev_initialize();
 
     sched_thread_t *istyx_thread = heap_alloc(sizeof(sched_thread_t));
     arch_sched_init_kernel_thread(istyx_thread, istyx_thread_init);
