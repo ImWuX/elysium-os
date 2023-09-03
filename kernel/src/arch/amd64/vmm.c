@@ -57,12 +57,15 @@ static uint64_t arch_independent_flags_to_x86(uint64_t flags) {
 void arch_vmm_init() {
     g_kernel_address_space.segments = LIST_INIT_CIRCULAR(g_kernel_address_space.segments);
     g_kernel_address_space.lock = SLOCK_INIT;
-    g_kernel_address_space.archdep.cr3 = read_cr3();
-    memset((void *) HHDM(g_kernel_address_space.archdep.cr3), 0, 0x800);
+    g_kernel_address_space.archdep.cr3 = pmm_alloc_page(PMM_AF_ZONE_NORMAL | PMM_AF_ZERO)->paddr;
 
+    uint64_t *old_pml4 = (uint64_t *) HHDM(read_cr3());
     uint64_t *pml4 = (uint64_t *) HHDM(g_kernel_address_space.archdep.cr3);
     for(int i = 256; i < 512; i++) {
-        if(pml4[i] & PTE_FLAG_PRESENT) continue;
+        if(old_pml4[i] & PTE_FLAG_PRESENT) {
+            pml4[i] = old_pml4[i];
+            continue;
+        }
         pmm_page_t *page = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
         pml4[i] = PTE_FLAG_PRESENT | PTE_FLAG_NX;
         pte_set_address(&pml4[i], page->paddr);
