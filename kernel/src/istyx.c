@@ -321,7 +321,8 @@ static command_t g_command_registry[] = {
             { .name = "address", .type = ARG_UNSIGNED_INTEGER },
             { .name = "count", .type = ARG_UNSIGNED_INTEGER },
             { .name = "physical address", .type = ARG_BOOLEAN, .optional = true }
-        }
+        },
+        .argc = 3
     }
 };
 
