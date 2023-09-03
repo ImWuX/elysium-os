@@ -3,8 +3,8 @@
 #include <cpuid.h>
 #include <lib/panic.h>
 #include <lib/assert.h>
-#include <common.h>
 #include <lib/kprint.h>
+#include <sys/dev.h>
 #include <memory/hhdm.h>
 #include <memory/heap.h>
 #include <drivers/acpi.h>
@@ -60,6 +60,8 @@ static void init_common() {
 [[noreturn]] __attribute__((naked)) void init_ap() {
     asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp" : : "r" (g_hhdm_address) : "rax", "memory");
     asm volatile("mov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "r" (g_hhdm_address) : "rax", "memory");
+
+    arch_vmm_load_address_space(&g_kernel_address_space);
 
     gdt_load();
     interrupt_load_idt();
@@ -129,10 +131,16 @@ static void init_common() {
     lapic_initialize();
     g_interrupt_irq_eoi = lapic_eoi;
 
-    common_init(boot_info->acpi_rsdp);
+    acpi_initialize(boot_info->acpi_rsdp);
 
     acpi_sdt_header_t *madt = acpi_find_table((uint8_t *) "APIC");
     if(madt) ioapic_initialize(madt);
+
+    dev_initialize();
+
+    sched_thread_t *istyx_thread = heap_alloc(sizeof(sched_thread_t));
+    arch_sched_init_kernel_thread(istyx_thread, istyx_thread_init);
+    sched_add(istyx_thread);
 
     acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
     if(fadt && (acpi_revision() == 0 || (fadt->boot_architecture_flags & (1 << 1)))) {
