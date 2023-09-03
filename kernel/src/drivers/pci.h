@@ -5,6 +5,10 @@
 #include <drivers/acpi.h>
 #include <lib/list.h>
 
+#define PCI_DRIVER_MATCH_CLASS (1 << 0)
+#define PCI_DRIVER_MATCH_SUBCLASS (1 << 1)
+#define PCI_DRIVER_MATCH_FUNCTION (1 << 2)
+
 typedef struct {
     uint16_t vendor_id;
     uint16_t device_id;
@@ -74,6 +78,12 @@ typedef struct {
     uint16_t bridge_control;
 } __attribute__((packed)) pci_header1_t;
 
+typedef struct {
+    uint64_t address;
+    uint32_t size;
+    bool iospace;
+} pci_bar_t;
+
 typedef struct pci_device {
     uint16_t segment;
     uint8_t bus;
@@ -84,6 +94,7 @@ typedef struct pci_device {
 
 typedef struct {
     void (* initialize)(pci_device_t *device);
+    uint8_t match;
     uint16_t class;
     uint16_t subclass;
     uint16_t prog_if;
@@ -151,5 +162,15 @@ void pci_config_write_word(pci_device_t *device, uint8_t offset, uint16_t data);
  * @param data Doubleword to write to config
  */
 void pci_config_write_double(pci_device_t *device, uint8_t offset, uint32_t data);
+
+/**
+ * @brief Read BAR register from device config
+ * @warning Heap allocation on success
+ *
+ * @param device PCI device
+ * @param offset BAR index (0-5)
+ * @return PCI bar on success, 0 on failure
+*/
+pci_bar_t *pci_config_read_bar(pci_device_t *device, uint8_t index);
 
 #endif
