@@ -1,1 +1,1 @@
-![elysiumos2-banner-readme](https://github.com/ImWuX/ElysiumOS/assets/33443074/1bbd2dbb-f52c-421a-aec5-aa8b7836cd5f)
+![elysiumos2-banner-readme_upscaled](https://github.com/ImWuX/ElysiumOS/assets/33443074/22e1f395-ddb2-46cc-91b4-8c6b5f28281f)
