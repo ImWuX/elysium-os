@@ -9,14 +9,12 @@
 #include <memory/heap.h>
 #include <drivers/acpi.h>
 #include <arch/vmm.h>
-#include <arch/sched.h>
 #include <arch/amd64/gdt.h>
 #include <arch/amd64/msr.h>
 #include <arch/amd64/cpuid.h>
 #include <arch/amd64/lapic.h>
 #include <arch/amd64/exception.h>
 #include <arch/amd64/interrupt.h>
-#include <arch/amd64/sched.h>
 #include <arch/amd64/drivers/pic8259.h>
 #include <arch/amd64/drivers/ioapic.h>
 #include <arch/amd64/drivers/ps2.h>
@@ -38,23 +36,16 @@ static void init_common() {
     pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
     msr_write(MSR_PAT, pat);
 
-    pit_initialize(UINT16_MAX);
-    uint16_t start_count = pit_count();
-    lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
-    uint16_t end_count = pit_count();
+    // TODO: Fix scheduler, then uncomment this
+    // pit_initialize(UINT16_MAX);
+    // uint16_t start_count = pit_count();
+    // lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
+    // uint16_t end_count = pit_count();
 
-    arch_cpu_local_t *cpu_local = heap_alloc(sizeof(arch_cpu_local_t));
-    cpu_local->lapic_timer_freq = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
-
-    sched_thread_t *thread = heap_alloc(sizeof(sched_thread_t));
-    thread->this = thread;
-    thread->cpu_local = cpu_local;
-    thread->state = SCHED_THREAD_EXIT;
-    arch_sched_set_current_thread(thread);
+    // arch_cpu_local_t *cpu_local = heap_alloc(sizeof(arch_cpu_local_t));
+    // cpu_local->lapic_timer_freq = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
 
     asm volatile("sti");
-
-    lapic_timer_oneshot(g_sched_vector, 10'000);
 }
 
 [[noreturn]] __attribute__((naked)) void init_ap() {
@@ -121,10 +112,6 @@ static void init_common() {
     }
     interrupt_load_idt();
 
-    int sched_vector = interrupt_request(INTERRUPT_PRIORITY_KERNHIGH, sched_entry);
-    ASSERTC(sched_vector >= 0, "Unable to acquire an interrupt vector for the scheduler");
-    g_sched_vector = sched_vector;
-
     ASSERT(cpuid_feature(CPUID_FEAT_APIC));
     pic8259_remap();
     pic8259_disable();
@@ -137,10 +124,6 @@ static void init_common() {
     if(madt) ioapic_initialize(madt);
 
     dev_initialize();
-
-    sched_thread_t *istyx_thread = heap_alloc(sizeof(sched_thread_t));
-    arch_sched_init_kernel_thread(istyx_thread, istyx_thread_init);
-    sched_add(istyx_thread);
 
     acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
     if(fadt && (acpi_revision() == 0 || (fadt->boot_architecture_flags & (1 << 1)))) {

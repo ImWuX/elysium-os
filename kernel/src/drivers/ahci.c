@@ -10,7 +10,6 @@
 #include <memory/heap.h>
 #include <memory/vmm.h>
 #include <arch/vmm.h>
-#include <arch/sched.h>
 
 #define PAGE_SIZE 0x1000
 #define SECTOR_SIZE 512

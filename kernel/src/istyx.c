@@ -441,6 +441,13 @@ void istyx_early_initialize(draw_context_t *draw_context) {
     g_fg = draw_color(230, 230, 230);
     g_cg = draw_color(252, 186, 3);
     clear();
+    kprintf(" _____ _         _           _____ _____ \n");
+    kprintf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
+    kprintf("|   __| | | |_ -| | | |     |  |  |__   |\n");
+    kprintf("|_____|_|_  |___|_|___|_|_|_|_____|_____|\n");
+    kprintf("        |___|                            \n\n");
+    kprintf("Welcome to Integrated Styx V1.0 running on Elysium OS\n");
+    kprintf("%s", PREFIX);
 }
 
 void istyx_simple_input_kb(uint8_t ch) {
@@ -488,18 +495,6 @@ void istyx_simple_input_mouse(int16_t rel_x, int16_t rel_y, bool buttons[3]) {
             draw_pixel(g_ctx, g_cursor_x + x, g_cursor_y + y, g_cg);
         }
     }
-}
-
-void istyx_thread_init() {
-    kprintf(" _____ _         _           _____ _____ \n");
-    kprintf("|   __| |_ _ ___|_|_ _ _____|     |   __|\n");
-    kprintf("|   __| | | |_ -| | | |     |  |  |__   |\n");
-    kprintf("|_____|_|_  |___|_|___|_|_|_|_____|_____|\n");
-    kprintf("        |___|                            \n\n");
-    kprintf("Welcome to Integrated Styx V1.0 running on Elysium OS\n");
-    kprintf("%s", PREFIX);
-
-    for(;;);
 }
 
 int putchar(int c) {
