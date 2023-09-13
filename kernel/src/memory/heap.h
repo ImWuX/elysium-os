@@ -1,6 +1,4 @@
-#ifndef MEMORY_HEAP_H
-#define MEMORY_HEAP_H
-
+#pragma once
 #include <stdint.h>
 #include <stddef.h>
 #include <memory/vmm.h>
@@ -37,5 +35,3 @@ void *heap_alloc_align(size_t size, size_t alignment);
  * @param address Address of the block to free
  */
 void heap_free(void* address);
-
-#endif

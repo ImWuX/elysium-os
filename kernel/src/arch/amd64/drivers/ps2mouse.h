@@ -1,6 +1,4 @@
-#ifndef ARCH_AMD64_DRIVERS_PS2MOUSE_H
-#define ARCH_AMD64_DRIVERS_PS2MOUSE_H
-
+#pragma once
 #include <stdint.h>
 #include <stdbool.h>
 #include <arch/amd64/drivers/ps2.h>
@@ -20,5 +18,3 @@ void ps2mouse_initialize(ps2_ports_t port);
  * @param mouse_handler Mouse handler
  */
 void ps2mouse_set_handler(ps2mouse_handler_t mouse_handler);
-
-#endif

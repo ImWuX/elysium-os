@@ -1,6 +1,4 @@
-#ifndef ARCH_AMD64_MSR_H
-#define ARCH_AMD64_MSR_H
-
+#pragma once
 #include <stdint.h>
 
 typedef enum {
@@ -38,5 +36,3 @@ static inline uint64_t msr_read(uint64_t msr) {
 static inline void msr_write(uint64_t msr, uint64_t value) {
     asm volatile("wrmsr" : : "a" ((uint32_t) value), "d" ((uint32_t) (value >> 32)), "c" (msr));
 }
-
-#endif

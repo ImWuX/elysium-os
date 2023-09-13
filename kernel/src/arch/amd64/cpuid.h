@@ -1,6 +1,4 @@
-#ifndef ARCH_AMD64_CPUID_H
-#define ARCH_AMD64_CPUID_H
-
+#pragma once
 #include <stdint.h>
 
 #define CPUID_FEAT_MASK_EXT ((uint64_t) 1 << 32)
@@ -79,5 +77,3 @@ typedef enum {
  * @retval false Unsupported
  */
 bool cpuid_feature(cpuid_features_t feature);
-
-#endif

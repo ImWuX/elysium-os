@@ -1,6 +1,4 @@
-#ifndef DRIVERS_ACPI_H
-#define DRIVERS_ACPI_H
-
+#pragma once
 #include <stdint.h>
 
 typedef struct {
@@ -115,5 +113,3 @@ acpi_sdt_header_t *acpi_find_table(uint8_t *signature);
  * @return Revision
  */
 uint8_t acpi_revision();
-
-#endif

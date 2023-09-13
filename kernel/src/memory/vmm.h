@@ -1,6 +1,4 @@
-#ifndef MEMORY_VMM_H
-#define MEMORY_VMM_H
-
+#pragma once
 #include <stdint.h>
 #include <stddef.h>
 #include <arch/types.h>
@@ -53,5 +51,3 @@ int vmm_alloc_wired(vmm_address_space_t *as, uintptr_t vaddr, size_t npages, uin
  * @return 0 on success, err on failure
  */
 int vmm_alloc_direct(vmm_address_space_t *as, uintptr_t vaddr, size_t npages, uintptr_t paddr, uint64_t flags);
-
-#endif

@@ -1,6 +1,4 @@
-#ifndef ARCH_AMD64_DRIVERS_PIT_H
-#define ARCH_AMD64_DRIVERS_PIT_H
-
+#pragma once
 #include <stdint.h>
 
 #define PIT_FREQ 1193182
@@ -18,5 +16,3 @@ void pit_initialize(uint16_t divisor);
  * @return Current PIT count
  */
 uint16_t pit_count();
-
-#endif

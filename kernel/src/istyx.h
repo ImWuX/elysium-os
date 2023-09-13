@@ -1,6 +1,4 @@
-#ifndef ISTYX_H
-#define ISTYX_H
-
+#pragma once
 #include <graphics/draw.h>
 
 /**
@@ -30,5 +28,3 @@ void istyx_simple_input_kb(uint8_t ch);
  * @param buttons Mouse buttons
  */
 void istyx_simple_input_mouse(int16_t rel_x, int16_t rel_y, bool buttons[3]);
-
-#endif

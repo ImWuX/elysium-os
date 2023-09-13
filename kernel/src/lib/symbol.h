@@ -1,6 +1,3 @@
-#ifndef LIB_SYMBOL_H
-#define LIB_SYMBOL_H
+#pragma once
 
 typedef int symbol[];
-
-#endif

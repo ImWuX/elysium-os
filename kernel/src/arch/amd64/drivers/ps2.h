@@ -1,6 +1,4 @@
-#ifndef ARCH_AMD64_DRIVERS_PS2_H
-#define ARCH_AMD64_DRIVERS_PS2_H
-
+#pragma once
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -42,5 +40,3 @@ uint8_t ps2_port_read(bool wait);
  * @return false = write failed
  */
 bool ps2_port_write(ps2_ports_t port, uint8_t value);
-
-#endif

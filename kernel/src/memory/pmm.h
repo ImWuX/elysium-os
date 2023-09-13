@@ -1,6 +1,4 @@
-#ifndef MEMORY_PMM_H
-#define MEMORY_PMM_H
-
+#pragma once
 #include <stdint.h>
 #include <stddef.h>
 #include <lib/slock.h>
@@ -102,5 +100,3 @@ pmm_page_t *pmm_alloc_page(pmm_allocator_flags_t flags);
  * @param page The page/block to be freed
  */
 void pmm_free(pmm_page_t *page);
-
-#endif

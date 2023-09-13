@@ -1,6 +1,4 @@
-#ifndef ARCH_VMM_H
-#define ARCH_VMM_H
-
+#pragma once
 #include <memory/vmm.h>
 
 /**
@@ -40,5 +38,3 @@ uintptr_t arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr)
  * @returns Highest userspace address
  */
 uintptr_t arch_vmm_highest_userspace_addr();
-
-#endif

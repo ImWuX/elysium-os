@@ -1,6 +1,4 @@
-#ifndef ARCH_AMD64_LAPIC_H
-#define ARCH_AMD64_LAPIC_H
-
+#pragma once
 #include <stdint.h>
 
 /**
@@ -42,5 +40,3 @@ void lapic_eoi(uint8_t interrupt_vector);
  * @return Local apic ID
  */
 uint8_t lapic_id();
-
-#endif

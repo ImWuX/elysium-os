@@ -1,6 +1,4 @@
-#ifndef CPU_INTERRUPT_H
-#define CPU_INTERRUPT_H
-
+#pragma once
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -81,5 +79,3 @@ int interrupt_request(interrupt_priority_t priority, interrupt_handler_t handler
  * @param vector Interrupt vector
  */
 void interrupt_irq_eoi(uint8_t vector);
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef LIB_SLOCK_H
-#define LIB_SLOCK_H
+#pragma once
 
 #define SLOCK_INIT 0
 
@@ -30,5 +29,3 @@ static inline bool slock_try_acquire(slock_t *lock) {
 static inline void slock_release(slock_t *lock) {
     __atomic_store_n(lock, 0, __ATOMIC_SEQ_CST);
 }
-
-#endif

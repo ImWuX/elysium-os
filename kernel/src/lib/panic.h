@@ -1,5 +1,4 @@
-#ifndef LIB_PANIC_H
-#define LIB_PANIC_H
+#pragma once
 
 /**
  * @brief Log an issue, log stackframe, halt the core
@@ -14,5 +13,3 @@
  * @param fmt Format string
 */
 [[noreturn]] void panic_no_stack_frame(const char *fmt, ...);
-
-#endif
