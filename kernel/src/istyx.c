@@ -140,9 +140,9 @@ static bool parse_uint(char *input, uint64_t *out) {
     return false;
 }
 
-static void command_help(arg_t *args __attribute__((unused)));
+static void command_help([[maybe_unused]] arg_t *args);
 
-static void command_clear(arg_t *args __attribute__((unused))) {
+static void command_clear([[maybe_unused]] arg_t *args) {
     clear();
 }
 
@@ -178,7 +178,7 @@ static void command_read(arg_t *args) {
     kprintf("Read %li sectors starting at %li into %#lx\n", args[1].u_integer, args[0].u_integer, args[2].u_integer);
 }
 
-static void command_meminfo(arg_t *args __attribute__((unused))) {
+static void command_meminfo([[maybe_unused]] arg_t *args) {
     for(int i = 0; i < PMM_ZONE_COUNT; i++) {
         pmm_zone_t *zone = &g_pmm_zones[i];
         kprintf("| Zone (%s) %#lx pages\n", zone->name, zone->page_count);
@@ -190,7 +190,7 @@ static void command_meminfo(arg_t *args __attribute__((unused))) {
     }
 }
 
-static void command_pcidev(arg_t *args __attribute__((unused))) {
+static void command_pcidev([[maybe_unused]] arg_t *args) {
     list_t *entry;
     LIST_FOREACH(entry, &g_pci_devices) {
         pci_device_t *device = LIST_GET(entry, pci_device_t, list);
@@ -326,7 +326,7 @@ static command_t g_command_registry[] = {
     }
 };
 
-static void command_help(arg_t *args __attribute__((unused))) {
+static void command_help([[maybe_unused]] arg_t *args) {
     kprintf("Integrated Styx | Help\n");
     for(unsigned int cmd_idx = 0; cmd_idx < sizeof(g_command_registry) / sizeof(command_t); cmd_idx++) {
         kprintf("\t%s", g_command_registry[cmd_idx].name);

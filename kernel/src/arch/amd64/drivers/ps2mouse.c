@@ -15,7 +15,7 @@ static ps2mouse_handler_t g_mouse_handler;
 static uint8_t g_cycle = 0;
 static uint8_t g_data[3];
 
-static void mouse_handler(interrupt_frame_t *registers __attribute__((unused))) {
+static void mouse_handler([[maybe_unused]] interrupt_frame_t *registers) {
 	uint8_t data = ps2_port_read(false);
 	interrupt_irq_eoi(g_interrupt_vector);
 	g_data[g_cycle++] = data;
