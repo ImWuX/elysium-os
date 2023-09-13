@@ -57,6 +57,7 @@ void interrupt_load_idt() {
 }
 
 void interrupt_handler(interrupt_frame_t *frame) {
+    if(frame->int_no >= 0x20) interrupt_irq_eoi(frame->int_no);
     if(!g_entries[frame->int_no].free) g_entries[frame->int_no].handler(frame);
 }
 

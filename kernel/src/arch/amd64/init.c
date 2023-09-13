@@ -62,7 +62,7 @@ static void init_common() {
 
     init_common();
 
-    g_cpus_initialized++;
+    __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
     for(;;) asm volatile("hlt");
     __builtin_unreachable();
 }
@@ -138,7 +138,7 @@ static void init_common() {
             g_cpus_initialized++;
             continue;
         }
-        *boot_info->cpus[i].wake_on_write = (uint64_t) init_ap;
+        *boot_info->cpus[i].wake_on_write = (uint64_t) &init_ap;
         while(i >= g_cpus_initialized);
     }
 
