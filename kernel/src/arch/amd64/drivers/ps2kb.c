@@ -43,7 +43,7 @@ static uint8_t g_layout_us[128] = {
     0,      // All other keys are undefined
 };
 
-static void kb_interrupt_handler(interrupt_frame_t *registers __attribute__((unused))) {
+static void kb_interrupt_handler([[maybe_unused]] interrupt_frame_t *registers) {
     uint8_t scancode = ps2_port_read(false);
     interrupt_irq_eoi(g_interrupt_vector);
 
