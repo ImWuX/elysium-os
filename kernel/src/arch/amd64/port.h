@@ -1,6 +1,4 @@
-#ifndef ARCH_AMD64_IO_H
-#define ARCH_AMD64_IO_H
-
+#pragma once
 #include <stdint.h>
 
 /**
@@ -46,5 +44,3 @@ static inline uint32_t port_inl(uint16_t port) {
 static inline void port_outl(uint16_t port, uint32_t value) {
     asm volatile("outl %0, %1" : : "a" (value), "Nd" (port));
 }
-
-#endif

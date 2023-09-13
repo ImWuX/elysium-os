@@ -1,6 +1,4 @@
-#ifndef LIB_KPRINTF_H
-#define LIB_KPRINTF_H
-
+#pragma once
 #include <stdint.h>
 #include <stdarg.h>
 
@@ -23,5 +21,3 @@ int kprintf(const char *fmt, ...);
  * @return Count of characters written
  */
 int kprintv(const char *format, va_list list);
-
-#endif

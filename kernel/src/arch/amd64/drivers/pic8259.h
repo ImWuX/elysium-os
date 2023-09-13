@@ -1,6 +1,4 @@
-#ifndef ARCH_AMD64_DRIVERS_PIC8259_H
-#define ARCH_AMD64_DRIVERS_PIC8259_H
-
+#pragma once
 #include <stdint.h>
 
 /**
@@ -19,5 +17,3 @@ void pic8259_disable();
  * @param interrupt_vector Vector of the interrupt
  */
 void pic8259_eoi(uint8_t interrupt_vector);
-
-#endif

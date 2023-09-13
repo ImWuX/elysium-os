@@ -1,6 +1,4 @@
-#ifndef ARCH_AMD64_GDT_H
-#define ARCH_AMD64_GDT_H
-
+#pragma once
 #include <stdint.h>
 #include <arch/amd64/tss.h>
 
@@ -20,5 +18,3 @@ void gdt_load();
  * @param tss Task state segment
  */
 void gdt_load_tss(tss_t *tss);
-
-#endif

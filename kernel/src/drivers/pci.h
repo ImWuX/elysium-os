@@ -1,6 +1,4 @@
-#ifndef DRIVERS_PCI_H
-#define DRIVERS_PCI_H
-
+#pragma once
 #include <stdint.h>
 #include <drivers/acpi.h>
 #include <lib/list.h>
@@ -172,5 +170,3 @@ void pci_config_write_double(pci_device_t *device, uint8_t offset, uint32_t data
  * @return PCI bar on success, 0 on failure
 */
 pci_bar_t *pci_config_read_bar(pci_device_t *device, uint8_t index);
-
-#endif

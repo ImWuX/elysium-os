@@ -1,5 +1,4 @@
-#ifndef LIB_LIST_H
-#define LIB_LIST_H
+#pragma once
 
 #define LIST_INIT (list_t) { .next = 0, .prev = 0 }
 #define LIST_INIT_CIRCULAR(NAME) (list_t) { .next = &(NAME), .prev = &(NAME) }
@@ -57,5 +56,3 @@ bool list_is_empty(list_t *list);
  * @param list List to iterate over
  */
 #define LIST_FOREACH(ENTRY_PTR, LIST) for((ENTRY_PTR) = (LIST)->next; (ENTRY_PTR) && (ENTRY_PTR) != (LIST); (ENTRY_PTR) = (ENTRY_PTR)->next)
-
-#endif

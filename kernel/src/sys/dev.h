@@ -1,6 +1,4 @@
-#ifndef SYS_DEV_H
-#define SYS_DEV_H
-
+#pragma once
 #include <stdint.h>
 #include <lib/symbol.h>
 #include <drivers/pci.h>
@@ -26,5 +24,3 @@ extern symbol ld_drivers_start;
 extern symbol ld_drivers_end;
 
 void dev_initialize();
-
-#endif

@@ -1,6 +1,4 @@
-#ifndef ARCH_AMD64_TSS_H
-#define ARCH_AMD64_TSS_H
-
+#pragma once
 #include <stdint.h>
 
 typedef struct {
@@ -40,5 +38,3 @@ typedef struct {
  * @param stack_pointer CPL0 stack pointer
  */
 void tss_set_rsp0(tss_t *tss, uintptr_t stack_pointer);
-
-#endif

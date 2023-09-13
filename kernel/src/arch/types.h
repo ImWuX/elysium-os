@@ -1,6 +1,4 @@
-#ifndef ARCH_TYPES_H
-#define ARCH_TYPES_H
-
+#pragma once
 #include <stdint.h>
 
 #ifdef __ARCH_AMD64
@@ -52,6 +50,4 @@ typedef struct {
 
 #else
 #error Invalid arch
-#endif
-
 #endif

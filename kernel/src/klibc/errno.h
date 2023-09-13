@@ -1,5 +1,4 @@
-#ifndef KLIBC_ERRNO_H
-#define KLIBC_ERRNO_H
+#pragma once
 
 #define EPERM 1 /* Operation not permitted */
 #define ENOENT 2 /* No such file or directory */
@@ -122,5 +121,3 @@
 #define ENAVAIL 119 /* No XENIX semaphores available */
 #define EISNAM 120 /* Is a named type file */
 #define EREMOTEIO 121 /* Remote I/O error */
-
-#endif

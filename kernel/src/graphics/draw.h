@@ -1,6 +1,4 @@
-#ifndef GRAPHICS_DRAW_H
-#define GRAPHICS_DRAW_H
-
+#pragma once
 #include <stdint.h>
 
 typedef struct {
@@ -76,5 +74,3 @@ void draw_pixel(draw_context_t *ctx, int x, int y, draw_color_t color);
  * @param color Draw color
  */
 void draw_rect(draw_context_t *ctx, int x, int y, uint16_t w, uint16_t h, draw_color_t color);
-
-#endif

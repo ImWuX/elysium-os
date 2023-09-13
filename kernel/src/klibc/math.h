@@ -1,5 +1,4 @@
-#ifndef KLIBC_MATH_H
-#define KLIBC_MATH_H
+#pragma once
 
 /**
  * @brief Get the absolute value
@@ -26,5 +25,3 @@ int max(int a, int b);
  * @returns The minimum value
  */
 int min(int a, int b);
-
-#endif
