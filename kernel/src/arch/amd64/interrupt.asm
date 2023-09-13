@@ -1,7 +1,16 @@
 extern interrupt_handler
 
+%macro SWAPGS_CONDITIONAL 0
+        test qword [rsp + 24], 3
+        jz %%noswap
+        swapgs
+    %%noswap:
+%endmacro
+
 isr_stub:
     cld                                     ; Clear direction flag
+
+    SWAPGS_CONDITIONAL
 
     push rax                                ; Save CPU state
     push rbx
@@ -50,6 +59,9 @@ isr_stub:
     pop rax
 
     add rsp, 8*2                            ; Discard interrupt number and error code
+
+    SWAPGS_CONDITIONAL
+
     iretq
 
 %macro ISR 2

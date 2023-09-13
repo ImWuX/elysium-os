@@ -57,7 +57,7 @@ static uint64_t arch_independent_flags_to_x86(uint64_t flags) {
 void arch_vmm_init() {
     g_kernel_address_space.segments = LIST_INIT_CIRCULAR(g_kernel_address_space.segments);
     g_kernel_address_space.lock = SLOCK_INIT;
-    g_kernel_address_space.archdep.cr3 = pmm_alloc_page(PMM_AF_ZONE_NORMAL | PMM_AF_ZERO)->paddr;
+    g_kernel_address_space.archdep.cr3 = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr;
 
     uint64_t *old_pml4 = (uint64_t *) HHDM(read_cr3());
     uint64_t *pml4 = (uint64_t *) HHDM(g_kernel_address_space.archdep.cr3);
