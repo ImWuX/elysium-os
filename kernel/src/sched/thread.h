@@ -1,5 +1,6 @@
 #pragma once
 #include <lib/list.h>
+#include <sched/process.h>
 #include <sys/cpu.h>
 #include <memory/vmm.h>
 
@@ -13,7 +14,8 @@ typedef struct thread {
     long id;
     thread_state_t state;
     struct cpu *cpu;
-    vmm_address_space_t *address_space;
+    process_t *proc;
     list_t list_sched;
+    list_t list_proc;
     list_t list_all;
 } thread_t;
