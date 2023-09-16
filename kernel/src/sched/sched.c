@@ -1,7 +1,7 @@
 #include "sched.h"
-#include <lib/slock.h>
 #include <arch/sched.h>
 
+slock_t g_sched_threads_all_lock = SLOCK_INIT;
 list_t g_sched_threads_all = LIST_INIT;
 list_t g_sched_threads_queued = LIST_INIT_CIRCULAR(g_sched_threads_queued);
 static slock_t g_lock = SLOCK_INIT;
@@ -25,11 +25,10 @@ thread_t *sched_thread_next() {
 }
 
 void sched_thread_drop(thread_t *thread) {
-    if(thread == arch_sched_current_thread()->cpu->idle_thread) return;
+    if(thread == arch_sched_thread_current()->cpu->idle_thread) return;
     if(thread->state == THREAD_STATE_DESTROY) {
-        // TODO: Get rid of the thread
+        arch_sched_thread_destroy(thread);
         return;
     }
-
     sched_thread_schedule(thread);
 }

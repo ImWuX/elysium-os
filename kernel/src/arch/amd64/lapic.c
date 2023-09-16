@@ -42,7 +42,7 @@ void lapic_timer_oneshot(uint8_t vector, uint64_t us) {
     lapic_timer_stop();
     lapic_write(REG_LVT_TIMER, vector);
     lapic_write(REG_TIMER_DIV, 0);
-    lapic_write(REG_TIMER_INITIAL_COUNT, us * (ARCH_CPU(arch_sched_current_thread()->cpu)->lapic_timer_frequency / 1'000'000));
+    lapic_write(REG_TIMER_INITIAL_COUNT, us * (ARCH_CPU(arch_sched_thread_current()->cpu)->lapic_timer_frequency / 1'000'000));
 }
 
 void lapic_timer_stop() {

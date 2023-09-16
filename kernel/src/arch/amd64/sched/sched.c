@@ -88,7 +88,11 @@ static void set_current_thread(arch_thread_t *thread) {
 }
 
 static void sched_switch(arch_thread_t *this, arch_thread_t *next) {
-    arch_vmm_load_address_space(next->common.address_space);
+    if(next->common.proc) {
+        arch_vmm_load_address_space(next->common.proc->address_space);
+    } else {
+        arch_vmm_load_address_space(&g_kernel_address_space);
+    }
 
     next->common.cpu = this->common.cpu;
     set_current_thread(next);
@@ -100,13 +104,25 @@ static void sched_switch(arch_thread_t *this, arch_thread_t *next) {
     sched_thread_drop(&prev->common);
 }
 
-static arch_thread_t *create_thread(vmm_address_space_t *address_space, stack_t kernel_stack, stack_t user_stack, uintptr_t rsp) {
+static void destroy_thread(arch_thread_t *thread) {
+    slock_acquire(&g_sched_threads_all_lock);
+    list_delete(&thread->common.list_all);
+    slock_release(&g_sched_threads_all_lock);
+    if(thread->common.proc) {
+        slock_acquire(&thread->common.proc->lock);
+        list_delete(&thread->common.list_proc);
+        slock_release(&thread->common.proc->lock);
+    }
+    heap_free(thread);
+}
+
+static arch_thread_t *create_thread(process_t *proc, stack_t kernel_stack, stack_t user_stack, uintptr_t rsp) {
     arch_thread_t *thread = heap_alloc(sizeof(arch_thread_t));
     memset(thread, 0, sizeof(arch_thread_t));
     thread->this = thread;
     thread->common.id = g_next_tid++;
     thread->common.state = THREAD_STATE_READY;
-    thread->common.address_space = address_space;
+    thread->common.proc = proc;
     thread->rsp = rsp;
     thread->kernel_stack = kernel_stack;
     thread->user_stack = user_stack;
@@ -125,52 +141,62 @@ static arch_thread_t *create_kernel_thread(void (* func)()) {
     init_stack->thread_init = &common_thread_init;
     init_stack->thread_init_kernel = &kernel_thread_init;
 
-    arch_thread_t *thread = create_thread(&g_kernel_address_space, kernel_stack, (stack_t) {}, (uintptr_t) init_stack);
+    arch_thread_t *thread = create_thread(0, kernel_stack, (stack_t) {}, (uintptr_t) init_stack);
+    slock_acquire(&g_sched_threads_all_lock);
     list_insert_behind(&g_sched_threads_all, &thread->common.list_all);
+    slock_release(&g_sched_threads_all_lock);
     return thread;
 }
 
-static arch_thread_t *create_user_thread() { // TODO: This is very much a test for userspace threads at this point
-    vmm_address_space_t *as = heap_alloc(sizeof(vmm_address_space_t));
-    pmm_page_t *pml4 = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
-    for(int i = 256; i < 512; i++) {
-        ((uint64_t *) HHDM(pml4->paddr))[i] = ((uint64_t *) HHDM(g_kernel_address_space.archdep.cr3))[i];
-    }
-    as->archdep.cr3 = pml4->paddr;
-    as->lock = SLOCK_INIT;
-    as->segments = LIST_INIT;
-
-    pmm_page_t *kernel_stack_page = pmm_alloc_pages(KERNEL_STACK_SIZE_PG, PMM_GENERAL | PMM_AF_ZERO);
-    stack_t kernel_stack = {
-        .base = HHDM(kernel_stack_page->paddr + KERNEL_STACK_SIZE_PG * ARCH_PAGE_SIZE),
-        .size = KERNEL_STACK_SIZE_PG * ARCH_PAGE_SIZE
-    };
-
-    pmm_page_t *user_stack_page = pmm_alloc_pages(USER_STACK_SIZE_PG, PMM_GENERAL | PMM_AF_ZERO);
-    stack_t user_stack = {
-        .base = ARCH_PAGE_SIZE * (USER_STACK_SIZE_PG + 1),
-        .size = USER_STACK_SIZE_PG * ARCH_PAGE_SIZE
-    };
-    for(int i = 0; i < USER_STACK_SIZE_PG; i++) {
-        arch_vmm_map(as, ARCH_PAGE_SIZE * (i + 1), user_stack_page->paddr + i * ARCH_PAGE_SIZE, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
-    }
-
-    pmm_page_t *program_page = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
-    arch_vmm_map(as, 0, program_page->paddr, VMM_FLAGS_EXEC | VMM_FLAGS_USER | VMM_FLAGS_WRITE);
-    *(uint32_t *) (HHDM(program_page->paddr)) = 0xFEEB;
-
-    init_stack_user_t *init_stack = (init_stack_user_t *) HHDM(user_stack_page->paddr + USER_STACK_SIZE_PG * ARCH_PAGE_SIZE - sizeof(init_stack_user_t));
-    init_stack->entry = 0;
-    init_stack->thread_init = &common_thread_init;
-    init_stack->thread_init_user = &sched_userspace_init;
-
-    arch_thread_t *thread = create_thread(as, kernel_stack, user_stack, user_stack.base - sizeof(init_stack_user_t));
-    list_insert_behind(&g_sched_threads_all, &thread->common.list_all);
-    return thread;
+void arch_sched_thread_destroy(thread_t *thread) {
+    destroy_thread(ARCH_THREAD(thread));
 }
+
+thread_t *arch_sched_thread_create_kernel(void (* func)()) {
+    return &create_kernel_thread(func)->common;
+}
+
+// static arch_thread_t *create_user_thread() { // TODO: This is very much a test for userspace threads at this point
+//     vmm_address_space_t *as = heap_alloc(sizeof(vmm_address_space_t));
+//     pmm_page_t *pml4 = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
+//     for(int i = 256; i < 512; i++) {
+//         ((uint64_t *) HHDM(pml4->paddr))[i] = ((uint64_t *) HHDM(g_kernel_address_space.archdep.cr3))[i];
+//     }
+//     as->archdep.cr3 = pml4->paddr;
+//     as->lock = SLOCK_INIT;
+//     as->segments = LIST_INIT;
+
+//     pmm_page_t *kernel_stack_page = pmm_alloc_pages(KERNEL_STACK_SIZE_PG, PMM_GENERAL | PMM_AF_ZERO);
+//     stack_t kernel_stack = {
+//         .base = HHDM(kernel_stack_page->paddr + KERNEL_STACK_SIZE_PG * ARCH_PAGE_SIZE),
+//         .size = KERNEL_STACK_SIZE_PG * ARCH_PAGE_SIZE
+//     };
+
+//     pmm_page_t *user_stack_page = pmm_alloc_pages(USER_STACK_SIZE_PG, PMM_GENERAL | PMM_AF_ZERO);
+//     stack_t user_stack = {
+//         .base = ARCH_PAGE_SIZE * (USER_STACK_SIZE_PG + 1),
+//         .size = USER_STACK_SIZE_PG * ARCH_PAGE_SIZE
+//     };
+//     for(int i = 0; i < USER_STACK_SIZE_PG; i++) {
+//         arch_vmm_map(as, ARCH_PAGE_SIZE * (i + 1), user_stack_page->paddr + i * ARCH_PAGE_SIZE, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
+//     }
+
+//     pmm_page_t *program_page = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
+//     arch_vmm_map(as, 0, program_page->paddr, VMM_FLAGS_EXEC | VMM_FLAGS_USER | VMM_FLAGS_WRITE);
+//     *(uint32_t *) (HHDM(program_page->paddr)) = 0xFEEB;
+
+//     init_stack_user_t *init_stack = (init_stack_user_t *) HHDM(user_stack_page->paddr + USER_STACK_SIZE_PG * ARCH_PAGE_SIZE - sizeof(init_stack_user_t));
+//     init_stack->entry = 0;
+//     init_stack->thread_init = &common_thread_init;
+//     init_stack->thread_init_user = &sched_userspace_init;
+
+//     arch_thread_t *thread = create_thread(as, kernel_stack, user_stack, user_stack.base - sizeof(init_stack_user_t));
+//     list_insert_behind(&g_sched_threads_all, &thread->common.list_all);
+//     return thread;
+// }
 
 static void sched_entry([[maybe_unused]] interrupt_frame_t *frame) {
-    thread_t *current = arch_sched_current_thread();
+    thread_t *current = arch_sched_thread_current();
     ASSERT(current != 0);
 
     thread_t *next = sched_thread_next();
@@ -186,7 +212,7 @@ static void sched_entry([[maybe_unused]] interrupt_frame_t *frame) {
     lapic_timer_oneshot(g_sched_vector, 100'000);
 }
 
-thread_t *arch_sched_current_thread() {
+thread_t *arch_sched_thread_current() {
     arch_thread_t *thread = 0;
     asm volatile("mov %%gs:0, %0" : "=r" (thread));
     return &thread->common;
