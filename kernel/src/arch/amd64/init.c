@@ -5,10 +5,13 @@
 #include <lib/assert.h>
 #include <lib/kprint.h>
 #include <sys/dev.h>
+#include <sys/cpu.h>
 #include <memory/hhdm.h>
 #include <memory/heap.h>
 #include <drivers/acpi.h>
 #include <arch/vmm.h>
+#include <arch/amd64/sched.h>
+#include <arch/amd64/cpu.h>
 #include <arch/amd64/gdt.h>
 #include <arch/amd64/msr.h>
 #include <arch/amd64/cpuid.h>
@@ -30,22 +33,32 @@ uintptr_t g_hhdm_address;
 static draw_context_t g_fb_context;
 static volatile int g_cpus_initialized;
 
-static void init_common() {
+[[noreturn]] static void init_common() {
     uint64_t pat = msr_read(MSR_PAT);
     pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
     pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
     msr_write(MSR_PAT, pat);
 
-    // TODO: Fix scheduler, then uncomment this
-    // pit_initialize(UINT16_MAX);
-    // uint16_t start_count = pit_count();
-    // lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
-    // uint16_t end_count = pit_count();
+    pit_initialize(UINT16_MAX);
+    uint16_t start_count = pit_count();
+    lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
+    uint16_t end_count = pit_count();
 
-    // arch_cpu_local_t *cpu_local = heap_alloc(sizeof(arch_cpu_local_t));
-    // cpu_local->lapic_timer_freq = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
+    tss_t *tss = heap_alloc(sizeof(tss_t));
+    memset(tss, 0, sizeof(tss_t));
+    tss->iomap_base = sizeof(tss_t);
+    gdt_load_tss(tss);
+
+    arch_cpu_t *cpu = heap_alloc(sizeof(arch_cpu_t));
+    cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
+    cpu->tss = tss;
+    cpu->lapic_id = lapic_id();
 
     asm volatile("sti");
+
+    __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
+
+    sched_init_cpu(cpu);
 }
 
 [[noreturn]] __attribute__((naked)) void init_ap() {
@@ -61,10 +74,6 @@ static void init_common() {
     lapic_initialize();
 
     init_common();
-
-    __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
-    for(;;) asm volatile("hlt");
-    __builtin_unreachable();
 }
 
 [[noreturn]] __attribute__((naked)) extern void init(tartarus_boot_info_t *boot_info) {
@@ -132,6 +141,8 @@ static void init_common() {
         ps2_initialize();
     }
 
+    sched_init();
+
     g_cpus_initialized = 0;
     for(int i = 0; i < boot_info->cpu_count; i++) {
         if(i == boot_info->bsp_index) {
@@ -143,7 +154,4 @@ static void init_common() {
     }
 
     init_common();
-
-    for(;;) asm volatile("hlt");
-    __builtin_unreachable();
 }

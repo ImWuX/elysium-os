@@ -2,6 +2,8 @@
 #include <lib/kprint.h>
 #include <memory/vmm.h>
 #include <memory/hhdm.h>
+#include <arch/sched.h>
+#include <arch/amd64/cpu.h>
 #include <arch/amd64/msr.h>
 
 #define BASE_MASK 0xFFFFFFFFFF000
@@ -27,27 +29,26 @@ void lapic_initialize() {
     lapic_write(REG_SPURIOUS, 0xFF | (1 << 8));
 }
 
-// TODO: Fix scheduler, then uncomment this
-// void lapic_timer_poll(uint32_t ticks) {
-//     lapic_timer_stop();
-//     lapic_write(REG_LVT_TIMER, (1 << 16) | 0xFF);
-//     lapic_write(REG_TIMER_DIV, 0);
-//     lapic_write(REG_TIMER_INITIAL_COUNT, ticks);
-//     while(lapic_read(REG_TIMER_CURRENT_COUNT) != 0);
-//     lapic_timer_stop();
-// }
+void lapic_timer_poll(uint32_t ticks) {
+    lapic_timer_stop();
+    lapic_write(REG_LVT_TIMER, (1 << 16) | 0xFF);
+    lapic_write(REG_TIMER_DIV, 0);
+    lapic_write(REG_TIMER_INITIAL_COUNT, ticks);
+    while(lapic_read(REG_TIMER_CURRENT_COUNT) != 0);
+    lapic_timer_stop();
+}
 
-// void lapic_timer_oneshot(uint8_t vector, uint64_t us) {
-//     lapic_timer_stop();
-//     lapic_write(REG_LVT_TIMER, vector);
-//     lapic_write(REG_TIMER_DIV, 0);
-//     lapic_write(REG_TIMER_INITIAL_COUNT, us * (arch_sched_get_current_thread()->cpu_local->lapic_timer_freq / 1'000'000));
-// }
+void lapic_timer_oneshot(uint8_t vector, uint64_t us) {
+    lapic_timer_stop();
+    lapic_write(REG_LVT_TIMER, vector);
+    lapic_write(REG_TIMER_DIV, 0);
+    lapic_write(REG_TIMER_INITIAL_COUNT, us * (ARCH_CPU(arch_sched_current_thread()->cpu)->lapic_timer_frequency / 1'000'000));
+}
 
-// void lapic_timer_stop() {
-//     lapic_write(REG_TIMER_INITIAL_COUNT, 0);
-//     lapic_write(REG_LVT_TIMER, (1 << 16));
-// }
+void lapic_timer_stop() {
+    lapic_write(REG_TIMER_INITIAL_COUNT, 0);
+    lapic_write(REG_LVT_TIMER, (1 << 16));
+}
 
 void lapic_eoi(uint8_t interrupt_vector) {
     if(lapic_read(REG_IN_SERVICE_BASE + interrupt_vector / 32 * 0x10) & (1 << (interrupt_vector % 32))) lapic_write(REG_EOI, 0);
