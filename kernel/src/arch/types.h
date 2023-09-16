@@ -12,10 +12,6 @@
 #define ARCH_KHEAP_END 0xFFFF'8500'0000'0000
 
 typedef struct {
-    uint64_t lapic_timer_freq;
-} arch_cpu_local_t;
-
-typedef struct {
     uintptr_t cr3;
 } arch_vmm_address_space_t;
 

@@ -7,6 +7,7 @@
 #include <memory/hhdm.h>
 #include <drivers/pci.h>
 #include <drivers/ahci.h>
+#include <sched/sched.h>
 
 #define PREFIX "> "
 #define TAB_WIDTH 4
@@ -244,6 +245,22 @@ static void command_hexdump(arg_t *args) {
     }
 }
 
+static void command_sched([[maybe_unused]] arg_t *args) {
+    kprintf("Sched Queue: ");
+    list_t *entry;
+    LIST_FOREACH(entry, &g_sched_threads_queued) {
+        thread_t *thread = LIST_GET(entry, thread_t, list_sched);
+        kprintf("%lu, ", thread->id);
+    }
+    kprintf("\n");
+    kprintf("All Queue: ");
+    LIST_FOREACH(entry, &g_sched_threads_all) {
+        thread_t *thread = LIST_GET(entry, thread_t, list_all);
+        kprintf("%lu%s, ", thread->id, thread->cpu ? "(ACTIVE)" : "");
+    }
+    kprintf("\n");
+}
+
 static command_t g_command_registry[] = {
     {
         .name = "help",
@@ -323,6 +340,11 @@ static command_t g_command_registry[] = {
             { .name = "physical address", .type = ARG_BOOLEAN, .optional = true }
         },
         .argc = 3
+    },
+    {
+        .name = "schedq",
+        .description = "Displays the scheduler queues",
+        .func = &command_sched
     }
 };
 
