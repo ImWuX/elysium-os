@@ -24,6 +24,7 @@
 #include <arch/amd64/drivers/ps2kb.h>
 #include <arch/amd64/drivers/ps2mouse.h>
 #include <arch/amd64/drivers/pit.h>
+#include <arch/amd64/syscall.h>
 #include <graphics/draw.h>
 #include <istyx.h>
 
@@ -53,6 +54,8 @@ static volatile int g_cpus_initialized;
     cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
     cpu->tss = tss;
     cpu->lapic_id = lapic_id();
+
+    syscall_init();
 
     asm volatile("sti");
 
