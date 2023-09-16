@@ -10,7 +10,7 @@
 #include <memory/heap.h>
 #include <drivers/acpi.h>
 #include <arch/vmm.h>
-#include <arch/amd64/sched.h>
+#include <arch/amd64/sched/sched.h>
 #include <arch/amd64/cpu.h>
 #include <arch/amd64/gdt.h>
 #include <arch/amd64/msr.h>
@@ -24,7 +24,7 @@
 #include <arch/amd64/drivers/ps2kb.h>
 #include <arch/amd64/drivers/ps2mouse.h>
 #include <arch/amd64/drivers/pit.h>
-#include <arch/amd64/syscall.h>
+#include <arch/amd64/sched/syscall.h>
 #include <graphics/draw.h>
 #include <istyx.h>
 
