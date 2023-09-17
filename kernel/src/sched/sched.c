@@ -1,10 +1,26 @@
 #include "sched.h"
 #include <arch/sched.h>
 
+static slock_t g_sched_processes_lock = SLOCK_INIT;
+list_t g_sched_processes = LIST_INIT;
+
 slock_t g_sched_threads_all_lock = SLOCK_INIT;
 list_t g_sched_threads_all = LIST_INIT;
-list_t g_sched_threads_queued = LIST_INIT_CIRCULAR(g_sched_threads_queued);
+
 static slock_t g_lock = SLOCK_INIT;
+list_t g_sched_threads_queued = LIST_INIT_CIRCULAR(g_sched_threads_queued);
+
+process_t *sched_process_create() {
+    process_t *proc = arch_sched_process_create();
+    thread_t *thread = arch_sched_thread_create_user(proc);
+
+    slock_acquire(&g_sched_processes_lock);
+    list_insert_behind(&g_sched_processes, &proc->list_sched);
+    slock_release(&g_sched_processes_lock);
+
+    sched_thread_schedule(thread);
+    return proc;
+}
 
 void sched_thread_schedule(thread_t *thread) {
     slock_acquire(&g_lock);

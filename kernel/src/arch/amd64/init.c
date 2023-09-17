@@ -6,10 +6,13 @@
 #include <lib/kprint.h>
 #include <sys/dev.h>
 #include <sys/cpu.h>
+#include <sched/sched.h>
 #include <memory/hhdm.h>
 #include <memory/heap.h>
+#include <graphics/draw.h>
 #include <drivers/acpi.h>
 #include <arch/vmm.h>
+#include <arch/sched.h>
 #include <arch/amd64/sched/sched.h>
 #include <arch/amd64/cpu.h>
 #include <arch/amd64/gdt.h>
@@ -25,7 +28,6 @@
 #include <arch/amd64/drivers/ps2mouse.h>
 #include <arch/amd64/drivers/pit.h>
 #include <arch/amd64/sched/syscall.h>
-#include <graphics/draw.h>
 #include <istyx.h>
 
 #define LAPIC_CALIBRATION_TICKS 0x10000
@@ -62,6 +64,7 @@ static volatile int g_cpus_initialized;
     __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
 
     sched_init_cpu(cpu);
+    __builtin_unreachable();
 }
 
 [[noreturn]] __attribute__((naked)) void init_ap() {
@@ -77,6 +80,7 @@ static volatile int g_cpus_initialized;
     lapic_initialize();
 
     init_common();
+    __builtin_unreachable();
 }
 
 [[noreturn]] __attribute__((naked)) extern void init(tartarus_boot_info_t *boot_info) {
@@ -146,6 +150,8 @@ static volatile int g_cpus_initialized;
 
     sched_init();
 
+    sched_process_create();
+
     g_cpus_initialized = 0;
     for(int i = 0; i < boot_info->cpu_count; i++) {
         if(i == boot_info->bsp_index) {
@@ -157,4 +163,5 @@ static volatile int g_cpus_initialized;
     }
 
     init_common();
+    __builtin_unreachable();
 }
