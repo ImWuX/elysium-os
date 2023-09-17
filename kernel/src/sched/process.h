@@ -8,4 +8,5 @@ typedef struct {
     slock_t lock;
     vmm_address_space_t *address_space;
     list_t threads;
+    list_t list_sched;
 } process_t;

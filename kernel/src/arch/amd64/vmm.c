@@ -1,10 +1,12 @@
 #include <string.h>
+#include <lib/list.h>
+#include <lib/slock.h>
 #include <arch/vmm.h>
 #include <arch/types.h>
 #include <memory/vmm.h>
-#include <memory/hhdm.h>
 #include <memory/pmm.h>
-#include <lib/list.h>
+#include <memory/heap.h>
+#include <memory/hhdm.h>
 
 typedef enum {
     PTE_FLAG_PRESENT = 1,
@@ -52,6 +54,17 @@ static uint64_t arch_independent_flags_to_x86(uint64_t flags) {
     if(flags & VMM_FLAGS_USER) x86_flags |= PTE_FLAG_USER;
     if(!(flags & VMM_FLAGS_EXEC)) x86_flags |= PTE_FLAG_NX;
     return x86_flags;
+}
+
+vmm_address_space_t *vmm_fork(vmm_address_space_t *root) {
+    pmm_page_t *pml4 = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
+    memcpy((void *) HHDM(pml4->paddr + 256 * sizeof(uint64_t)), (void *) HHDM(root->archdep.cr3 + 256 * sizeof(uint64_t)), 256 * sizeof(uint64_t));
+
+    vmm_address_space_t *new = heap_alloc(sizeof(vmm_address_space_t));
+    new->lock = SLOCK_INIT;
+    new->segments = LIST_INIT;
+    new->archdep.cr3 = pml4->paddr;
+    return new;
 }
 
 void arch_vmm_init() {

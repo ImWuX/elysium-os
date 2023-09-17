@@ -2,10 +2,17 @@
 #include <lib/list.h>
 #include <lib/slock.h>
 #include <sched/thread.h>
+#include <sched/process.h>
 
+extern list_t g_sched_processes;
 extern slock_t g_sched_threads_all_lock;
 extern list_t g_sched_threads_all;
 extern list_t g_sched_threads_queued;
+
+/**
+ * @brief Create a process
+ */
+process_t *sched_process_create();
 
 /**
  * @brief Schedule a thread

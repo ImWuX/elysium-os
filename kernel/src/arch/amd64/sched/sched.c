@@ -1,16 +1,16 @@
 #include "sched.h"
 #include <stdint.h>
 #include <string.h>
-#include <sched/sched.h>
-#include <sched/thread.h>
-#include <memory/heap.h>
-#include <memory/hhdm.h>
 #include <lib/slock.h>
 #include <lib/kprint.h>
 #include <lib/assert.h>
 #include <lib/container.h>
+#include <sched/sched.h>
+#include <memory/heap.h>
+#include <memory/hhdm.h>
 #include <arch/vmm.h>
 #include <arch/sched.h>
+#include <arch/amd64/vmm.h>
 #include <arch/amd64/msr.h>
 #include <arch/amd64/interrupt.h>
 #include <arch/amd64/lapic.h>
@@ -60,6 +60,7 @@ extern arch_thread_t *sched_context_switch(arch_thread_t *this, arch_thread_t *n
 extern void sched_userspace_init();
 
 static long g_next_tid = 1;
+static long g_next_pid = 1;
 static int g_sched_vector = 0;
 
 /*
@@ -104,16 +105,35 @@ static void sched_switch(arch_thread_t *this, arch_thread_t *next) {
     sched_thread_drop(&prev->common);
 }
 
-static void destroy_thread(arch_thread_t *thread) {
-    slock_acquire(&g_sched_threads_all_lock);
-    list_delete(&thread->common.list_all);
-    slock_release(&g_sched_threads_all_lock);
-    if(thread->common.proc) {
-        slock_acquire(&thread->common.proc->lock);
-        list_delete(&thread->common.list_proc);
-        slock_release(&thread->common.proc->lock);
+static void sched_entry([[maybe_unused]] interrupt_frame_t *frame) {
+    thread_t *current = arch_sched_thread_current();
+    ASSERT(current != 0);
+
+    thread_t *next = sched_thread_next();
+    if(!next) {
+        if(current == current->cpu->idle_thread) goto oneshot;
+        next = current->cpu->idle_thread;
     }
-    heap_free(thread);
+    ASSERT(current != next);
+
+    sched_switch(ARCH_THREAD(current), ARCH_THREAD(next));
+
+    oneshot:
+    lapic_timer_oneshot(g_sched_vector, 100'000);
+}
+
+static process_t *create_process() {
+    process_t *proc = heap_alloc(sizeof(process_t));
+    proc->id = g_next_pid++;
+    proc->lock = SLOCK_INIT;
+    proc->threads = LIST_INIT;
+    proc->address_space = vmm_fork(&g_kernel_address_space);
+    return proc;
+}
+
+/** @warning Assumes you have already acquired the lock */
+static void destroy_process(process_t *proc) {
+    heap_free(proc);
 }
 
 static arch_thread_t *create_thread(process_t *proc, stack_t kernel_stack, stack_t user_stack, uintptr_t rsp) {
@@ -127,6 +147,23 @@ static arch_thread_t *create_thread(process_t *proc, stack_t kernel_stack, stack
     thread->kernel_stack = kernel_stack;
     thread->user_stack = user_stack;
     return thread;
+}
+
+/** @warning Thread should not be on the scheduler queue when this is called */
+static void destroy_thread(arch_thread_t *thread) {
+    slock_acquire(&g_sched_threads_all_lock);
+    list_delete(&thread->common.list_all);
+    slock_release(&g_sched_threads_all_lock);
+    if(thread->common.proc) {
+        slock_acquire(&thread->common.proc->lock);
+        list_delete(&thread->common.list_proc);
+        if(list_is_empty(&thread->common.proc->threads)) {
+            destroy_process(thread->common.proc);
+        } else {
+            slock_release(&thread->common.proc->lock);
+        }
+    }
+    heap_free(thread);
 }
 
 static arch_thread_t *create_kernel_thread(void (* func)()) {
@@ -148,68 +185,56 @@ static arch_thread_t *create_kernel_thread(void (* func)()) {
     return thread;
 }
 
+static arch_thread_t *create_user_thread(process_t *proc) { // TODO: This is very much a test for userspace threads at this point
+    pmm_page_t *kernel_stack_page = pmm_alloc_pages(KERNEL_STACK_SIZE_PG, PMM_GENERAL | PMM_AF_ZERO);
+    stack_t kernel_stack = {
+        .base = HHDM(kernel_stack_page->paddr + KERNEL_STACK_SIZE_PG * ARCH_PAGE_SIZE),
+        .size = KERNEL_STACK_SIZE_PG * ARCH_PAGE_SIZE
+    };
+
+    pmm_page_t *user_stack_page = pmm_alloc_pages(USER_STACK_SIZE_PG, PMM_GENERAL | PMM_AF_ZERO);
+    stack_t user_stack = {
+        .base = ARCH_PAGE_SIZE * (USER_STACK_SIZE_PG + 1),
+        .size = USER_STACK_SIZE_PG * ARCH_PAGE_SIZE
+    };
+    for(int i = 0; i < USER_STACK_SIZE_PG; i++) {
+        arch_vmm_map(proc->address_space, ARCH_PAGE_SIZE * (i + 1), user_stack_page->paddr + i * ARCH_PAGE_SIZE, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
+    }
+
+    pmm_page_t *program_page = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
+    arch_vmm_map(proc->address_space, 0, program_page->paddr, VMM_FLAGS_EXEC | VMM_FLAGS_USER | VMM_FLAGS_WRITE);
+    *(uint32_t *) (HHDM(program_page->paddr)) = 0xFEEB;
+
+    init_stack_user_t *init_stack = (init_stack_user_t *) HHDM(user_stack_page->paddr + USER_STACK_SIZE_PG * ARCH_PAGE_SIZE - sizeof(init_stack_user_t));
+    init_stack->entry = 0;
+    init_stack->thread_init = &common_thread_init;
+    init_stack->thread_init_user = &sched_userspace_init;
+
+    arch_thread_t *thread = create_thread(proc, kernel_stack, user_stack, user_stack.base - sizeof(init_stack_user_t));
+
+    slock_acquire(&g_sched_threads_all_lock);
+    list_insert_behind(&g_sched_threads_all, &thread->common.list_all);
+    slock_release(&g_sched_threads_all_lock);
+    slock_acquire(&proc->lock);
+    list_insert_behind(&proc->threads, &thread->common.list_proc);
+    slock_release(&proc->lock);
+    return thread;
+}
+
 void arch_sched_thread_destroy(thread_t *thread) {
     destroy_thread(ARCH_THREAD(thread));
+}
+
+process_t *arch_sched_process_create() {
+    return create_process();
 }
 
 thread_t *arch_sched_thread_create_kernel(void (* func)()) {
     return &create_kernel_thread(func)->common;
 }
 
-// static arch_thread_t *create_user_thread() { // TODO: This is very much a test for userspace threads at this point
-//     vmm_address_space_t *as = heap_alloc(sizeof(vmm_address_space_t));
-//     pmm_page_t *pml4 = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
-//     for(int i = 256; i < 512; i++) {
-//         ((uint64_t *) HHDM(pml4->paddr))[i] = ((uint64_t *) HHDM(g_kernel_address_space.archdep.cr3))[i];
-//     }
-//     as->archdep.cr3 = pml4->paddr;
-//     as->lock = SLOCK_INIT;
-//     as->segments = LIST_INIT;
-
-//     pmm_page_t *kernel_stack_page = pmm_alloc_pages(KERNEL_STACK_SIZE_PG, PMM_GENERAL | PMM_AF_ZERO);
-//     stack_t kernel_stack = {
-//         .base = HHDM(kernel_stack_page->paddr + KERNEL_STACK_SIZE_PG * ARCH_PAGE_SIZE),
-//         .size = KERNEL_STACK_SIZE_PG * ARCH_PAGE_SIZE
-//     };
-
-//     pmm_page_t *user_stack_page = pmm_alloc_pages(USER_STACK_SIZE_PG, PMM_GENERAL | PMM_AF_ZERO);
-//     stack_t user_stack = {
-//         .base = ARCH_PAGE_SIZE * (USER_STACK_SIZE_PG + 1),
-//         .size = USER_STACK_SIZE_PG * ARCH_PAGE_SIZE
-//     };
-//     for(int i = 0; i < USER_STACK_SIZE_PG; i++) {
-//         arch_vmm_map(as, ARCH_PAGE_SIZE * (i + 1), user_stack_page->paddr + i * ARCH_PAGE_SIZE, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
-//     }
-
-//     pmm_page_t *program_page = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
-//     arch_vmm_map(as, 0, program_page->paddr, VMM_FLAGS_EXEC | VMM_FLAGS_USER | VMM_FLAGS_WRITE);
-//     *(uint32_t *) (HHDM(program_page->paddr)) = 0xFEEB;
-
-//     init_stack_user_t *init_stack = (init_stack_user_t *) HHDM(user_stack_page->paddr + USER_STACK_SIZE_PG * ARCH_PAGE_SIZE - sizeof(init_stack_user_t));
-//     init_stack->entry = 0;
-//     init_stack->thread_init = &common_thread_init;
-//     init_stack->thread_init_user = &sched_userspace_init;
-
-//     arch_thread_t *thread = create_thread(as, kernel_stack, user_stack, user_stack.base - sizeof(init_stack_user_t));
-//     list_insert_behind(&g_sched_threads_all, &thread->common.list_all);
-//     return thread;
-// }
-
-static void sched_entry([[maybe_unused]] interrupt_frame_t *frame) {
-    thread_t *current = arch_sched_thread_current();
-    ASSERT(current != 0);
-
-    thread_t *next = sched_thread_next();
-    if(!next) {
-        if(current == current->cpu->idle_thread) goto oneshot;
-        next = current->cpu->idle_thread;
-    }
-    ASSERT(current != next);
-
-    sched_switch(ARCH_THREAD(current), ARCH_THREAD(next));
-
-    oneshot:
-    lapic_timer_oneshot(g_sched_vector, 100'000);
+thread_t *arch_sched_thread_create_user(process_t *proc) {
+    return &create_user_thread(proc)->common;
 }
 
 thread_t *arch_sched_thread_current() {
