@@ -24,8 +24,17 @@ sched_context_switch:
 
 global sched_userspace_init
 sched_userspace_init:
+    pop rcx                                                 ; Pop return address into rcx (used by sysret)
+
+    cli                                                     ; Clear interrupts as we are switching to a user stack
     swapgs
-    pop rcx
+
+    pop rax                                                 ; Pop stack pointer into r11 (used by sysret)
+    mov rbp, rax
+    mov rsp, rax
+
+    push qword 0                                            ; TODO: Possibly dont push the invalid stack frame. Maybe this is up to the app?
+    push qword 0
 
     xor rax, rax
     xor rbx, rbx
@@ -40,5 +49,5 @@ sched_userspace_init:
 	xor r14, r14
 	xor r15, r15
 
-    mov r11, 0x202
-    sysretq
+    mov r11, (1 << 9) | (1 << 1)                            ; Set the interrupt flag on sysret
+    o64 sysret

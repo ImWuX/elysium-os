@@ -8,11 +8,11 @@ extern interrupt_handler
 %endmacro
 
 isr_stub:
-    cld                                     ; Clear direction flag
+    cld                                                     ; Clear direction flag
 
     SWAPGS_CONDITIONAL
 
-    push rax                                ; Save CPU state
+    push rax                                                ; Save CPU state
     push rbx
     push rcx
     push rdx
@@ -34,15 +34,15 @@ isr_stub:
     push rax
 
     xor rbp, rbp
-    mov rdi, rsp                            ; RDI to be used as a pointer to the int frame
-    call interrupt_handler                  ; Call interrupt handler
+    mov rdi, rsp                                            ; RDI to be used as a pointer to the int frame
+    call interrupt_handler                                  ; Call interrupt handler
 
     pop rax
     mov ds, rax
     pop rax
     mov es, rax
 
-    pop r15                                 ; Restore CPU state
+    pop r15                                                 ; Restore CPU state
     pop r14
     pop r13
     pop r12
@@ -58,19 +58,18 @@ isr_stub:
     pop rbx
     pop rax
 
-    add rsp, 8*2                            ; Discard interrupt number and error code
-
     SWAPGS_CONDITIONAL
 
+    add rsp, 8*2                                            ; Discard interrupt number and error code
     iretq
 
 %macro ISR 2
     global isr_%1
     isr_%1:
         %if %2 == 0
-            push qword 0                    ; Push 0 as error code for interrupt without error code
+            push qword 0                                    ; Push 0 as error code for interrupt without error code
         %endif
-        push qword %1                       ; Push interrupt number
+        push qword %1                                       ; Push interrupt number
         jmp isr_stub
 %endmacro
 

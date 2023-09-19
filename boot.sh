@@ -19,6 +19,7 @@ log_error() {
 SIM="qemu"
 UEFI=0
 DEBUG=0
+NOCOMP=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -31,6 +32,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --debug)
             DEBUG=1
+            ;;
+        --nocomp)
+            NOCOMP=1
             ;;
         -?|--help)
             log "┌────────────────────────────────────────────────────────────────────────"
@@ -55,10 +59,12 @@ done
 
 set -- "${POSITIONAL_ARGS[@]}"
 
-if [ "$UEFI" -eq 0 ]; then
-    make ARCH=amd64 BIOS=1
-else
-    make ARCH=amd64
+if [ "$NOCOMP" -eq 0 ]; then
+    if [ "$UEFI" -eq 0 ]; then
+        make ARCH=amd64 BIOS=1
+    else
+        make ARCH=amd64
+    fi
 fi
 
 case $SIM in

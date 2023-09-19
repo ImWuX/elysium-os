@@ -1,6 +1,7 @@
 # DevOps
 todo.md
 compile_commands.json
+test/*
 
 # IDE
 .vscode/

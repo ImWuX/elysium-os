@@ -129,7 +129,5 @@ uintptr_t arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr)
 }
 
 uintptr_t arch_vmm_highest_userspace_addr() {
-    static uintptr_t highest_address;
-    if(!highest_address) highest_address = ((uintptr_t) 1 << 48) - ARCH_PAGE_SIZE - 1;
-    return highest_address;
+    return ((uintptr_t) 1 << 47) - ARCH_PAGE_SIZE - 1;
 }
