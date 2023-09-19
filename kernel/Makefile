@@ -4,6 +4,7 @@ ifndef ARCH
 endif
 
 CFLAGS = -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -Wno-unused-variable -fno-stack-protector -fno-stack-check -fno-omit-frame-pointer -O2 -D __ARCH_$(shell echo $(ARCH) | tr a-z A-Z)
+ASMFLAGS = -Werror
 
 # Debug Symbols
 CFLAGS += -g
@@ -25,7 +26,7 @@ endif
 
 # Wildcard Targets
 %_asm.o: %.asm
-	$(ASMC) -isrc $< -f elf64 -o $@
+	$(ASMC) $(ASMFLAGS) -isrc $< -f elf64 -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -Isrc -Isrc/klibc -I../../tartarus-bootloader -c $< -o $@

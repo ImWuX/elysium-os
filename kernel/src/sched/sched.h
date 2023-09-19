@@ -1,6 +1,7 @@
 #pragma once
 #include <lib/list.h>
 #include <lib/slock.h>
+#include <memory/vmm.h>
 #include <sched/thread.h>
 #include <sched/process.h>
 
@@ -11,8 +12,11 @@ extern list_t g_sched_threads_queued;
 
 /**
  * @brief Create a process
+ *
+ * @param address_space Address space
+ * @return New process
  */
-process_t *sched_process_create();
+process_t *sched_process_create(vmm_address_space_t *address_space);
 
 /**
  * @brief Schedule a thread

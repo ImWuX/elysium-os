@@ -1,4 +1,5 @@
 #pragma once
+#include <stdint.h>
 #include <sched/process.h>
 #include <sched/thread.h>
 #include <memory/vmm.h>
@@ -24,16 +25,19 @@ thread_t *arch_sched_thread_create_kernel(void (* func)());
  * @brief Creates a new user thread
  *
  * @param proc Parent process
+ * @param ip Instruction pointer
+ * @param sp Stack pointer
  * @return New thread
  */
-thread_t *arch_sched_thread_create_user(process_t *proc);
+thread_t *arch_sched_thread_create_user(process_t *proc, uintptr_t ip, uintptr_t sp);
 
 /**
  * @brief Create a new process
  *
+ * @param address_space Address space
  * @return New process
  */
-process_t *arch_sched_process_create();
+process_t *arch_sched_process_create(vmm_address_space_t *address_space);
 
 /**
  * @brief Returns the active thread on the current CPU

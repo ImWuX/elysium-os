@@ -1,6 +1,10 @@
 # Important Things To Not Forget
 - Kernel has not moved stack from the bootloader provided 64kb safe stack // this can be release at the userspace handoff
 
+# Critical Security Fixes
+- Use an IST for NMIs because of the syscall/sysret routines :D
+  - Possibly also use an IST for #GP's if we wanna be really safe
+
 # Backlog
 Kernel:
 

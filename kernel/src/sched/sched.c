@@ -10,15 +10,11 @@ list_t g_sched_threads_all = LIST_INIT;
 static slock_t g_lock = SLOCK_INIT;
 list_t g_sched_threads_queued = LIST_INIT_CIRCULAR(g_sched_threads_queued);
 
-process_t *sched_process_create() {
-    process_t *proc = arch_sched_process_create();
-    thread_t *thread = arch_sched_thread_create_user(proc);
-
+process_t *sched_process_create(vmm_address_space_t *address_space) {
+    process_t *proc = arch_sched_process_create(address_space);
     slock_acquire(&g_sched_processes_lock);
     list_insert_behind(&g_sched_processes, &proc->list_sched);
     slock_release(&g_sched_processes_lock);
-
-    sched_thread_schedule(thread);
     return proc;
 }
 
