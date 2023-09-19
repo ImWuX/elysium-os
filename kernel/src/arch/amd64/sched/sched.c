@@ -27,6 +27,7 @@ typedef struct {
 typedef struct arch_thread {
     struct arch_thread *this;
     uintptr_t rsp;
+    uintptr_t syscall_rsp;
     stack_t kernel_stack;
     thread_t common;
 } arch_thread_t;
@@ -50,7 +51,9 @@ typedef struct {
     uint64_t user_stack;
 } init_stack_user_t;
 
-static_assert(offsetof(arch_thread_t, rsp) == 8, "Kernel RSP in thread_t changed. Update arch/amd64/sched.asm");
+static_assert(offsetof(arch_thread_t, rsp) == 8, "rsp in thread_t changed. Update arch/amd64/sched/sched.asm::THREAD_RSP_OFFSET");
+static_assert(offsetof(arch_thread_t, syscall_rsp) == 16, "syscall_rsp in thread_t changed. Update arch/amd64/sched/syscall.asm::SYSCALL_RSP_OFFSET");
+static_assert(offsetof(arch_thread_t, kernel_stack) + offsetof(stack_t, base) == 24, "kernel_stack::base in thread_t changed. Update arch/amd64/sched/syscall.asm::KERNEL_STACK_BASE_OFFSET");
 
 extern arch_thread_t *sched_context_switch(arch_thread_t *this, arch_thread_t *next);
 extern void sched_userspace_init();
