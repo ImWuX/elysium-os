@@ -1,8 +1,18 @@
 SYSCALL_RSP_OFFSET equ 16
 KERNEL_STACK_BASE_OFFSET equ 24
 
-extern syscall_call
+extern syscall_exit
+extern syscall_putchar
 
+section .data
+syscall_table:
+.start:
+    dq syscall_exit         ; 0
+    dq syscall_putchar      ; 1
+.end:
+.length: dq (.end - .start) / 8
+
+section .text
 global syscall_entry
 syscall_entry:
     swapgs
@@ -29,9 +39,15 @@ syscall_entry:
     mov rdi, ds
     push rdi
 
-    mov rdi, rax
-    mov rsi, rbx
-    call syscall_call
+    cmp rax, qword [syscall_table.length]
+    jge .invalid_syscall
+
+    mov rdi, rbx
+    mov rsi, rcx
+    mov rsi, rcx
+    call [syscall_table + rax * 8]
+
+    .invalid_syscall:
 
     pop rdi
     mov ds, rdi
@@ -53,6 +69,6 @@ syscall_entry:
     pop rcx
     pop rbx
 
-    mov rsp, [gs:SYSCALL_RSP_OFFSET]
+    mov rsp, qword [gs:SYSCALL_RSP_OFFSET]
     swapgs
     o64 sysret

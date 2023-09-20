@@ -3,11 +3,14 @@
 #include <lib/kprint.h>
 #include <lib/list.h>
 #include <graphics/basicfont.h>
+#include <memory/vmm.h>
 #include <memory/heap.h>
 #include <memory/hhdm.h>
 #include <drivers/pci.h>
 #include <drivers/ahci.h>
 #include <sched/sched.h>
+#include <arch/vmm.h>
+#include <arch/sched.h>
 
 #define PREFIX "> "
 #define TAB_WIDTH 4
@@ -46,6 +49,15 @@ typedef struct {
     command_arg_t *args;
     int argc;
 } command_t;
+
+typedef struct istyx_file {
+    char *name;
+    uintptr_t paddr;
+    size_t size;
+    struct istyx_file *next;
+} istyx_file_t;
+
+static istyx_file_t *g_files = 0;
 
 static draw_color_t g_bg, g_fg, g_cg;
 
@@ -245,7 +257,7 @@ static void command_hexdump(arg_t *args) {
     }
 }
 
-static void command_sched([[maybe_unused]] arg_t *args) {
+static void command_schedq([[maybe_unused]] arg_t *args) {
     kprintf("Sched Queue: ");
     list_t *entry;
     LIST_FOREACH(entry, &g_sched_threads_queued) {
@@ -259,6 +271,42 @@ static void command_sched([[maybe_unused]] arg_t *args) {
         kprintf("%lu%s, ", thread->id, thread->cpu ? "(ACTIVE)" : "");
     }
     kprintf("\n");
+}
+
+static void command_exec(arg_t *args) {
+    istyx_file_t *file = g_files;
+    while(file) {
+        if(strcmp(file->name, args[0].string) != 0) goto next;
+        size_t module_size_pg = (file->size + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE;
+
+        vmm_address_space_t *as = arch_vmm_fork(&g_kernel_address_space);
+        for(size_t j = 0; j < module_size_pg; j++) {
+            arch_vmm_map(as, j * ARCH_PAGE_SIZE, file->paddr + j * ARCH_PAGE_SIZE, VMM_FLAGS_EXEC | VMM_FLAGS_USER);
+        }
+
+        uintptr_t stack = arch_vmm_highest_userspace_addr();
+        for(size_t j = 0; j < 8; j++) {
+            arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * j, pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
+        }
+
+        process_t *proc = sched_process_create(as);
+        thread_t *thread = arch_sched_thread_create_user(proc, 0, stack & ~0xF);
+        sched_thread_schedule(thread);
+        return;
+
+        next:
+        file = file->next;
+    }
+    kprintf("Could not find file \"%s\"\n", args[0].string);
+}
+
+static void command_files([[maybe_unused]] arg_t *args) {
+    kprintf("Files:\n");
+    istyx_file_t *file = g_files;
+    while(file) {
+        kprintf("\t\"%s\"\n", file->name);
+        file = file->next;
+    }
 }
 
 static command_t g_command_registry[] = {
@@ -344,7 +392,21 @@ static command_t g_command_registry[] = {
     {
         .name = "schedq",
         .description = "Displays the scheduler queues",
-        .func = &command_sched
+        .func = &command_schedq
+    },
+    {
+        .name = "exec",
+        .description = "Execute a file",
+        .func = &command_exec,
+        .args = (command_arg_t[]) {
+            { .name = "filename", .type = ARG_STRING }
+        },
+        .argc = 1
+    },
+    {
+        .name = "files",
+        .description = "List files registered to istyx",
+        .func = &command_files
     }
 };
 
@@ -455,6 +517,15 @@ static void command_handler(char *input) {
 
     for(int i = 0; i < constructor_length; i++) heap_free(strargs[i]);
     heap_free(strargs);
+}
+
+void istyx_add_file(char *name, uintptr_t paddr, size_t size) {
+    istyx_file_t *file = heap_alloc(sizeof(istyx_file_t));
+    file->name = name,
+    file->paddr = paddr;
+    file->size = size;
+    file->next = g_files;
+    g_files = file;
 }
 
 void istyx_early_initialize(draw_context_t *draw_context) {

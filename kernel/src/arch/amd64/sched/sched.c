@@ -10,7 +10,6 @@
 #include <memory/hhdm.h>
 #include <arch/vmm.h>
 #include <arch/sched.h>
-#include <arch/amd64/vmm.h>
 #include <arch/amd64/msr.h>
 #include <arch/amd64/interrupt.h>
 #include <arch/amd64/lapic.h>
@@ -102,23 +101,6 @@ static void sched_switch(arch_thread_t *this, arch_thread_t *next) {
 
     arch_thread_t *prev = sched_context_switch(this, next);
     sched_thread_drop(&prev->common);
-}
-
-static void sched_entry([[maybe_unused]] interrupt_frame_t *frame) {
-    thread_t *current = arch_sched_thread_current();
-    ASSERT((uintptr_t) current >= g_hhdm_address);
-
-    thread_t *next = sched_thread_next();
-    if(!next) {
-        if(current == current->cpu->idle_thread) goto oneshot;
-        next = current->cpu->idle_thread;
-    }
-    ASSERT(current != next);
-
-    sched_switch(ARCH_THREAD(current), ARCH_THREAD(next));
-
-    oneshot:
-    lapic_timer_oneshot(g_sched_vector, 100'000);
 }
 
 static process_t *create_process(vmm_address_space_t *address_space) {
@@ -226,6 +208,27 @@ thread_t *arch_sched_thread_current() {
     arch_thread_t *thread = 0;
     asm volatile("mov %%gs:0, %0" : "=r" (thread));
     return &thread->common;
+}
+
+void sched_next() {
+    thread_t *current = arch_sched_thread_current();
+    ASSERT((uintptr_t) current >= g_hhdm_address);
+
+    thread_t *next = sched_thread_next();
+    if(!next) {
+        if(current == current->cpu->idle_thread) goto oneshot;
+        next = current->cpu->idle_thread;
+    }
+    ASSERT(current != next);
+
+    sched_switch(ARCH_THREAD(current), ARCH_THREAD(next));
+
+    oneshot:
+    lapic_timer_oneshot(g_sched_vector, 100'000);
+}
+
+static void sched_entry([[maybe_unused]] interrupt_frame_t *frame) {
+    sched_next();
 }
 
 [[noreturn]] void sched_init_cpu(arch_cpu_t *cpu) {

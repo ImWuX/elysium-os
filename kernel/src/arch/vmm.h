@@ -39,3 +39,11 @@ uintptr_t arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr)
  * @returns Highest userspace address
  */
 uintptr_t arch_vmm_highest_userspace_addr();
+
+/**
+ * @brief Fork an address space
+ * 
+ * @param root Address space to be forked
+ * @return New address space
+ */
+vmm_address_space_t *arch_vmm_fork(vmm_address_space_t *root);
