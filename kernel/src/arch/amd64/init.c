@@ -14,7 +14,6 @@
 #include <drivers/acpi.h>
 #include <arch/vmm.h>
 #include <arch/sched.h>
-#include <arch/amd64/vmm.h>
 #include <arch/amd64/sched/sched.h>
 #include <arch/amd64/cpu.h>
 #include <arch/amd64/gdt.h>
@@ -154,22 +153,7 @@ static volatile int g_cpus_initialized;
 
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
-        if(strcmp(module->name, "TEST    BIN") != 0) continue;
-        size_t module_size_pg = (module->size + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE;
-
-        vmm_address_space_t *as = vmm_fork(&g_kernel_address_space);
-        for(size_t j = 0; j < module_size_pg; j++) {
-            arch_vmm_map(as, i * ARCH_PAGE_SIZE, module->paddr + i * ARCH_PAGE_SIZE, VMM_FLAGS_EXEC | VMM_FLAGS_USER);
-        }
-
-        uintptr_t stack = arch_vmm_highest_userspace_addr();
-        for(size_t j = 0; j < 8; j++) {
-            arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * i, pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
-        }
-
-        process_t *proc = sched_process_create(as);
-        thread_t *thread = arch_sched_thread_create_user(proc, 0, stack & ~0xF);
-        sched_thread_schedule(thread);
+        istyx_add_file(module->name, module->paddr, module->size);
     }
 
     g_cpus_initialized = 0;

@@ -2,6 +2,12 @@
 #include <arch/amd64/cpu.h>
 
 /**
+ * @brief Switch to the next thread
+ * @warning This essentially yields to the next thread, without the yield logic
+ */
+void sched_next();
+
+/**
  * @brief Globally initializes the scheduler
  */
 void sched_init();

@@ -54,6 +54,7 @@ static void kb_interrupt_handler([[maybe_unused]] interrupt_frame_t *registers) 
 
     uint8_t character = g_layout_us[scancode];
     if(character >= 'a' && character <= 'z' && (g_scancodes[0x36] || g_scancodes[0x2a])) character = g_layout_us[scancode] - 32;
+    if((g_scancodes[0x36] || g_scancodes[0x2a]) && character == '\'') character = '"'; // HOTFIX; we need a more proper conversion
     if(g_keyboard_handler) g_keyboard_handler(character);
 }
 

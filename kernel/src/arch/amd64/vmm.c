@@ -56,7 +56,7 @@ static uint64_t arch_independent_flags_to_x86(uint64_t flags) {
     return x86_flags;
 }
 
-vmm_address_space_t *vmm_fork(vmm_address_space_t *root) {
+vmm_address_space_t *arch_vmm_fork(vmm_address_space_t *root) {
     pmm_page_t *pml4 = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
     memcpy((void *) HHDM(pml4->paddr + 256 * sizeof(uint64_t)), (void *) HHDM(root->archdep.cr3 + 256 * sizeof(uint64_t)), 256 * sizeof(uint64_t));
 

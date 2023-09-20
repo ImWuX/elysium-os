@@ -1,4 +1,6 @@
 #pragma once
+#include <stdint.h>
+#include <stddef.h>
 #include <graphics/draw.h>
 
 /**
@@ -28,3 +30,12 @@ void istyx_simple_input_kb(uint8_t ch);
  * @param buttons Mouse buttons
  */
 void istyx_simple_input_mouse(int16_t rel_x, int16_t rel_y, bool buttons[3]);
+
+/**
+ * @brief Add a file in memory to istyx
+ *
+ * @param name Filename
+ * @param paddr Physical address
+ * @param size File size
+ */
+void istyx_add_file(char *name, uintptr_t paddr, size_t size);
