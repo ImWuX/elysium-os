@@ -85,7 +85,7 @@ case $SIM in
         qemu_args+=(-monitor stdio)
         qemu_args+=(-no-reboot)
         qemu_args+=(-net none)
-        [[ "$UEFI" -eq 1 ]] && qemu_args+=(-bios /usr/share/ovmf/OVMF.fd)
+        [[ "$UEFI" -eq 1 ]] && qemu_args+=(-bios /usr/share/ovmf/x64//OVMF.fd)
         [[ "$DEBUG" -eq 1 ]] && qemu_args+=(-s -S)
 
         qemu-system-x86_64 "${qemu_args[@]}"

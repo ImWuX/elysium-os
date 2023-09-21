@@ -2,7 +2,7 @@
 
 #define SLOCK_INIT 0
 
-typedef unsigned char slock_t;
+typedef bool slock_t;
 
 /**
  * @brief Acquire a spinclock
@@ -10,7 +10,7 @@ typedef unsigned char slock_t;
  *
  * @param lock Spinlock
  */
-void slock_acquire(slock_t *lock);
+void slock_acquire(volatile slock_t *lock);
 
 /**
  * @brief Try acquire a spinlock
@@ -19,13 +19,13 @@ void slock_acquire(slock_t *lock);
  * @param slock Spinlock
  * @return true = acquired the lock
  */
-static inline bool slock_try_acquire(slock_t *lock) {
-    return __sync_bool_compare_and_swap(lock, 0, 1);
+static inline bool slock_try_acquire(volatile slock_t *lock) {
+    return  !__atomic_test_and_set(lock, __ATOMIC_ACQUIRE);
 }
 
 /**
  * @brief Release a spinlock
  */
-static inline void slock_release(slock_t *lock) {
-    __atomic_store_n(lock, 0, __ATOMIC_SEQ_CST);
+static inline void slock_release(volatile slock_t *lock) {
+    __atomic_clear(lock, __ATOMIC_RELEASE);
 }
