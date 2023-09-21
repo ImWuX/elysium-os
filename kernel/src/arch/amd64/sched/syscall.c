@@ -17,8 +17,8 @@ int64_t syscall_exit() {
     __builtin_unreachable();
 }
 
-int64_t syscall_putchar(uint64_t arg1) {
-    putchar((int) arg1);
+int64_t syscall_write(uint64_t ch) {
+    putchar((int) ch);
     return 0;
 }
 
