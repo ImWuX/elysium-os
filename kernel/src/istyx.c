@@ -10,7 +10,6 @@
 #include <drivers/pci.h>
 #include <drivers/ahci.h>
 #include <sched/sched.h>
-#include <fs/vfs.h>
 #include <arch/vmm.h>
 #include <arch/sched.h>
 
@@ -51,6 +50,8 @@ typedef struct {
     command_arg_t *args;
     int argc;
 } command_t;
+
+vfs_context_t g_vfs_context;
 
 static draw_color_t g_bg, g_fg, g_cg;
 
@@ -268,7 +269,7 @@ static void command_schedq([[maybe_unused]] arg_t *args) {
 
 static void command_exec(arg_t *args) {
     vfs_node_t *file;
-    int r = vfs_lookup(args[0].string, &file);
+    int r = vfs_lookup(args[0].string, &file, &g_vfs_context);
     if(r < 0) {
         kprintf("Could not find file (%i)\n", r);
         return;
@@ -325,7 +326,7 @@ static void command_mkdir(arg_t *args) {
     const char *name = heap_alloc(strlen(args[1].string) + 1);
     strcpy((char *) name, args[1].string);
     vfs_node_t *node;
-    int r = vfs_mkdir(args[0].string, name, &node);
+    int r = vfs_mkdir(args[0].string, name, &node, &g_vfs_context);
     if(r < 0) {
         kprintf("Failed to create directory (%i)\n", r);
         return;
@@ -337,7 +338,7 @@ static void command_create(arg_t *args) {
     const char *name = heap_alloc(strlen(args[1].string) + 1);
     strcpy((char *) name, args[1].string);
     vfs_node_t *node;
-    int r = vfs_create(args[0].string, name, &node);
+    int r = vfs_create(args[0].string, name, &node, &g_vfs_context);
     if(r < 0) {
         kprintf("Failed to create file (%i)\n", r);
         return;
@@ -346,14 +347,16 @@ static void command_create(arg_t *args) {
 }
 
 static void command_ls(arg_t *args) {
+    char *path = ".";
+    if(args[0].string) path = args[0].string;
+
     vfs_node_t *dir;
-    int r = vfs_lookup(args[0].string, &dir);
+    int r = vfs_lookup(path, &dir, &g_vfs_context);
     if(r < 0) {
         kprintf("Failed to find directory (%i)\n", r);
         return;
     }
 
-    kprintf("Files:\n");
     char *filename;
     int offset = 0;
     while(true) {
@@ -369,7 +372,7 @@ static void command_ls(arg_t *args) {
 
 static void command_cat(arg_t *args) {
     vfs_node_t *file;
-    int r = vfs_lookup(args[0].string, &file);
+    int r = vfs_lookup(args[0].string, &file, &g_vfs_context);
     if(r < 0) {
         kprintf("Could not find file (%i)\n", r);
         return;
@@ -408,7 +411,7 @@ static void command_cat(arg_t *args) {
 
 static void command_append(arg_t *args) {
     vfs_node_t *file;
-    int r = vfs_lookup(args[0].string, &file);
+    int r = vfs_lookup(args[0].string, &file, &g_vfs_context);
     if(r < 0) {
         kprintf("Could not find file (%i)\n", r);
         return;
@@ -558,7 +561,7 @@ static command_t g_command_registry[] = {
         .description = "List all files in a directory",
         .func = &command_ls,
         .args = (command_arg_t[]) {
-            { .name = "path", .type = ARG_STRING }
+            { .name = "path", .type = ARG_STRING, .optional = true }
         },
         .argc = 1
     },

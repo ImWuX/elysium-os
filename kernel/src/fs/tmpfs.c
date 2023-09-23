@@ -75,6 +75,18 @@ static int tmpfs_node_attr(vfs_node_t *node, vfs_node_attr_t *attr) {
 
 static int tmpfs_node_lookup(vfs_node_t *dir, char *name, vfs_node_t **out) {
     if(dir->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
+    if(strcmp(name, ".") == 0) {
+        *out = dir;
+        return 0;
+    }
+    if(strcmp(name, "..") == 0) {
+        tmpfs_node_t *parent = ((tmpfs_node_t *) dir->data)->parent;
+        if(parent)
+            *out = parent->node;
+        else
+            *out = dir;
+        return 0;
+    }
     tmpfs_node_t *tnode = dir_find((tmpfs_node_t *) dir->data, name);
     if(!tnode) return -ENOENT;
     *out = tnode->node;
