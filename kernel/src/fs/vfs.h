@@ -36,6 +36,10 @@ typedef struct {
     void *buffer;
 } vfs_rw_t;
 
+typedef struct {
+    vfs_node_t *cwd;
+} vfs_context_t;
+
 typedef struct vfs_ops {
     /**
      * @brief Called on VFS mount
@@ -135,9 +139,10 @@ int vfs_mount(vfs_ops_t *vfs_ops, char *path, void *data);
  *
  * @param path Path
  * @param out Node
+ * @param context VFS context
  * @return 0 on success, -errno on failure
  */
-int vfs_lookup(char *path, vfs_node_t **out);
+int vfs_lookup(char *path, vfs_node_t **out, vfs_context_t *context);
 
 /**
  * @brief Read/write a file by path
@@ -145,9 +150,10 @@ int vfs_lookup(char *path, vfs_node_t **out);
  * @param path Path
  * @param packet RW packet
  * @param rw_count Bytes read/written (out)
+ * @param context VFS context
  * @return 0 on success, -errno on failure
  */
-int vfs_rw(char *path, vfs_rw_t *packet, size_t *rw_count);
+int vfs_rw(char *path, vfs_rw_t *packet, size_t *rw_count, vfs_context_t *context);
 
 /**
  * @brief Create a directory at path
@@ -155,9 +161,10 @@ int vfs_rw(char *path, vfs_rw_t *packet, size_t *rw_count);
  * @param path Path
  * @param name Name of the new directory
  * @param out New node (Directory)
+ * @param context VFS context
  * @return 0 on success, -errno on failure
  */
-int vfs_mkdir(char *path, const char *name, vfs_node_t **out);
+int vfs_mkdir(char *path, const char *name, vfs_node_t **out, vfs_context_t *context);
 
 /**
  * @brief Create a file at path
@@ -165,6 +172,7 @@ int vfs_mkdir(char *path, const char *name, vfs_node_t **out);
  * @param path Path
  * @param name Name of the new file
  * @param out New node (File)
+ * @param context VFS context
  * @return 0 on success, -errno on failure
  */
-int vfs_create(char *path, const char *name, vfs_node_t **out);
+int vfs_create(char *path, const char *name, vfs_node_t **out, vfs_context_t *context);

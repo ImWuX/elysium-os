@@ -2,6 +2,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <graphics/draw.h>
+#include <fs/vfs.h>
+
+extern vfs_context_t g_vfs_context;
 
 /**
  * @brief Early init meant for setting up styx for early logs from the kernel

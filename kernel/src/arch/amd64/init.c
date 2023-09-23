@@ -154,11 +154,13 @@ static volatile int g_cpus_initialized;
     sched_init();
 
     vfs_mount(&g_tmpfs_ops, "/", (void *) 0);
+    int r = LIST_GET(g_vfs_all.next, vfs_t, list)->ops->root(LIST_GET(g_vfs_all.next, vfs_t, list), &g_vfs_context.cwd);
+    if(r < 0) panic("Could not retrieve VFS root (%i)\n", r);
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
 
         vfs_node_t *file;
-        int r = vfs_create("/", module->name, &file);
+        int r = vfs_create("/", module->name, &file, &g_vfs_context);
         if(r < 0) continue;
         vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
         packet->rw = VFS_RW_WRITE;
@@ -167,7 +169,7 @@ static volatile int g_cpus_initialized;
         packet->buffer = (void *) HHDM(module->paddr);
         size_t count;
         r = file->ops->rw(file, packet, &count);
-        if(r < 0 || count != module->size) panic("Failed to write module to tempfs file (%s)\n", module->name);
+        if(r < 0 || count != module->size) panic("Failed to write module to tmpfs file (%s)\n", module->name);
         heap_free(packet);
     }
 
