@@ -12,6 +12,8 @@
 #include <memory/heap.h>
 #include <graphics/draw.h>
 #include <drivers/acpi.h>
+#include <fs/vfs.h>
+#include <fs/tmpfs.h>
 #include <arch/vmm.h>
 #include <arch/sched.h>
 #include <arch/amd64/sched/sched.h>
@@ -151,9 +153,22 @@ static volatile int g_cpus_initialized;
 
     sched_init();
 
+    vfs_mount(&g_tmpfs_ops, "/", (void *) 0);
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
-        istyx_add_file(module->name, module->paddr, module->size);
+
+        vfs_node_t *file;
+        int r = vfs_create("/", module->name, &file);
+        if(r < 0) continue;
+        vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
+        packet->rw = VFS_RW_WRITE;
+        packet->offset = 0;
+        packet->size = module->size;
+        packet->buffer = (void *) HHDM(module->paddr);
+        size_t count;
+        r = file->ops->rw(file, packet, &count);
+        if(r < 0 || count != module->size) panic("Failed to write module to tempfs file (%s)\n", module->name);
+        heap_free(packet);
     }
 
     g_cpus_initialized = 0;

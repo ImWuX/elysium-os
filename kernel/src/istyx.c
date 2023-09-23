@@ -1,6 +1,7 @@
 #include "istyx.h"
 #include <string.h>
 #include <lib/kprint.h>
+#include <lib/panic.h>
 #include <lib/list.h>
 #include <graphics/basicfont.h>
 #include <memory/vmm.h>
@@ -9,6 +10,7 @@
 #include <drivers/pci.h>
 #include <drivers/ahci.h>
 #include <sched/sched.h>
+#include <fs/vfs.h>
 #include <arch/vmm.h>
 #include <arch/sched.h>
 
@@ -49,15 +51,6 @@ typedef struct {
     command_arg_t *args;
     int argc;
 } command_t;
-
-typedef struct istyx_file {
-    char *name;
-    uintptr_t paddr;
-    size_t size;
-    struct istyx_file *next;
-} istyx_file_t;
-
-static istyx_file_t *g_files = 0;
 
 static draw_color_t g_bg, g_fg, g_cg;
 
@@ -274,39 +267,176 @@ static void command_schedq([[maybe_unused]] arg_t *args) {
 }
 
 static void command_exec(arg_t *args) {
-    istyx_file_t *file = g_files;
-    while(file) {
-        if(strcmp(file->name, args[0].string) != 0) goto next;
-        size_t module_size_pg = (file->size + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE;
-
-        vmm_address_space_t *as = arch_vmm_fork(&g_kernel_address_space);
-        for(size_t j = 0; j < module_size_pg; j++) {
-            arch_vmm_map(as, j * ARCH_PAGE_SIZE, file->paddr + j * ARCH_PAGE_SIZE, VMM_FLAGS_EXEC | VMM_FLAGS_USER);
-        }
-
-        uintptr_t stack = arch_vmm_highest_userspace_addr();
-        for(size_t j = 0; j < 8; j++) {
-            arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * j, pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
-        }
-
-        process_t *proc = sched_process_create(as);
-        thread_t *thread = arch_sched_thread_create_user(proc, 0, stack & ~0xF);
-        sched_thread_schedule(thread);
+    vfs_node_t *file;
+    int r = vfs_lookup(args[0].string, &file);
+    if(r < 0) {
+        kprintf("Could not find file (%i)\n", r);
         return;
-
-        next:
-        file = file->next;
     }
-    kprintf("Could not find file \"%s\"\n", args[0].string);
+    vfs_node_attr_t *attributes = heap_alloc(sizeof(vfs_node_attr_t));
+    r = file->ops->attr(file, attributes);
+    if(r < 0) {
+        kprintf("Could not read file attributes (%i)\n", r);
+        goto free_attr;
+    }
+    if(attributes->file_size == 0) {
+        kprintf("File size is zero\n");
+        goto free_attr;
+    }
+    size_t file_size_pg = (attributes->file_size + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE;
+
+    size_t total_bytes = attributes->file_size;
+    vmm_address_space_t *as = arch_vmm_fork(&g_kernel_address_space);
+    for(size_t j = 0; j < file_size_pg; j++) {
+        pmm_page_t *page = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
+        size_t bytes = total_bytes;
+        if(bytes > ARCH_PAGE_SIZE) bytes = ARCH_PAGE_SIZE;
+
+        vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
+        packet->rw = VFS_RW_READ;
+        packet->size = bytes;
+        packet->offset = attributes->file_size - total_bytes;
+        packet->buffer = (void *) HHDM(page->paddr);
+        size_t read_count;
+        r = file->ops->rw(file, packet, &read_count);
+        if(r < 0) panic("Failed to read executable while initializing process\n");
+        if(read_count < bytes) panic("Failed to read entire executable while initializing process\n");
+
+        arch_vmm_map(as, j * ARCH_PAGE_SIZE, page->paddr, VMM_FLAGS_EXEC | VMM_FLAGS_USER);
+        total_bytes -= bytes;
+        heap_free(packet);
+    }
+
+    uintptr_t stack = arch_vmm_highest_userspace_addr();
+    for(size_t j = 0; j < 8; j++) {
+        arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * j, pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
+    }
+
+    process_t *proc = sched_process_create(as);
+    thread_t *thread = arch_sched_thread_create_user(proc, 0, stack & ~0xF);
+    sched_thread_schedule(thread);
+    return;
+
+    free_attr:
+    heap_free(attributes);
 }
 
-static void command_files([[maybe_unused]] arg_t *args) {
-    kprintf("Files:\n");
-    istyx_file_t *file = g_files;
-    while(file) {
-        kprintf("\t\"%s\"\n", file->name);
-        file = file->next;
+static void command_mkdir(arg_t *args) {
+    const char *name = heap_alloc(strlen(args[1].string) + 1);
+    strcpy((char *) name, args[1].string);
+    vfs_node_t *node;
+    int r = vfs_mkdir(args[0].string, name, &node);
+    if(r < 0) {
+        kprintf("Failed to create directory (%i)\n", r);
+        return;
     }
+    kprintf("Created directory %s\n", name);
+}
+
+static void command_create(arg_t *args) {
+    const char *name = heap_alloc(strlen(args[1].string) + 1);
+    strcpy((char *) name, args[1].string);
+    vfs_node_t *node;
+    int r = vfs_create(args[0].string, name, &node);
+    if(r < 0) {
+        kprintf("Failed to create file (%i)\n", r);
+        return;
+    }
+    kprintf("Created file %s\n", name);
+}
+
+static void command_ls(arg_t *args) {
+    vfs_node_t *dir;
+    int r = vfs_lookup(args[0].string, &dir);
+    if(r < 0) {
+        kprintf("Failed to find directory (%i)\n", r);
+        return;
+    }
+
+    kprintf("Files:\n");
+    char *filename;
+    int offset = 0;
+    while(true) {
+        r = dir->ops->readdir(dir, &offset, &filename);
+        if(r < 0) {
+            kprintf("Error while reading directory (%i)\n", r);
+            return;
+        }
+        if(!filename) break;
+        kprintf("\t%s\n", filename);
+    }
+}
+
+static void command_cat(arg_t *args) {
+    vfs_node_t *file;
+    int r = vfs_lookup(args[0].string, &file);
+    if(r < 0) {
+        kprintf("Could not find file (%i)\n", r);
+        return;
+    }
+    vfs_node_attr_t *attributes = heap_alloc(sizeof(vfs_node_attr_t));
+    r = file->ops->attr(file, attributes);
+    if(r < 0) {
+        kprintf("Could not read file attributes (%i)\n", r);
+        goto free_attr;
+    }
+    if(attributes->file_size == 0) {
+        kprintf("File size is zero\n");
+        goto free_attr;
+    }
+    void *buffer = heap_alloc(attributes->file_size);
+    vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
+    packet->rw = VFS_RW_READ;
+    packet->size = attributes->file_size;
+    packet->offset = 0;
+    packet->buffer = buffer;
+    size_t read_count;
+    r = file->ops->rw(file, packet, &read_count);
+    if(r < 0) {
+        kprintf("Failed to read file (%i)\n", r);
+        goto free_all;
+    }
+    if(read_count < attributes->file_size) kprintf("WARNING: Only read %lu/%lu bytes\n", read_count, attributes->file_size);
+    for(size_t i = 0; i < read_count; i++) putchar(((char *) buffer)[i]);
+
+    free_all:
+    heap_free(buffer);
+    heap_free(packet);
+    free_attr:
+    heap_free(attributes);
+}
+
+static void command_append(arg_t *args) {
+    vfs_node_t *file;
+    int r = vfs_lookup(args[0].string, &file);
+    if(r < 0) {
+        kprintf("Could not find file (%i)\n", r);
+        return;
+    }
+    vfs_node_attr_t *attributes = heap_alloc(sizeof(vfs_node_attr_t));
+    r = file->ops->attr(file, attributes);
+    if(r < 0) {
+        kprintf("Could not read file attributes (%i)\n", r);
+        goto free_attr;
+    }
+    vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
+    packet->rw = VFS_RW_WRITE;
+    packet->size = strlen(args[1].string);
+    packet->offset = attributes->file_size;
+    packet->buffer = args[1].string;
+    size_t write_count;
+    r = file->ops->rw(file, packet, &write_count);
+    if(r < 0) {
+        kprintf("Failed to read file (%i)\n", r);
+        goto free_all;
+    }
+    if(write_count < strlen(args[1].string)) kprintf("WARNING: Only wrote %lu/%lu bytes\n", write_count, strlen(args[1].string));
+    kprintf("Appended to file\n");
+
+    free_all:
+    heap_free(packet);
+    free_attr:
+    heap_free(attributes);
 }
 
 static command_t g_command_registry[] = {
@@ -399,14 +529,57 @@ static command_t g_command_registry[] = {
         .description = "Execute a file",
         .func = &command_exec,
         .args = (command_arg_t[]) {
-            { .name = "filename", .type = ARG_STRING }
+            { .name = "path", .type = ARG_STRING }
         },
         .argc = 1
     },
     {
-        .name = "files",
-        .description = "List files registered to istyx",
-        .func = &command_files
+        .name = "mkdir",
+        .description = "Create a new directory",
+        .func = &command_mkdir,
+        .args = (command_arg_t[]) {
+            { .name = "path", .type = ARG_STRING },
+            { .name = "filename", .type = ARG_STRING }
+        },
+        .argc = 2
+    },
+    {
+        .name = "create",
+        .description = "Create a new file",
+        .func = &command_create,
+        .args = (command_arg_t[]) {
+            { .name = "path", .type = ARG_STRING },
+            { .name = "filename", .type = ARG_STRING }
+        },
+        .argc = 2
+    },
+    {
+        .name = "ls",
+        .description = "List all files in a directory",
+        .func = &command_ls,
+        .args = (command_arg_t[]) {
+            { .name = "path", .type = ARG_STRING }
+        },
+        .argc = 1
+    },
+    {
+        .name = "cat",
+        .description = "Print a file as ASCII to the terminal",
+        .func = &command_cat,
+        .args = (command_arg_t[]) {
+            { .name = "path", .type = ARG_STRING }
+        },
+        .argc = 1
+    },
+    {
+        .name = "append",
+        .description = "Append to a file",
+        .func = &command_append,
+        .args = (command_arg_t[]) {
+            { .name = "path", .type = ARG_STRING },
+            { .name = "text", .type = ARG_STRING }
+        },
+        .argc = 2
     }
 };
 
@@ -517,15 +690,6 @@ static void command_handler(char *input) {
 
     for(int i = 0; i < constructor_length; i++) heap_free(strargs[i]);
     heap_free(strargs);
-}
-
-void istyx_add_file(char *name, uintptr_t paddr, size_t size) {
-    istyx_file_t *file = heap_alloc(sizeof(istyx_file_t));
-    file->name = name,
-    file->paddr = paddr;
-    file->size = size;
-    file->next = g_files;
-    g_files = file;
 }
 
 void istyx_early_initialize(draw_context_t *draw_context) {
