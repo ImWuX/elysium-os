@@ -11,6 +11,7 @@
 #include <memory/hhdm.h>
 #include <memory/heap.h>
 #include <graphics/draw.h>
+#include <graphics/tgarender.h>
 #include <drivers/acpi.h>
 #include <fs/vfs.h>
 #include <fs/tmpfs.h>
@@ -171,6 +172,38 @@ static volatile int g_cpus_initialized;
         r = file->ops->rw(file, packet, &count);
         if(r < 0 || count != module->size) panic("Failed to write module to tmpfs file (%s)\n", module->name);
         heap_free(packet);
+    }
+
+    vfs_node_t *logo;
+    r = vfs_lookup("/ELOGO   TGA", &logo, &g_vfs_context);
+    if(r == 0) {
+        vfs_node_attr_t *attr = heap_alloc(sizeof(vfs_node_attr_t));
+        r = logo->ops->attr(logo, attr);
+        if(r < 0) {
+            heap_free(attr);
+            goto logo_fail;
+        }
+        void *logo_buf = heap_alloc(attr->file_size);
+        vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
+        packet->rw = VFS_RW_READ;
+        packet->offset = 0;
+        packet->size = attr->file_size;
+        packet->buffer = logo_buf;
+        size_t read_count;
+        r = logo->ops->rw(logo, packet, &read_count);
+        if(r < 0 || read_count < attr->file_size) {
+            heap_free(attr);
+            heap_free(logo_buf);
+            heap_free(packet);
+            goto logo_fail;
+        }
+        tgarender_render(&g_fb_context, logo_buf, g_fb_context.width - 115, 0);
+        heap_free(attr);
+        heap_free(logo_buf);
+        heap_free(packet);
+    } else {
+        logo_fail:
+        kprintf("WARNING: Failed to load logo\n");
     }
 
     g_cpus_initialized = 0;
