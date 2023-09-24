@@ -697,8 +697,8 @@ static void command_handler(char *input) {
 
 void istyx_early_initialize(draw_context_t *draw_context) {
     g_ctx = draw_context;
-    g_bg = draw_color(20, 20, 25);
-    g_fg = draw_color(230, 230, 230);
+    g_bg = draw_color(10, 10, 13);
+    g_fg = draw_color(255, 255, 255);
     g_cg = draw_color(252, 186, 3);
     clear();
     kprintf(" _____ _         _           _____ _____ \n");

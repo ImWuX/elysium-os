@@ -1,17 +1,37 @@
 #include "vfs.h"
 #include <string.h>
+#include <klibc/errno.h>
 #include <lib/assert.h>
 #include <lib/panic.h>
 #include <memory/heap.h>
 
-list_t g_vfs_all = LIST_INIT;
+list_t g_vfs_all = LIST_INIT_CIRCULAR(g_vfs_all);
 
 int vfs_mount(vfs_ops_t *vfs_ops, char *path, void *data) {
     vfs_t *vfs = heap_alloc(sizeof(vfs_t));
+    memset(vfs, 0, sizeof(vfs_t));
     vfs->ops = vfs_ops;
     vfs_ops->mount(vfs, data);
-    // TODO: Actually mount on the path
-    list_insert_behind(&g_vfs_all, &vfs->list);
+    if(list_is_empty(&g_vfs_all)) {
+        if(path) {
+            heap_free(vfs);
+            return -ENOENT;
+        }
+    } else {
+        vfs_node_t *node;
+        int r = vfs_lookup(path, &node, 0);
+        if(r < 0) {
+            heap_free(vfs);
+            return r;
+        }
+        if(node->vfs_mounted) {
+            heap_free(vfs);
+            return -EBUSY;
+        }
+        node->vfs_mounted = vfs;
+        vfs->mount_node = node;
+    }
+    list_insert_before(&g_vfs_all, &vfs->list);
     return 0;
 }
 
@@ -19,12 +39,17 @@ int vfs_lookup(char *path, vfs_node_t **out, vfs_context_t *context) {
     ASSERT(g_vfs_all.next);
     vfs_t *vfs = LIST_GET(g_vfs_all.next, vfs_t, list);
 
-    vfs_node_t *current_node = context->cwd;
+    vfs_node_t *current_node;
     int comp_start = 0, comp_end = 0;
     if(path[comp_end] == '/') {
         int r = vfs->ops->root(vfs, &current_node);
         if(r < 0) return r;
         comp_end++, comp_start++;
+    } else {
+        if(context)
+            current_node = context->cwd;
+        else
+            return -ENOENT;
     }
     do {
         switch(path[comp_end]) {
@@ -45,6 +70,9 @@ int vfs_lookup(char *path, vfs_node_t **out, vfs_context_t *context) {
                 if(r < 0) return r;
                 break;
         }
+        if(!current_node->vfs_mounted) continue;
+        int r = current_node->vfs_mounted->ops->root(current_node->vfs_mounted, &current_node);
+        if(r < 0) return r;
     } while(path[comp_end++]);
     *out = current_node;
     return 0;
