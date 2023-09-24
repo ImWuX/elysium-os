@@ -21,6 +21,7 @@ typedef struct {
 
 typedef struct vfs_node {
     vfs_t *vfs;
+    vfs_t *vfs_mounted;
     struct vfs_node_ops *ops;
     vfs_node_type_t type;
     void *data;
@@ -139,7 +140,7 @@ int vfs_mount(vfs_ops_t *vfs_ops, char *path, void *data);
  *
  * @param path Path
  * @param out Node
- * @param context VFS context
+ * @param context VFS context or null
  * @return 0 on success, -errno on failure
  */
 int vfs_lookup(char *path, vfs_node_t **out, vfs_context_t *context);

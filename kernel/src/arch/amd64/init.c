@@ -154,14 +154,20 @@ static volatile int g_cpus_initialized;
 
     sched_init();
 
-    vfs_mount(&g_tmpfs_ops, "/", (void *) 0);
-    int r = LIST_GET(g_vfs_all.next, vfs_t, list)->ops->root(LIST_GET(g_vfs_all.next, vfs_t, list), &g_vfs_context.cwd);
+    int r = vfs_mount(&g_tmpfs_ops, (char *) 0, (void *) 0);
+    if(r < 0) panic("Failed to mount tmpfs (%i)\n", r);
+
+    vfs_node_t *modules_dir;
+    r = vfs_mkdir("/", "modules", &modules_dir, 0);
+    if(r < 0) panic("Failed to create /modules directory (%i)\n", r);
+    vfs_mount(&g_tmpfs_ops, "/modules", (void *) 0);
+    if(r < 0) panic("Failed to mount /modules (%i)\n", r);
+    r = LIST_GET(g_vfs_all.next, vfs_t, list)->ops->root(LIST_GET(g_vfs_all.next, vfs_t, list), &g_vfs_context.cwd);
     if(r < 0) panic("Could not retrieve VFS root (%i)\n", r);
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
-
         vfs_node_t *file;
-        int r = vfs_create("/", module->name, &file, &g_vfs_context);
+        int r = vfs_create("/modules", module->name, &file, &g_vfs_context);
         if(r < 0) continue;
         vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
         packet->rw = VFS_RW_WRITE;
@@ -175,7 +181,7 @@ static volatile int g_cpus_initialized;
     }
 
     vfs_node_t *logo;
-    r = vfs_lookup("/ELOGO   TGA", &logo, &g_vfs_context);
+    r = vfs_lookup("/modules/ELOGO   TGA", &logo, &g_vfs_context);
     if(r == 0) {
         vfs_node_attr_t *attr = heap_alloc(sizeof(vfs_node_attr_t));
         r = logo->ops->attr(logo, attr);
@@ -197,7 +203,7 @@ static volatile int g_cpus_initialized;
             heap_free(packet);
             goto logo_fail;
         }
-        tgarender_render(&g_fb_context, logo_buf, g_fb_context.width - 115, 0);
+        tgarender_render(&g_fb_context, logo_buf, g_fb_context.width - 165, 0);
         heap_free(attr);
         heap_free(logo_buf);
         heap_free(packet);
