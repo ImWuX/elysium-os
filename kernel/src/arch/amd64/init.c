@@ -32,7 +32,6 @@
 #include <arch/amd64/drivers/ps2mouse.h>
 #include <arch/amd64/drivers/pit.h>
 #include <arch/amd64/sched/syscall.h>
-#include <istyx.h>
 
 #define LAPIC_CALIBRATION_TICKS 0x10000
 
@@ -92,7 +91,6 @@ static volatile int g_cpus_initialized;
     g_fb_context.width = boot_info->framebuffer.width;
     g_fb_context.height = boot_info->framebuffer.height;
     g_fb_context.pitch = boot_info->framebuffer.pitch;
-    istyx_early_initialize(&g_fb_context);
 
     ASSERT(boot_info->hhdm_base >= ARCH_HHDM_START);
     ASSERT(boot_info->hhdm_base + boot_info->hhdm_size < ARCH_HHDM_END);
@@ -147,14 +145,14 @@ static volatile int g_cpus_initialized;
 
     acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
     if(fadt && (acpi_revision() == 0 || (fadt->boot_architecture_flags & (1 << 1)))) {
-        ps2kb_set_handler((ps2kb_handler_t) istyx_simple_input_kb);
-        // ps2mouse_set_handler((ps2mouse_handler_t) istyx_simple_input_mouse);
+        // ps2kb_set_handler((ps2kb_handler_t) );
+        // ps2mouse_set_handler((ps2mouse_handler_t) );
         ps2_initialize();
     }
 
     sched_init();
 
-    int r = vfs_mount(&g_tmpfs_ops, (char *) 0, (void *) 0);
+    int r = vfs_mount(&g_tmpfs_ops, 0, 0);
     if(r < 0) panic("Failed to mount tmpfs (%i)\n", r);
 
     vfs_node_t *modules_dir;
@@ -162,12 +160,10 @@ static volatile int g_cpus_initialized;
     if(r < 0) panic("Failed to create /modules directory (%i)\n", r);
     vfs_mount(&g_tmpfs_ops, "/modules", (void *) 0);
     if(r < 0) panic("Failed to mount /modules (%i)\n", r);
-    r = LIST_GET(g_vfs_all.next, vfs_t, list)->ops->root(LIST_GET(g_vfs_all.next, vfs_t, list), &g_vfs_context.cwd);
-    if(r < 0) panic("Could not retrieve VFS root (%i)\n", r);
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
         vfs_node_t *file;
-        int r = vfs_create("/modules", module->name, &file, &g_vfs_context);
+        int r = vfs_create("/modules", module->name, &file, 0);
         if(r < 0) continue;
         vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
         packet->rw = VFS_RW_WRITE;
@@ -181,7 +177,7 @@ static volatile int g_cpus_initialized;
     }
 
     vfs_node_t *logo;
-    r = vfs_lookup("/modules/ELOGO   TGA", &logo, &g_vfs_context);
+    r = vfs_lookup("/modules/ELOGO   TGA", &logo, 0);
     if(r == 0) {
         vfs_node_attr_t *attr = heap_alloc(sizeof(vfs_node_attr_t));
         r = logo->ops->attr(logo, attr);

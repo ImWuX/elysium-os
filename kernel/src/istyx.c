@@ -3,6 +3,7 @@
 #include <lib/kprint.h>
 #include <lib/panic.h>
 #include <lib/list.h>
+#include <lib/elf.h>
 #include <graphics/basicfont.h>
 #include <memory/vmm.h>
 #include <memory/heap.h>
@@ -274,19 +275,19 @@ static void command_exec(arg_t *args) {
         kprintf("Could not find file (%i)\n", r);
         return;
     }
-    vfs_node_attr_t *attributes = heap_alloc(sizeof(vfs_node_attr_t));
-    r = file->ops->attr(file, attributes);
+    vfs_node_attr_t attributes;
+    r = file->ops->attr(file, &attributes);
     if(r < 0) {
         kprintf("Could not read file attributes (%i)\n", r);
-        goto free_attr;
+        return;
     }
-    if(attributes->file_size == 0) {
+    if(attributes.file_size == 0) {
         kprintf("File size is zero\n");
-        goto free_attr;
+        return;
     }
-    size_t file_size_pg = (attributes->file_size + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE;
+    size_t file_size_pg = (attributes.file_size + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE;
 
-    size_t total_bytes = attributes->file_size;
+    size_t total_bytes = attributes.file_size;
     vmm_address_space_t *as = arch_vmm_fork(&g_kernel_address_space);
     for(size_t j = 0; j < file_size_pg; j++) {
         pmm_page_t *page = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
@@ -296,7 +297,7 @@ static void command_exec(arg_t *args) {
         vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
         packet->rw = VFS_RW_READ;
         packet->size = bytes;
-        packet->offset = attributes->file_size - total_bytes;
+        packet->offset = attributes.file_size - total_bytes;
         packet->buffer = (void *) HHDM(page->paddr);
         size_t read_count;
         r = file->ops->rw(file, packet, &read_count);
@@ -316,10 +317,6 @@ static void command_exec(arg_t *args) {
     process_t *proc = sched_process_create(as);
     thread_t *thread = arch_sched_thread_create_user(proc, 0, stack & ~0xF);
     sched_thread_schedule(thread);
-    return;
-
-    free_attr:
-    heap_free(attributes);
 }
 
 static void command_mkdir(arg_t *args) {
@@ -377,20 +374,20 @@ static void command_cat(arg_t *args) {
         kprintf("Could not find file (%i)\n", r);
         return;
     }
-    vfs_node_attr_t *attributes = heap_alloc(sizeof(vfs_node_attr_t));
-    r = file->ops->attr(file, attributes);
+    vfs_node_attr_t attributes;
+    r = file->ops->attr(file, &attributes);
     if(r < 0) {
         kprintf("Could not read file attributes (%i)\n", r);
-        goto free_attr;
+        return;
     }
-    if(attributes->file_size == 0) {
+    if(attributes.file_size == 0) {
         kprintf("File size is zero\n");
-        goto free_attr;
+        return;
     }
-    void *buffer = heap_alloc(attributes->file_size);
+    void *buffer = heap_alloc(attributes.file_size);
     vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
     packet->rw = VFS_RW_READ;
-    packet->size = attributes->file_size;
+    packet->size = attributes.file_size;
     packet->offset = 0;
     packet->buffer = buffer;
     size_t read_count;
@@ -399,14 +396,12 @@ static void command_cat(arg_t *args) {
         kprintf("Failed to read file (%i)\n", r);
         goto free_all;
     }
-    if(read_count < attributes->file_size) kprintf("WARNING: Only read %lu/%lu bytes\n", read_count, attributes->file_size);
+    if(read_count < attributes.file_size) kprintf("WARNING: Only read %lu/%lu bytes\n", read_count, attributes.file_size);
     for(size_t i = 0; i < read_count; i++) putchar(((char *) buffer)[i]);
 
     free_all:
     heap_free(buffer);
     heap_free(packet);
-    free_attr:
-    heap_free(attributes);
 }
 
 static void command_append(arg_t *args) {
@@ -416,16 +411,16 @@ static void command_append(arg_t *args) {
         kprintf("Could not find file (%i)\n", r);
         return;
     }
-    vfs_node_attr_t *attributes = heap_alloc(sizeof(vfs_node_attr_t));
-    r = file->ops->attr(file, attributes);
+    vfs_node_attr_t attributes;
+    r = file->ops->attr(file, &attributes);
     if(r < 0) {
         kprintf("Could not read file attributes (%i)\n", r);
-        goto free_attr;
+        return;
     }
     vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
     packet->rw = VFS_RW_WRITE;
     packet->size = strlen(args[1].string);
-    packet->offset = attributes->file_size;
+    packet->offset = attributes.file_size;
     packet->buffer = args[1].string;
     size_t write_count;
     r = file->ops->rw(file, packet, &write_count);
@@ -438,8 +433,32 @@ static void command_append(arg_t *args) {
 
     free_all:
     heap_free(packet);
-    free_attr:
-    heap_free(attributes);
+}
+
+static void command_exec2(arg_t *args) {
+    vfs_node_t *file;
+    int r = vfs_lookup(args[0].string, &file, &g_vfs_context);
+    if(r < 0) {
+        kprintf("Could not find file (%i)\n", r);
+        return;
+    }
+
+    uintptr_t entry;
+    vmm_address_space_t *as = arch_vmm_fork(&g_kernel_address_space);
+    r = elf_load(file, as, &entry);
+    if(r < 0) {
+        kprintf("Failed to load process image (%i)\n", r);
+        return;
+    }
+
+    uintptr_t stack = arch_vmm_highest_userspace_addr();
+    for(size_t j = 0; j < 8; j++) {
+        arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * j, pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
+    }
+
+    process_t *proc = sched_process_create(as);
+    thread_t *thread = arch_sched_thread_create_user(proc, entry, stack & ~0xF);
+    sched_thread_schedule(thread);
 }
 
 static command_t g_command_registry[] = {
@@ -583,6 +602,15 @@ static command_t g_command_registry[] = {
             { .name = "text", .type = ARG_STRING }
         },
         .argc = 2
+    },
+    {
+        .name = "exec2",
+        .description = "Execute a file",
+        .func = &command_exec2,
+        .args = (command_arg_t[]) {
+            { .name = "path", .type = ARG_STRING }
+        },
+        .argc = 1
     }
 };
 
