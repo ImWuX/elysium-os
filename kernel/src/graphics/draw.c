@@ -32,7 +32,7 @@ void draw_char(draw_context_t *ctx, int x, int y, char c, draw_color_t color) {
         h += y;
         y = 0;
     }
-    uint8_t *font_char = &g_basicfont[c * 16];
+    uint8_t *font_char = g_basicfont[(uint8_t) c];
 
     uint64_t offset = x + y * ctx->pitch;
     for(uint16_t yy = 0; yy < h && y + yy < ctx->height; yy++) {
