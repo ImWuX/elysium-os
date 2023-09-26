@@ -129,7 +129,7 @@ extern list_t g_vfs_all;
  * @brief Mount a VFS on path
  *
  * @param vfs VFS
- * @param path Mount path
+ * @param path Mount path (null for the initial fs)
  * @param data Private VFS data
  * @return 0 on success, -errno on failure
  */
@@ -151,7 +151,7 @@ int vfs_lookup(char *path, vfs_node_t **out, vfs_context_t *context);
  * @param path Path
  * @param packet RW packet
  * @param rw_count Bytes read/written (out)
- * @param context VFS context
+ * @param context VFS context or null
  * @return 0 on success, -errno on failure
  */
 int vfs_rw(char *path, vfs_rw_t *packet, size_t *rw_count, vfs_context_t *context);
@@ -162,7 +162,7 @@ int vfs_rw(char *path, vfs_rw_t *packet, size_t *rw_count, vfs_context_t *contex
  * @param path Path
  * @param name Name of the new directory
  * @param out New node (Directory)
- * @param context VFS context
+ * @param context VFS context or null
  * @return 0 on success, -errno on failure
  */
 int vfs_mkdir(char *path, const char *name, vfs_node_t **out, vfs_context_t *context);
@@ -173,7 +173,7 @@ int vfs_mkdir(char *path, const char *name, vfs_node_t **out, vfs_context_t *con
  * @param path Path
  * @param name Name of the new file
  * @param out New node (File)
- * @param context VFS context
+ * @param context VFS context or null
  * @return 0 on success, -errno on failure
  */
 int vfs_create(char *path, const char *name, vfs_node_t **out, vfs_context_t *context);
