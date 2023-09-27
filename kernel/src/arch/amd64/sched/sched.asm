@@ -29,7 +29,7 @@ sched_userspace_init:
     cli                                                     ; Clear interrupts as we are switching to a user stack
     swapgs
 
-    pop rax                                                 ; Pop stack pointer into r11 (used by sysret)
+    pop rax                                                 ; Pop stack pointer
     mov rbp, rax
     mov rsp, rax
 
