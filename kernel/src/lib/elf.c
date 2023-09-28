@@ -108,38 +108,39 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, uintptr_t *entry) {
     if(header->machine != MACHINE_386) FAIL("Only the i386:x86-64 instruction-set is supported");
 #endif
     if(header->type != TYPE_EXECUTABLE) FAIL("Not an executable");
+    if(header->phentsize < sizeof(elf_phdr_t)) FAIL("Program headers are too small");
 
-    elf_phdr_t *phdr = heap_alloc(sizeof(elf_phdr_t));
+    elf_phdr_t *phdr = heap_alloc(header->phentsize);
     #undef FAIL_GOTO
     #define FAIL_GOTO fail_free_all
     for(int i = 0; i < header->phnum; i++) {
-        rw = (vfs_rw_t) { .rw = VFS_RW_READ, .size = sizeof(elf_phdr_t), .offset = header->phoff + (i * sizeof(elf_phdr_t)), .buffer = (void *) phdr };
+        rw = (vfs_rw_t) { .rw = VFS_RW_READ, .size = header->phentsize, .offset = header->phoff + (i * header->phentsize), .buffer = (void *) phdr };
         r = node->ops->rw(node, &rw, &read_count);
-        if(r < 0 || read_count != sizeof(elf_phdr_t)) FAIL("Failed to read program header");
-
-        kprintf("PHDR { Type: %u, Offset: %#lx, Filesz: %#lx, Memsz: %#lx, Vaddr: %#lx, Align: %#lx }\n", phdr->type, phdr->offset, phdr->filesz, phdr->memsz, phdr->vaddr, phdr->align);
+        if(r < 0 || read_count != header->phentsize) FAIL("Failed to read program header");
 
         switch(phdr->type) {
             case PT_NULL: break;
             case PT_LOAD:
                 if(phdr->filesz > phdr->memsz) FAIL("Invalid program header (filesz > memsz)");
-                if(phdr->vaddr & (ARCH_PAGE_SIZE - 1)) FAIL("Invalid program header (misaligned)");
-                size_t pg_count = (phdr->memsz + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE;
 
                 uint64_t flags = VMM_FLAGS_USER;
                 if(phdr->flags & PF_W) flags |= VMM_FLAGS_WRITE;
                 if(phdr->flags & PF_X) flags |= VMM_FLAGS_EXEC;
 
-                for(size_t j = 0; j < pg_count; j++) {
+                for(uintptr_t count = 0; count < phdr->memsz;) {
+                    uintptr_t alignment_offset = (phdr->vaddr + count) & (ARCH_PAGE_SIZE - 1);
                     pmm_page_t *page = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO);
-                    if(phdr->filesz > j * ARCH_PAGE_SIZE) {
-                        size_t read_sz = phdr->filesz - j * ARCH_PAGE_SIZE;
-                        if(read_sz > ARCH_PAGE_SIZE) read_sz = ARCH_PAGE_SIZE;
-                        rw = (vfs_rw_t) { .rw = VFS_RW_READ, .size = read_sz, .offset = phdr->offset + j * ARCH_PAGE_SIZE, .buffer = (void *) HHDM(page->paddr) };
+
+                    if(phdr->filesz > count) {
+                        size_t read_sz = phdr->filesz - count;
+                        if(read_sz > ARCH_PAGE_SIZE - alignment_offset) read_sz = ARCH_PAGE_SIZE - alignment_offset;
+                        rw = (vfs_rw_t) { .rw = VFS_RW_READ, .size = read_sz, .offset = phdr->offset + count, .buffer = (void *) HHDM(page->paddr + alignment_offset) };
                         r = node->ops->rw(node, &rw, &read_count);
                         if(r < 0 || read_count != read_sz) FAIL("Failed to load program header");
                     }
-                    arch_vmm_map(as, phdr->vaddr + i * ARCH_PAGE_SIZE, page->paddr, flags);
+
+                    arch_vmm_map(as, phdr->vaddr + count - alignment_offset, page->paddr, flags);
+                    count += ARCH_PAGE_SIZE - alignment_offset;
                 }
                 break;
             default: FAIL("Unsupported program header type");

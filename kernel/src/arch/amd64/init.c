@@ -5,6 +5,7 @@
 #include <lib/panic.h>
 #include <lib/assert.h>
 #include <lib/kprint.h>
+#include <lib/elf.h>
 #include <sys/dev.h>
 #include <sys/cpu.h>
 #include <sched/sched.h>
@@ -36,7 +37,7 @@
 #define LAPIC_CALIBRATION_TICKS 0x10000
 
 uintptr_t g_hhdm_address;
-static draw_context_t g_fb_context;
+draw_context_t g_fb_context;
 static volatile int g_cpus_initialized;
 
 [[noreturn]] static void init_common() {
@@ -154,7 +155,6 @@ static volatile int g_cpus_initialized;
 
     int r = vfs_mount(&g_tmpfs_ops, 0, 0);
     if(r < 0) panic("Failed to mount tmpfs (%i)\n", r);
-
     vfs_node_t *modules_dir;
     r = vfs_mkdir("/", "modules", &modules_dir, 0);
     if(r < 0) panic("Failed to create /modules directory (%i)\n", r);
@@ -163,50 +163,26 @@ static volatile int g_cpus_initialized;
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
         vfs_node_t *file;
-        int r = vfs_create("/modules", module->name, &file, 0);
+        r = vfs_create("/modules", module->name, &file, 0);
         if(r < 0) continue;
-        vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
-        packet->rw = VFS_RW_WRITE;
-        packet->offset = 0;
-        packet->size = module->size;
-        packet->buffer = (void *) HHDM(module->paddr);
-        size_t count;
-        r = file->ops->rw(file, packet, &count);
-        if(r < 0 || count != module->size) panic("Failed to write module to tmpfs file (%s)\n", module->name);
-        heap_free(packet);
+        vfs_rw_t rw = { .rw = VFS_RW_WRITE, .size = module->size, .buffer = (void *) HHDM(module->paddr) };
+        size_t write_count;
+        r = file->ops->rw(file, &rw, &write_count);
+        if(r < 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)\n", module->name);
     }
 
-    vfs_node_t *logo;
-    r = vfs_lookup("/modules/ELOGO   TGA", &logo, 0);
-    if(r == 0) {
-        vfs_node_attr_t *attr = heap_alloc(sizeof(vfs_node_attr_t));
-        r = logo->ops->attr(logo, attr);
-        if(r < 0) {
-            heap_free(attr);
-            goto logo_fail;
-        }
-        void *logo_buf = heap_alloc(attr->file_size);
-        vfs_rw_t *packet = heap_alloc(sizeof(vfs_rw_t));
-        packet->rw = VFS_RW_READ;
-        packet->offset = 0;
-        packet->size = attr->file_size;
-        packet->buffer = logo_buf;
-        size_t read_count;
-        r = logo->ops->rw(logo, packet, &read_count);
-        if(r < 0 || read_count < attr->file_size) {
-            heap_free(attr);
-            heap_free(logo_buf);
-            heap_free(packet);
-            goto logo_fail;
-        }
-        tgarender_render(&g_fb_context, logo_buf, g_fb_context.width - 165, 0);
-        heap_free(attr);
-        heap_free(logo_buf);
-        heap_free(packet);
-    } else {
-        logo_fail:
-        kprintf("WARNING: Failed to load logo\n");
-    }
+    vmm_address_space_t *as = arch_vmm_fork(&g_kernel_address_space);
+    vfs_node_t *startup_exec;
+    r = vfs_lookup("/modules/STYX    ELF", &startup_exec, 0);
+    if(r < 0) panic("Could not lookup the startup executable (%i)\n", r);
+    uintptr_t entry;
+    bool elf_r = elf_load(startup_exec, as, &entry);
+    if(elf_r) panic("Could not load the startup executable\n");
+    uintptr_t stack = arch_vmm_highest_userspace_addr();
+    for(size_t j = 0; j < 8; j++) arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * j, pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
+    process_t *proc = sched_process_create(as);
+    thread_t *thread = arch_sched_thread_create_user(proc, entry, stack & ~0xF);
+    sched_thread_schedule(thread);
 
     g_cpus_initialized = 0;
     for(int i = 0; i < boot_info->cpu_count; i++) {

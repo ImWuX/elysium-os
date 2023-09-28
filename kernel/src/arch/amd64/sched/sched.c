@@ -40,7 +40,7 @@ typedef struct {
         uint64_t rbp;
         uint64_t rip;
     } invalid_stack_frame;
-} init_stack_kernel_t;
+} __attribute__((packed)) init_stack_kernel_t;
 
 typedef struct {
     uint64_t r15, r14, r13, r12, rbp, rbx;
@@ -48,7 +48,7 @@ typedef struct {
     void (* thread_init_user)();
     void (* entry)();
     uint64_t user_stack;
-} init_stack_user_t;
+} __attribute__((packed)) init_stack_user_t;
 
 static_assert(offsetof(arch_thread_t, rsp) == 8, "rsp in thread_t changed. Update arch/amd64/sched/sched.asm::THREAD_RSP_OFFSET");
 static_assert(offsetof(arch_thread_t, syscall_rsp) == 16, "syscall_rsp in thread_t changed. Update arch/amd64/sched/syscall.asm::SYSCALL_RSP_OFFSET");
@@ -82,10 +82,6 @@ static void kernel_thread_init() {
     ASSERTC(false, "Unreachable!");
 }
 
-static void set_current_thread(arch_thread_t *thread) {
-    msr_write(MSR_GS_BASE, (uint64_t) thread);
-}
-
 static void sched_switch(arch_thread_t *this, arch_thread_t *next) {
     if(next->common.proc) {
         arch_vmm_load_address_space(next->common.proc->address_space);
@@ -94,22 +90,13 @@ static void sched_switch(arch_thread_t *this, arch_thread_t *next) {
     }
 
     next->common.cpu = this->common.cpu;
-    set_current_thread(next);
+    msr_write(MSR_GS_BASE, (uint64_t) next);
     this->common.cpu = 0;
 
     tss_set_rsp0(ARCH_CPU(next->common.cpu)->tss, next->kernel_stack.base);
 
     arch_thread_t *prev = sched_context_switch(this, next);
     sched_thread_drop(&prev->common);
-}
-
-static process_t *create_process(vmm_address_space_t *address_space) {
-    process_t *proc = heap_alloc(sizeof(process_t));
-    proc->id = __atomic_fetch_add(&g_next_pid, 1, __ATOMIC_RELAXED);
-    proc->lock = SLOCK_INIT;
-    proc->threads = LIST_INIT;
-    proc->address_space = address_space;
-    return proc;
 }
 
 /** @warning Assumes you have already acquired the lock */
@@ -130,23 +117,32 @@ static arch_thread_t *create_thread(process_t *proc, stack_t kernel_stack, uintp
 }
 
 /** @warning Thread should not be on the scheduler queue when this is called */
-static void destroy_thread(arch_thread_t *thread) {
+void arch_sched_thread_destroy(thread_t *thread) {
     slock_acquire(&g_sched_threads_all_lock);
-    list_delete(&thread->common.list_all);
+    list_delete(&thread->list_all);
     slock_release(&g_sched_threads_all_lock);
-    if(thread->common.proc) {
-        slock_acquire(&thread->common.proc->lock);
-        list_delete(&thread->common.list_proc);
-        if(list_is_empty(&thread->common.proc->threads)) {
-            destroy_process(thread->common.proc);
+    if(thread->proc) {
+        slock_acquire(&thread->proc->lock);
+        list_delete(&thread->list_proc);
+        if(list_is_empty(&thread->proc->threads)) {
+            destroy_process(thread->proc);
         } else {
-            slock_release(&thread->common.proc->lock);
+            slock_release(&thread->proc->lock);
         }
     }
-    heap_free(thread);
+    heap_free(ARCH_THREAD(thread));
 }
 
-static arch_thread_t *create_kernel_thread(void (* func)()) {
+process_t *arch_sched_process_create(vmm_address_space_t *address_space) {
+    process_t *proc = heap_alloc(sizeof(process_t));
+    proc->id = __atomic_fetch_add(&g_next_pid, 1, __ATOMIC_RELAXED);
+    proc->lock = SLOCK_INIT;
+    proc->threads = LIST_INIT;
+    proc->address_space = address_space;
+    return proc;
+}
+
+thread_t *arch_sched_thread_create_kernel(void (* func)()) {
     pmm_page_t *kernel_stack_page = pmm_alloc_pages(KERNEL_STACK_SIZE_PG, PMM_GENERAL | PMM_AF_ZERO);
     stack_t kernel_stack = {
         .base = HHDM(kernel_stack_page->paddr + KERNEL_STACK_SIZE_PG * ARCH_PAGE_SIZE),
@@ -162,10 +158,10 @@ static arch_thread_t *create_kernel_thread(void (* func)()) {
     slock_acquire(&g_sched_threads_all_lock);
     list_insert_behind(&g_sched_threads_all, &thread->common.list_all);
     slock_release(&g_sched_threads_all_lock);
-    return thread;
+    return &thread->common;
 }
 
-static arch_thread_t *create_user_thread(process_t *proc, uintptr_t ip, uintptr_t sp) { // TODO: This is very much a test for userspace threads at this point
+thread_t *arch_sched_thread_create_user(process_t *proc, uintptr_t ip, uintptr_t sp) {
     pmm_page_t *kernel_stack_page = pmm_alloc_pages(KERNEL_STACK_SIZE_PG, PMM_GENERAL | PMM_AF_ZERO);
     stack_t kernel_stack = {
         .base = HHDM(kernel_stack_page->paddr + KERNEL_STACK_SIZE_PG * ARCH_PAGE_SIZE),
@@ -185,23 +181,7 @@ static arch_thread_t *create_user_thread(process_t *proc, uintptr_t ip, uintptr_
     slock_acquire(&proc->lock);
     list_insert_behind(&proc->threads, &thread->common.list_proc);
     slock_release(&proc->lock);
-    return thread;
-}
-
-void arch_sched_thread_destroy(thread_t *thread) {
-    destroy_thread(ARCH_THREAD(thread));
-}
-
-process_t *arch_sched_process_create(vmm_address_space_t *address_space) {
-    return create_process(address_space);
-}
-
-thread_t *arch_sched_thread_create_kernel(void (* func)()) {
-    return &create_kernel_thread(func)->common;
-}
-
-thread_t *arch_sched_thread_create_user(process_t *proc, uintptr_t ip, uintptr_t sp) {
-    return &create_user_thread(proc, ip, sp)->common;
+    return &thread->common;
 }
 
 thread_t *arch_sched_thread_current() {
@@ -232,7 +212,7 @@ static void sched_entry([[maybe_unused]] interrupt_frame_t *frame) {
 }
 
 [[noreturn]] void sched_init_cpu(arch_cpu_t *cpu) {
-    arch_thread_t *idle_thread = create_kernel_thread(&sched_idle);
+    arch_thread_t *idle_thread = ARCH_THREAD(arch_sched_thread_create_kernel(&sched_idle));
     idle_thread->common.id = 0;
     cpu->common.idle_thread = &idle_thread->common;
 
