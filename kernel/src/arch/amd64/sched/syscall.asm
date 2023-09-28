@@ -3,11 +3,13 @@ KERNEL_STACK_BASE_OFFSET equ 24
 
 extern syscall_exit
 extern syscall_write
+extern syscall_fb
 
 section .data
 syscall_table:
     dq syscall_exit         ; 0
     dq syscall_write        ; 1
+    dq syscall_fb           ; 2
 .length: dq ($ - syscall_table) / 8
 
 section .text
@@ -41,8 +43,7 @@ syscall_entry:
     jge .invalid_syscall
 
     mov rdi, rbx    ; Argument 0
-    mov rsi, rcx    ; Argument 1
-                    ; Argument 2 is already in rdx
+    mov rsi, rdx    ; Argument 1
     call [syscall_table + rax * 8]
 
     .invalid_syscall:

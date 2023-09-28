@@ -30,12 +30,9 @@ sched_userspace_init:
     swapgs
 
     pop rax                                                 ; Pop stack pointer
-    mov rbp, rax
     mov rsp, rax
 
-    push qword 0                                            ; TODO: Possibly dont push the invalid stack frame. Maybe this is up to the app?
-    push qword 0
-
+    xor rbp, rbp
     xor rax, rax
     xor rbx, rbx
 	xor rdx, rdx
