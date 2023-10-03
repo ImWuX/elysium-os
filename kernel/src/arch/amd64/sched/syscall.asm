@@ -4,12 +4,14 @@ KERNEL_STACK_BASE_OFFSET equ 24
 extern syscall_exit
 extern syscall_write
 extern syscall_fb
+extern syscall_kbin
 
 section .data
 syscall_table:
     dq syscall_exit         ; 0
     dq syscall_write        ; 1
-    dq syscall_fb           ; 2
+    dq syscall_fb           ; 2 (Temporary)
+    dq syscall_kbin         ; 3 (Temporary)
 .length: dq ($ - syscall_table) / 8
 
 section .text

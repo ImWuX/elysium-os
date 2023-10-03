@@ -28,6 +28,7 @@ typedef struct arch_thread {
     uintptr_t rsp;
     uintptr_t syscall_rsp;
     stack_t kernel_stack;
+    void *fpu_area;
     thread_t common;
 } arch_thread_t;
 
@@ -56,6 +57,11 @@ static_assert(offsetof(arch_thread_t, kernel_stack) + offsetof(stack_t, base) ==
 
 extern arch_thread_t *sched_context_switch(arch_thread_t *this, arch_thread_t *next);
 extern void sched_userspace_init();
+
+/* TODO: FPU values originate from init.c (This behavior is going to change) */
+extern uint32_t g_fpu_area_size;
+extern void (* g_fpu_save)(void *area);
+extern void (* g_fpu_restore)(void *area);
 
 static long g_next_tid = 1;
 static long g_next_pid = 1;
@@ -95,6 +101,9 @@ static void sched_switch(arch_thread_t *this, arch_thread_t *next) {
 
     tss_set_rsp0(ARCH_CPU(next->common.cpu)->tss, next->kernel_stack.base);
 
+    if(this->fpu_area) g_fpu_save(this->fpu_area);
+    g_fpu_restore(next->fpu_area);
+
     arch_thread_t *prev = sched_context_switch(this, next);
     sched_thread_drop(&prev->common);
 }
@@ -113,6 +122,8 @@ static arch_thread_t *create_thread(process_t *proc, stack_t kernel_stack, uintp
     thread->common.proc = proc;
     thread->rsp = rsp;
     thread->kernel_stack = kernel_stack;
+    thread->fpu_area = heap_alloc_align(g_fpu_area_size, 64);
+    memset(thread->fpu_area, 0, g_fpu_area_size);
     return thread;
 }
 

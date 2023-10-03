@@ -56,6 +56,7 @@ static tmpfs_node_t *create_tnode(tmpfs_node_t *parent, vfs_t *vfs, bool is_dir,
     }
 
     vfs_node_t *node = heap_alloc(sizeof(vfs_node_t));
+    memset(node, 0, sizeof(vfs_node_t));
     node->vfs = vfs;
     node->type = is_dir ? VFS_NODE_TYPE_DIR : VFS_NODE_TYPE_FILE;
     node->data = (void *) tnode;

@@ -74,6 +74,7 @@ case $SIM in
         qemu_args=()
         qemu_args+=(-m 256M)
         qemu_args+=(-machine q35)
+        qemu_args+=(-cpu qemu64)
         qemu_args+=(-drive format=raw,file=build/disk.img)
         qemu_args+=(-smp cores=4)
         qemu_args+=(-vnc :0,websocket=on)
@@ -85,7 +86,7 @@ case $SIM in
         qemu_args+=(-monitor stdio)
         qemu_args+=(-no-reboot)
         qemu_args+=(-net none)
-        [[ "$UEFI" -eq 1 ]] && qemu_args+=(-bios /usr/share/ovmf/x64//OVMF.fd)
+        [[ "$UEFI" -eq 1 ]] && qemu_args+=(-bios /usr/share/ovmf/x64/OVMF.fd)
         [[ "$DEBUG" -eq 1 ]] && qemu_args+=(-s -S)
 
         qemu-system-x86_64 "${qemu_args[@]}"
