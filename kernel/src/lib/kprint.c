@@ -107,7 +107,7 @@ int kprintv(const char *format, va_list list) {
 
     bool negative = false;
     unsigned int radix = 0;
-    printf_arg_t value;
+    printf_arg_t value = {0};
     int prefix_offset = 0;
 
     lbl_normal:
@@ -234,8 +234,8 @@ int kprintv(const char *format, va_list list) {
         case PTR:       value.pointer = va_arg(list, void *); break;
         // case DOUBLE:    value.floatp = va_arg(list, double); break;
         // case LDOUBLE:   value.floatp = va_arg(list, long double); break;
-        case INTMAX:    value.floatp = va_arg(list, intmax_t); break;
-        case UINTMAX:   value.floatp = va_arg(list, uintmax_t); break;
+        case INTMAX:    value.integer = va_arg(list, intmax_t); break;
+        case UINTMAX:   value.integer = va_arg(list, uintmax_t); break;
         case SSIZE:
         case SIZE:      value.integer = va_arg(list, size_t); break;
         case UPTRDIFF:

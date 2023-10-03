@@ -29,7 +29,7 @@ typedef union {
     int64_t integer;
     char *string;
     bool boolean;
-} arg_t;
+} arg_def_t;
 
 typedef enum {
     ARG_STRING,
@@ -47,7 +47,7 @@ typedef struct {
 typedef struct {
     char *name;
     char *description;
-    void (*func)(arg_t *);
+    void (*func)(arg_def_t *);
     command_arg_t *args;
     int argc;
 } command_t;
@@ -148,26 +148,26 @@ static bool parse_uint(char *input, uint64_t *out) {
     return false;
 }
 
-static void command_help([[maybe_unused]] arg_t *args);
+static void command_help([[maybe_unused]] arg_def_t *args);
 
-static void command_clear([[maybe_unused]] arg_t *args) {
+static void command_clear([[maybe_unused]] arg_def_t *args) {
     clear();
 }
 
-static void command_pmm_alloc(arg_t *args) {
+static void command_pmm_alloc(arg_def_t *args) {
     if(args[0].integer < 0 || args[0].integer > PMM_MAX_ORDER) return (void) kprintf("Invalid order\n");
     pmm_page_t *page = pmm_alloc(args[0].integer, PMM_GENERAL);
     kprintf("Order %li^2 page(%#lx) >> %#lx\n", args[0].integer, (uint64_t) page, page->paddr);
 }
 
-static void command_pmm_free(arg_t *args) {
+static void command_pmm_free(arg_def_t *args) {
     pmm_page_t *page = (pmm_page_t *) args[0].u_integer;
     uint8_t order = page->order;
     pmm_free(page);
     kprintf("Freed order %u^2 page\n", order);
 }
 
-static void command_heap_alloc(arg_t *args) {
+static void command_heap_alloc(arg_def_t *args) {
     uint64_t block;
     if(args[1].u_integer) {
         block = (uintptr_t) heap_alloc_align(args[0].u_integer, args[1].u_integer);
@@ -177,16 +177,16 @@ static void command_heap_alloc(arg_t *args) {
     kprintf("Address %#lx\n", block);
 }
 
-static void command_heap_free(arg_t *args) {
+static void command_heap_free(arg_def_t *args) {
     heap_free((void *) args[0].u_integer);
 }
 
-static void command_read(arg_t *args) {
+static void command_read(arg_def_t *args) {
     ahci_read(0, args[0].u_integer, args[1].u_integer, (void *) args[2].u_integer);
     kprintf("Read %li sectors starting at %li into %#lx\n", args[1].u_integer, args[0].u_integer, args[2].u_integer);
 }
 
-static void command_meminfo([[maybe_unused]] arg_t *args) {
+static void command_meminfo([[maybe_unused]] arg_def_t *args) {
     for(int i = 0; i < PMM_ZONE_COUNT; i++) {
         pmm_zone_t *zone = &g_pmm_zones[i];
         kprintf("| Zone (%s) %#lx pages\n", zone->name, zone->page_count);
@@ -198,7 +198,7 @@ static void command_meminfo([[maybe_unused]] arg_t *args) {
     }
 }
 
-static void command_pcidev([[maybe_unused]] arg_t *args) {
+static void command_pcidev([[maybe_unused]] arg_def_t *args) {
     list_t *entry;
     LIST_FOREACH(entry, &g_pci_devices) {
         pci_device_t *device = LIST_GET(entry, pci_device_t, list);
@@ -211,7 +211,7 @@ static void command_pcidev([[maybe_unused]] arg_t *args) {
     }
 }
 
-static void command_hexdump(arg_t *args) {
+static void command_hexdump(arg_def_t *args) {
     uint64_t address = args[0].u_integer;
     if(args[2].u_integer) address = HHDM(address);
     bool star = false;
@@ -252,7 +252,7 @@ static void command_hexdump(arg_t *args) {
     }
 }
 
-static void command_schedq([[maybe_unused]] arg_t *args) {
+static void command_schedq([[maybe_unused]] arg_def_t *args) {
     kprintf("Sched Queue: ");
     list_t *entry;
     LIST_FOREACH(entry, &g_sched_threads_queued) {
@@ -268,7 +268,7 @@ static void command_schedq([[maybe_unused]] arg_t *args) {
     kprintf("\n");
 }
 
-static void command_exec(arg_t *args) {
+static void command_exec(arg_def_t *args) {
     vfs_node_t *file;
     int r = vfs_lookup(args[0].string, &file, &g_vfs_context);
     if(r < 0) {
@@ -319,7 +319,7 @@ static void command_exec(arg_t *args) {
     sched_thread_schedule(thread);
 }
 
-static void command_mkdir(arg_t *args) {
+static void command_mkdir(arg_def_t *args) {
     const char *name = heap_alloc(strlen(args[1].string) + 1);
     strcpy((char *) name, args[1].string);
     vfs_node_t *node;
@@ -331,7 +331,7 @@ static void command_mkdir(arg_t *args) {
     kprintf("Created directory %s\n", name);
 }
 
-static void command_create(arg_t *args) {
+static void command_create(arg_def_t *args) {
     const char *name = heap_alloc(strlen(args[1].string) + 1);
     strcpy((char *) name, args[1].string);
     vfs_node_t *node;
@@ -343,7 +343,7 @@ static void command_create(arg_t *args) {
     kprintf("Created file %s\n", name);
 }
 
-static void command_ls(arg_t *args) {
+static void command_ls(arg_def_t *args) {
     char *path = ".";
     if(args[0].string) path = args[0].string;
 
@@ -367,7 +367,7 @@ static void command_ls(arg_t *args) {
     }
 }
 
-static void command_cat(arg_t *args) {
+static void command_cat(arg_def_t *args) {
     vfs_node_t *file;
     int r = vfs_lookup(args[0].string, &file, &g_vfs_context);
     if(r < 0) {
@@ -404,7 +404,7 @@ static void command_cat(arg_t *args) {
     heap_free(packet);
 }
 
-static void command_append(arg_t *args) {
+static void command_append(arg_def_t *args) {
     vfs_node_t *file;
     int r = vfs_lookup(args[0].string, &file, &g_vfs_context);
     if(r < 0) {
@@ -435,7 +435,7 @@ static void command_append(arg_t *args) {
     heap_free(packet);
 }
 
-static void command_exec2(arg_t *args) {
+static void command_exec2(arg_def_t *args) {
     vfs_node_t *file;
     int r = vfs_lookup(args[0].string, &file, &g_vfs_context);
     if(r < 0) {
@@ -614,7 +614,7 @@ static command_t g_command_registry[] = {
     }
 };
 
-static void command_help([[maybe_unused]] arg_t *args) {
+static void command_help([[maybe_unused]] arg_def_t *args) {
     kprintf("Integrated Styx | Help\n");
     for(unsigned int cmd_idx = 0; cmd_idx < sizeof(g_command_registry) / sizeof(command_t); cmd_idx++) {
         kprintf("\t%s", g_command_registry[cmd_idx].name);
@@ -679,14 +679,14 @@ static void command_handler(char *input) {
     }
 
     if(command) {
-        arg_t *args = heap_alloc(sizeof(arg_t) * command->argc);
+        arg_def_t *args = heap_alloc(sizeof(arg_def_t) * command->argc);
         for(int i = 0; i < command->argc; i++) {
             if(i >= constructor_length) {
                 if(!command->args[i].optional) {
                     kprintf("Missing non-optional paramater(s)\n");
                     goto invalid;
                 } else {
-                    memset(&args[i], 0, sizeof(arg_t));
+                    memset(&args[i], 0, sizeof(arg_def_t));
                 }
             } else {
                 switch((command->argc <= i) ? ARG_STRING : command->args[i].type) {
@@ -786,29 +786,33 @@ void istyx_simple_input_mouse(int16_t rel_x, int16_t rel_y, bool buttons[3]) {
 }
 
 int putchar(int c) {
-    switch(c) {
-        case '\t':
-            g_x += (TAB_WIDTH - ((g_x - SCR_INDENT) / BASICFONT_WIDTH) % TAB_WIDTH) * BASICFONT_WIDTH;
-            break;
-        case '\b':
-            g_x -= BASICFONT_WIDTH;
-            if(g_x < SCR_INDENT) g_x = SCR_INDENT;
-            draw_rect(g_ctx, g_x, g_y, BASICFONT_WIDTH, BASICFONT_HEIGHT, g_bg);
-            break;
-        case '\n':
-            g_x = SCR_INDENT;
-            g_y += BASICFONT_HEIGHT;
-            break;
-        default:
-            draw_char(g_ctx, g_x, g_y, (char) c, g_fg);
-            g_x += BASICFONT_WIDTH;
-            break;
-    }
-    if(g_x >= g_ctx->width - SCR_INDENT) {
-        g_x = SCR_INDENT;
-        g_y += BASICFONT_HEIGHT;
-    }
-    if(g_y >= g_ctx->height - SCR_INDENT) {
-    }
+    // switch(c) {
+    //     case '\t':
+    //         g_x += (TAB_WIDTH - ((g_x - SCR_INDENT) / BASICFONT_WIDTH) % TAB_WIDTH) * BASICFONT_WIDTH;
+    //         break;
+    //     case '\b':
+    //         g_x -= BASICFONT_WIDTH;
+    //         if(g_x < SCR_INDENT) g_x = SCR_INDENT;
+    //         draw_rect(g_ctx, g_x, g_y, BASICFONT_WIDTH, BASICFONT_HEIGHT, g_bg);
+    //         break;
+    //     case '\n':
+    //         g_x = SCR_INDENT;
+    //         g_y += BASICFONT_HEIGHT;
+    //         break;
+    //     default:
+    //         draw_char(g_ctx, g_x, g_y, (char) c, g_fg);
+    //         g_x += BASICFONT_WIDTH;
+    //         break;
+    // }
+    // if(g_x >= g_ctx->width - SCR_INDENT) {
+    //     g_x = SCR_INDENT;
+    //     g_y += BASICFONT_HEIGHT;
+    // }
+    // if(g_y >= g_ctx->height - SCR_INDENT) {
+    // }
+    // return (char) c;
+    uint16_t port = 0x3F8;
+    char ch = c;
+    asm volatile("outb %0, %1" : : "a" (ch), "Nd" (port)); // TODO: temporary (this entire file is really)
     return (char) c;
 }
