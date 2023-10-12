@@ -124,6 +124,8 @@ static arch_thread_t *create_thread(process_t *proc, stack_t kernel_stack, uintp
     thread->kernel_stack = kernel_stack;
     thread->fpu_area = heap_alloc_align(g_fpu_area_size, 64);
     memset(thread->fpu_area, 0, g_fpu_area_size);
+    // TODO: follow sysv abi for how floating points registers should be initialized
+    //          (either here, or in the userspace create thread, though I dont see why it would hurt to do this for kernel threads too)
     return thread;
 }
 

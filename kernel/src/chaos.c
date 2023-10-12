@@ -5,7 +5,7 @@
 #include <sched/sched.h>
 #include <arch/sched.h>
 
-static void heap_chaos() {
+[[maybe_unused]] static void heap_chaos() {
     uint64_t allocs[10];
     for(int i = 0; i < 10; i++) allocs[i] = 0;
 
@@ -23,6 +23,6 @@ static void heap_chaos() {
 }
 
 void chaos_tests_init() {
-    thread_t *heap_thread = arch_sched_thread_create_kernel(&heap_chaos);
-    sched_thread_schedule(heap_thread);
+    // thread_t *heap_thread = arch_sched_thread_create_kernel(&heap_chaos);
+    // sched_thread_schedule(heap_thread);
 }

@@ -5,6 +5,7 @@ extern syscall_exit
 extern syscall_write
 extern syscall_fb
 extern syscall_kbin
+extern syscall_dbg
 
 section .data
 syscall_table:
@@ -12,6 +13,7 @@ syscall_table:
     dq syscall_write        ; 1
     dq syscall_fb           ; 2 (Temporary)
     dq syscall_kbin         ; 3 (Temporary)
+    dq syscall_dbg          ; 4
 .length: dq ($ - syscall_table) / 8
 
 section .text
@@ -36,16 +38,17 @@ syscall_entry:
     push r14
     push r15
 
-    mov rdi, es
-    push rdi
-    mov rdi, ds
-    push rdi
+    mov r14, es
+    push r14
+    mov r14, ds
+    push r14
 
     cmp rax, qword [syscall_table.length]
     jge .invalid_syscall
 
-    mov rdi, rbx    ; Argument 0
-    mov rsi, rdx    ; Argument 1
+    ; RDI, RSI, RDX contain the first 3 arguments, this also matches the first 3 arguments for the Sys V ABI.
+    ; R10 contains the next argument, this does not match SysV. Lastly, R8 and R9 are passed which will match SysV again.
+    mov rcx, r10
     call [syscall_table + rax * 8]
 
     .invalid_syscall:
