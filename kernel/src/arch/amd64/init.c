@@ -17,12 +17,14 @@
 #include <drivers/acpi.h>
 #include <fs/vfs.h>
 #include <fs/tmpfs.h>
+#include <fs/rdsk.h>
 #include <arch/vmm.h>
 #include <arch/sched.h>
 #include <arch/amd64/sched/sched.h>
 #include <arch/amd64/cpu.h>
 #include <arch/amd64/gdt.h>
 #include <arch/amd64/msr.h>
+#include <arch/amd64/port.h>
 #include <arch/amd64/cpuid.h>
 #include <arch/amd64/lapic.h>
 #include <arch/amd64/exception.h>
@@ -234,10 +236,16 @@ static void fpu_setup() {
     vfs_node_t *modules_dir;
     r = vfs_mkdir("/", "modules", &modules_dir, 0);
     if(r < 0) panic("Failed to create /modules directory (%i)\n", r);
-    vfs_mount(&g_tmpfs_ops, "/modules", (void *) 0);
+    r = vfs_mount(&g_tmpfs_ops, "/modules", (void *) 0);
     if(r < 0) panic("Failed to mount /modules (%i)\n", r);
+
+    tartarus_module_t *sroot_module = 0;
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
+        if(strcmp("SROOT   RDK", module->name) == 0) {
+            sroot_module = module;
+            continue;
+        }
         vfs_node_t *file;
         r = vfs_create("/modules", module->name, &file, 0);
         if(r < 0) continue;
@@ -247,18 +255,119 @@ static void fpu_setup() {
         if(r < 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)\n", module->name);
     }
 
-    vmm_address_space_t *as = arch_vmm_fork(&g_kernel_address_space);
-    vfs_node_t *startup_exec;
-    r = vfs_lookup("/modules/STYX    ELF", &startup_exec, 0);
-    if(r < 0) panic("Could not lookup the startup executable (%i)\n", r);
-    uintptr_t entry;
-    bool elf_r = elf_load(startup_exec, as, &entry);
-    if(elf_r) panic("Could not load the startup executable\n");
-    uintptr_t stack = arch_vmm_highest_userspace_addr();
-    for(size_t j = 0; j < 8; j++) arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * j, pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
-    process_t *proc = sched_process_create(as);
-    thread_t *thread = arch_sched_thread_create_user(proc, entry, stack & ~0xF);
-    sched_thread_schedule(thread);
+    if(sroot_module) {
+        vfs_node_t *sysroot_dir;
+        r = vfs_mkdir("/", "sysroot", &sysroot_dir, 0);
+        if(r < 0) panic("Failed to create /sysroot directory (%s)\n", r);
+        r = vfs_mount(&g_rdsk_ops, "/sysroot", (void *) HHDM(sroot_module->paddr));
+        if(r < 0) panic("Failed to mount /sysroot (%s)\n", r);
+    } else {
+        panic("No sroot.rdk\n");
+    }
+
+    {
+        vmm_address_space_t *as = arch_vmm_fork(&g_kernel_address_space);
+        vfs_node_t *startup_exec;
+        r = vfs_lookup("/modules/STYX    ELF", &startup_exec, 0);
+        if(r < 0) panic("Could not lookup the startup executable (%i)\n", r);
+
+        char *interpreter = 0;
+        elf_auxv_t auxv;
+        bool elf_r = elf_load(startup_exec, as, &interpreter, &auxv);
+        if(elf_r) panic("Could not load the startup executable\n");
+        uintptr_t stack = arch_vmm_highest_userspace_addr();
+        for(size_t j = 0; j < 8; j++) arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * j, pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
+        process_t *proc = sched_process_create(as);
+        thread_t *thread = arch_sched_thread_create_user(proc, auxv.entry, stack);
+        sched_thread_schedule(thread);
+    }
+
+    {
+        bool elf_r;
+
+        vmm_address_space_t *as = arch_vmm_fork(&g_kernel_address_space);
+        vfs_node_t *startup_exec;
+        r = vfs_lookup("/modules/TCTEST  ELF", &startup_exec, 0);
+        if(r < 0) panic("Could not lookup tctest.elf (%i)\n", r);
+
+        elf_auxv_t auxv = {};
+        char *interpreter = 0;
+        elf_r = elf_load(startup_exec, as, &interpreter, &auxv);
+        if(elf_r) panic("Could not load tctest.elf\n");
+        kprintf("Found interpreter: %s\n", interpreter);
+
+        elf_auxv_t interp_auxv = {};
+        if(interpreter) {
+            char temp[1024]; // TODO: TEMP
+            memcpy(temp, "/sysroot", 8);
+            strcpy(temp + 8, interpreter);
+            kprintf("acutally found it? %s\n", temp);
+            vfs_node_t *interp_exec;
+            r = vfs_lookup(temp, &interp_exec, 0);
+            if(r < 0) panic("Could not lookup the interpreter for startup (%i)\n", r);
+
+            elf_r = elf_load(interp_exec, as, 0, &interp_auxv);
+            if(elf_r) panic("Could not load the interpreter for startup\n");
+        }
+
+        uintptr_t stack = arch_vmm_highest_userspace_addr();
+        uintptr_t paddr;
+        for(size_t j = 0; j < 8; j++) {
+            paddr = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr;
+            arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * (7 - j), paddr, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
+        }
+
+        stack &= ~0xF;
+        uint64_t *stackp = (uint64_t *) ((HHDM(paddr) + ARCH_PAGE_SIZE - 1) & ~0xF);
+
+        stackp -= 2; stack -= sizeof(uint64_t) * 2;
+        memcpy((void *) stackp, (void *) "tctest.elf", 11);
+        uintptr_t stack_w_str = stack;
+
+        stackp -= 2; stack -= sizeof(uint64_t) * 2;
+        memcpy((void *) stackp, (void *) "LD_SHOW_AUXV=1", 15);
+        uintptr_t env_ld_show_auxv = stack;
+
+        stackp -= 3; stack -= sizeof(uint64_t) * 3;
+        stackp[0] = 0; stackp[1] = 0; stackp[2] = 0;
+
+        stackp -= 2; stack -= sizeof(uint64_t) * 2;
+        stackp[0] = 23; stackp[1] = 0;
+
+        stackp -= 2; stack -= sizeof(uint64_t) * 2;
+        stackp[0] = ELF_AUXV_ENTRY; stackp[1] = auxv.entry;
+
+        stackp -= 2; stack -= sizeof(uint64_t) * 2;
+        stackp[0] = ELF_AUXV_PHDR; stackp[1] = auxv.phdr;
+
+        stackp -= 2; stack -= sizeof(uint64_t) * 2;
+        stackp[0] = ELF_AUXV_PHENT; stackp[1] = auxv.phent;
+
+        stackp -= 2; stack -= sizeof(uint64_t) * 2;
+        stackp[0] = ELF_AUXV_PHNUM; stackp[1] = auxv.phnum;
+
+        stackp -= 1; stack -= sizeof(uint64_t) * 1;
+        stackp[0] = 0; // ENVP NULL
+
+        stackp -= 1; stack -= sizeof(uint64_t) * 1;
+        stackp[0] = env_ld_show_auxv; // envp env_ld_show_auxv
+
+        stackp -= 1; stack -= sizeof(uint64_t) * 1;
+        stackp[0] = 0; // ARG NULL
+
+        stackp -= 1; stack -= sizeof(uint64_t) * 1;
+        stackp[0] = stack_w_str; // call arg
+
+        stackp -= 1; stack -= sizeof(uint64_t) * 1;
+        stackp[0] = 1; // argc
+
+        kprintf("entry: %#lx; phdr: %#lx; phent: %#lx; phnum: %#lx;\n", auxv.entry, auxv.phdr, auxv.phent, auxv.phnum);
+        kprintf("stack: %#lx; stackp: %#lx;\n", stack, (uintptr_t) stackp);
+
+        process_t *proc = sched_process_create(as);
+        thread_t *thread = arch_sched_thread_create_user(proc, interpreter ? interp_auxv.entry : auxv.entry, stack);
+        sched_thread_schedule(thread);
+    }
 
     chaos_tests_init();
 
@@ -274,4 +383,10 @@ static void fpu_setup() {
 
     init_common();
     __builtin_unreachable();
+}
+
+// TODO: this has got to be replaced by a proper logging subsystem
+int putchar(int ch) {
+    port_outb(0x3F8, (char) ch);
+    return (char) ch;
 }

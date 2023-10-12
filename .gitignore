@@ -1,3 +1,5 @@
+root/
+
 # DevOps
 compile_commands.json
 
@@ -12,3 +14,7 @@ log.txt
 *.bin
 *.o
 *.elf
+
+# RDSK
+*.rdsk
+*.rdk

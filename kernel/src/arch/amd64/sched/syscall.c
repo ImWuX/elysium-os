@@ -23,7 +23,8 @@ extern draw_context_t g_fb_context;
 static slock_t g_kbq_lock = SLOCK_INIT;
 static list_t g_kbq = LIST_INIT_CIRCULAR(g_kbq);
 
-int64_t syscall_exit() {
+int64_t syscall_exit(int code) {
+    kprintf("syscall :: exit (code: %i%s, tid: %li)\n", code, code == -0xDEAD ? " (MLIBC PANIC)" : "", arch_sched_thread_current()->id);
     arch_sched_thread_current()->state = THREAD_STATE_DESTROY;
     sched_next();
     __builtin_unreachable();
@@ -70,6 +71,11 @@ int64_t syscall_kbin(char *ch) {
     *ch = (char) ev->ch;
     heap_free(ev);
     slock_release(&g_kbq_lock);
+    return 0;
+}
+
+int64_t syscall_dbg(uint64_t ch) {
+    putchar((int) ch);
     return 0;
 }
 

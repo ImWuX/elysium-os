@@ -1,5 +1,7 @@
 #include "elf.h"
+#include <klibc/string.h>
 #include <lib/kprint.h>
+#include <lib/assert.h>
 #include <memory/pmm.h>
 #include <memory/hhdm.h>
 #include <memory/heap.h>
@@ -10,10 +12,10 @@
 #define ID2 'L'
 #define ID3 'F'
 
+// TODO: This are only correct for amd64
 #define LITTLE_ENDIAN 1
 #define CLASS64 2
 #define MACHINE_386 0x3E
-#define TYPE_EXECUTABLE 2
 
 #define PT_NULL 0
 #define PT_LOAD 1
@@ -77,7 +79,7 @@ typedef struct {
     elf64_xword_t align; /* Alignment */
 } __attribute__((packed)) elf_phdr_t;
 
-bool elf_load(vfs_node_t *node, vmm_address_space_t *as, uintptr_t *entry) {
+bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, elf_auxv_t *auxv) {
     vfs_rw_t rw;
     size_t read_count;
     int r;
@@ -86,6 +88,8 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, uintptr_t *entry) {
 
     #define FAIL_GOTO fail_free_none
     #define FAIL(MSG) { kprintf("ELF: WARNING: %s. Aborting.\n", MSG); goto FAIL_GOTO; }
+
+    if(interpreter) *interpreter = 0;
 
     if(node->type != VFS_NODE_TYPE_FILE) FAIL("Tried loading a non-elf file");
     vfs_node_attr_t attributes;
@@ -107,7 +111,6 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, uintptr_t *entry) {
 #ifdef __ARCH_AMD64
     if(header->machine != MACHINE_386) FAIL("Only the i386:x86-64 instruction-set is supported");
 #endif
-    if(header->type != TYPE_EXECUTABLE) FAIL("Not an executable");
     if(header->phentsize < sizeof(elf_phdr_t)) FAIL("Program headers are too small");
 
     elf_phdr_t *phdr = heap_alloc(header->phentsize);
@@ -143,17 +146,33 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, uintptr_t *entry) {
                     count += ARCH_PAGE_SIZE - alignment_offset;
                 }
                 break;
-            default: FAIL("Unsupported program header type");
+            case PT_INTERP:
+                ASSERT(interpreter);
+                char *interp = heap_alloc(phdr->filesz + 1);
+                memset(interp, 0, phdr->filesz + 1);
+                r = node->ops->rw(node, &(vfs_rw_t) { .rw = VFS_RW_READ, .buffer = interp, .offset = phdr->offset, .size = phdr->filesz}, &read_count);
+                if(r < 0) FAIL("Failed to read interpreter path\n");
+                *interpreter = interp;
+                break;
+            case PT_PHDR:
+                auxv->phdr = phdr->vaddr;
+                break;
+            default:
+                kprintf("WARNING: Ignoring program header %lu\n", phdr->type);
+                break;
         }
     }
 
-    *entry = header->entry;
+    auxv->entry = header->entry;
+    auxv->phent = header->phentsize;
+    auxv->phnum = header->phnum;
 
     heap_free(header);
     heap_free(phdr);
     return false;
 
     fail_free_all:
+    if(interpreter && *interpreter) heap_free(*interpreter);
     heap_free(phdr);
     fail_free_header:
     heap_free(header);
