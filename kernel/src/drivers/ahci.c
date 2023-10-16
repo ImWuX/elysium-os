@@ -198,7 +198,7 @@ void ahci_read(uint8_t port, uint64_t lba, uint16_t count, void *dest) {
 
     ahci_prdt_entry *prdt = (ahci_prdt_entry *) HHDM(command_table->paddr + 0x80);
     for(int i = 0; i < command->prd_table_length; i++) {
-        uintptr_t address = arch_vmm_physical(&g_kernel_address_space, (uintptr_t) dest);
+        uintptr_t address = arch_vmm_physical(g_kernel_address_space, (uintptr_t) dest);
         uint16_t sectors = SPP;
         if(count < SPP) sectors = count;
 

@@ -38,6 +38,8 @@
 #include <arch/amd64/sched/syscall.h>
 
 #define LAPIC_CALIBRATION_TICKS 0x10000
+#define OFFSET_RSP(OFFSET) asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp" : : "rm" (OFFSET) : "rax", "memory")
+#define OFFSET_RBP(OFFSET) asm volatile("mov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (OFFSET) : "rax", "memory")
 
 uintptr_t g_hhdm_address;
 draw_context_t g_fb_context;
@@ -96,6 +98,13 @@ static void fpu_setup() {
     }
 }
 
+static void exception_pagefault(interrupt_frame_t *frame) {
+    // thread_t *thread = arch_sched_thread_current();
+    uint64_t cr2;
+    asm volatile("movq %%cr2, %0" : "=r" (cr2));
+    if(!vmm_fault(g_kernel_address_space, cr2)) exception_unhandled(frame);
+}
+
 [[noreturn]] static void init_common() {
     uint64_t pat = msr_read(MSR_PAT);
     pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
@@ -128,10 +137,10 @@ static void fpu_setup() {
 }
 
 [[noreturn]] __attribute__((naked)) void init_ap() {
-    asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp" : : "r" (g_hhdm_address) : "rax", "memory");
-    asm volatile("mov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "r" (g_hhdm_address) : "rax", "memory");
+    OFFSET_RSP(g_hhdm_address);
+    OFFSET_RBP(g_hhdm_address);
 
-    arch_vmm_load_address_space(&g_kernel_address_space);
+    arch_vmm_load_address_space(g_kernel_address_space);
 
     gdt_load();
     interrupt_load_idt();
@@ -179,22 +188,30 @@ static void fpu_setup() {
         }
     }
 
-    asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp" : : "rm" (g_hhdm_address) : "rax", "memory");
-    asm volatile("mov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (g_hhdm_address) : "rax", "memory");
+    OFFSET_RSP(g_hhdm_address);
+    OFFSET_RBP(g_hhdm_address);
 
     arch_vmm_init();
-    arch_vmm_load_address_space(&g_kernel_address_space);
-    heap_initialize(&g_kernel_address_space, ARCH_KHEAP_START, ARCH_KHEAP_END);
+    arch_vmm_load_address_space(g_kernel_address_space);
 
     gdt_load();
 
-    ASSERT(cpuid_feature(CPUID_FEATURE_MSR));
-
     interrupt_initialize();
     for(int i = 0; i < 32; i++) {
-        interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_unhandled);
+        switch(i) {
+            case 0xE:
+                interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_pagefault);
+                break;
+            default:
+                interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_unhandled);
+                break;
+        }
     }
     interrupt_load_idt();
+
+    heap_initialize(g_kernel_address_space, ARCH_KHEAP_START, ARCH_KHEAP_END);
+
+    ASSERT(cpuid_feature(CPUID_FEATURE_MSR));
 
     fpu_setup();
     if(cpuid_feature(CPUID_FEATURE_XSAVE)) {
@@ -231,21 +248,20 @@ static void fpu_setup() {
 
     sched_init();
 
-    int r = vfs_mount(&g_tmpfs_ops, 0, 0);
-    if(r < 0) panic("Failed to mount tmpfs (%i)\n", r);
-    vfs_node_t *modules_dir;
-    r = vfs_mkdir("/", "modules", &modules_dir, 0);
-    if(r < 0) panic("Failed to create /modules directory (%i)\n", r);
-    r = vfs_mount(&g_tmpfs_ops, "/modules", (void *) 0);
-    if(r < 0) panic("Failed to mount /modules (%i)\n", r);
-
     tartarus_module_t *sroot_module = 0;
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
-        if(strcmp("SROOT   RDK", module->name) == 0) {
-            sroot_module = module;
-            continue;
-        }
+        if(strcmp("SROOT   RDK", module->name) == 0) sroot_module = module;
+    }
+    ASSERT(sroot_module);
+
+    int r = vfs_mount(&g_rdsk_ops, 0, (void *) HHDM(sroot_module->paddr));
+    if(r < 0) panic("Failed to mount RDSK (%i)\n", r);
+    r = vfs_mount(&g_tmpfs_ops, "/modules", (void *) 0);
+    if(r < 0) panic("Failed to mount /modules (%i)\n", r);
+
+    for(uint16_t i = 0; i < boot_info->module_count; i++) {
+        tartarus_module_t *module = &boot_info->modules[i];
         vfs_node_t *file;
         r = vfs_create("/modules", module->name, &file, 0);
         if(r < 0) continue;
@@ -255,18 +271,8 @@ static void fpu_setup() {
         if(r < 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)\n", module->name);
     }
 
-    if(sroot_module) {
-        vfs_node_t *sysroot_dir;
-        r = vfs_mkdir("/", "sysroot", &sysroot_dir, 0);
-        if(r < 0) panic("Failed to create /sysroot directory (%s)\n", r);
-        r = vfs_mount(&g_rdsk_ops, "/sysroot", (void *) HHDM(sroot_module->paddr));
-        if(r < 0) panic("Failed to mount /sysroot (%s)\n", r);
-    } else {
-        panic("No sroot.rdk\n");
-    }
-
     {
-        vmm_address_space_t *as = arch_vmm_fork(&g_kernel_address_space);
+        vmm_address_space_t *as = arch_vmm_create();
         vfs_node_t *startup_exec;
         r = vfs_lookup("/modules/STYX    ELF", &startup_exec, 0);
         if(r < 0) panic("Could not lookup the startup executable (%i)\n", r);
@@ -276,7 +282,7 @@ static void fpu_setup() {
         bool elf_r = elf_load(startup_exec, as, &interpreter, &auxv);
         if(elf_r) panic("Could not load the startup executable\n");
         uintptr_t stack = arch_vmm_highest_userspace_addr();
-        for(size_t j = 0; j < 8; j++) arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * j, pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
+        vmm_map_anon(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * 7, 8 * ARCH_PAGE_SIZE, VMM_PROT_WRITE | VMM_PROT_USER, false);
         process_t *proc = sched_process_create(as);
         thread_t *thread = arch_sched_thread_create_user(proc, auxv.entry, stack);
         sched_thread_schedule(thread);
@@ -285,7 +291,7 @@ static void fpu_setup() {
     {
         bool elf_r;
 
-        vmm_address_space_t *as = arch_vmm_fork(&g_kernel_address_space);
+        vmm_address_space_t *as = arch_vmm_create();
         vfs_node_t *startup_exec;
         r = vfs_lookup("/modules/TCTEST  ELF", &startup_exec, 0);
         if(r < 0) panic("Could not lookup tctest.elf (%i)\n", r);
@@ -298,12 +304,8 @@ static void fpu_setup() {
 
         elf_auxv_t interp_auxv = {};
         if(interpreter) {
-            char temp[1024]; // TODO: TEMP
-            memcpy(temp, "/sysroot", 8);
-            strcpy(temp + 8, interpreter);
-            kprintf("acutally found it? %s\n", temp);
             vfs_node_t *interp_exec;
-            r = vfs_lookup(temp, &interp_exec, 0);
+            r = vfs_lookup(interpreter, &interp_exec, 0);
             if(r < 0) panic("Could not lookup the interpreter for startup (%i)\n", r);
 
             elf_r = elf_load(interp_exec, as, 0, &interp_auxv);
@@ -314,7 +316,7 @@ static void fpu_setup() {
         uintptr_t paddr;
         for(size_t j = 0; j < 8; j++) {
             paddr = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr;
-            arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * (7 - j), paddr, VMM_FLAGS_WRITE | VMM_FLAGS_USER);
+            arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * (7 - j), paddr, VMM_PROT_WRITE | VMM_PROT_USER);
         }
 
         stack &= ~0xF;

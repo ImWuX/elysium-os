@@ -86,6 +86,7 @@ static vfs_node_t *get_dir_vfs_node(vfs_t *vfs, rdsk_index_t index) {
     node->type = VFS_NODE_TYPE_DIR;
     node->data = get_dir(vfs, index);
     node->ops = &node_ops;
+    info->dir_cache[index - 1] = node;
     return node;
 }
 
@@ -98,6 +99,7 @@ static vfs_node_t *get_file_vfs_node(vfs_t *vfs, rdsk_index_t index) {
     node->type = VFS_NODE_TYPE_FILE;
     node->data = get_file(vfs, index);
     node->ops = &node_ops;
+    info->file_cache[index - 1] = node;
     return node;
 }
 
@@ -240,4 +242,9 @@ static vfs_node_ops_t node_ops = {
     .mkdir = &rdsk_node_mkdir,
     .readdir = &rdsk_node_readdir,
     .create = &rdsk_node_create
+};
+
+vfs_ops_t g_rdsk_ops = {
+    .mount = &rdsk_mount,
+    .root = &rdsk_root
 };

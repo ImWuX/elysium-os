@@ -4,6 +4,7 @@
 #include <lib/slock.h>
 #include <lib/kprint.h>
 #include <memory/heap.h>
+#include <memory/vmm.h>
 #include <memory/hhdm.h>
 #include <sched/sched.h>
 #include <arch/sched.h>
@@ -45,9 +46,8 @@ typedef struct {
 int64_t syscall_fb(uint64_t addr, elib_fb_t *fb) {
     ASSERTC(arch_sched_thread_current()->proc, "Should be a userspace thread");
     uint64_t mapsz = g_fb_context.pitch * g_fb_context.height * sizeof(uint32_t);
-    for(uint64_t i = 0; i < (mapsz + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE; i++) {
-        arch_vmm_map(arch_sched_thread_current()->proc->address_space, addr + i * ARCH_PAGE_SIZE, (uintptr_t) g_fb_context.address - g_hhdm_address + i * ARCH_PAGE_SIZE, VMM_FLAGS_USER | VMM_FLAGS_WRITE);
-    }
+    int r = vmm_map_direct(arch_sched_thread_current()->proc->address_space, addr, (mapsz + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE * ARCH_PAGE_SIZE, VMM_PROT_USER | VMM_PROT_WRITE, (uintptr_t) g_fb_context.address - g_hhdm_address);
+    if(r != 0) return r;
     fb->addr = addr;
     fb->width = g_fb_context.width;
     fb->height = g_fb_context.height;
@@ -77,6 +77,21 @@ int64_t syscall_kbin(char *ch) {
 int64_t syscall_dbg(uint64_t ch) {
     putchar((int) ch);
     return 0;
+}
+
+uintptr_t syscall_vmm_map(uint64_t size) {
+    if(size == 0 || size % ARCH_PAGE_SIZE) return 0;
+    static uintptr_t address = 0x50000000;
+    int r;
+    while(true) {
+        r = vmm_map_anon(arch_sched_thread_current()->proc->address_space, address, size, VMM_PROT_USER | VMM_PROT_WRITE, false);
+        if(r == 0) break;
+        address += ARCH_PAGE_SIZE;
+    }
+    uintptr_t ret_addr = address;
+    address += size;
+    kprintf("syscall :: vmm_map(%#lx, %#lx)\n", ret_addr, size);
+    return ret_addr;
 }
 
 static void consume_kb_event(uint8_t ch) {

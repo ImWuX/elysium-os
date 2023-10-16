@@ -6,48 +6,42 @@
 #include <lib/slock.h>
 #include <lib/list.h>
 
-#define VMM_DEFAULT_KERNEL_FLAGS VMM_FLAGS_WRITE
-
 typedef enum {
-    VMM_FLAGS_WRITE = (1 << 0),
-    VMM_FLAGS_EXEC = (1 << 1),
-    VMM_FLAGS_USER = (1 << 2)
-} vmm_flags_t;
+    VMM_PROT_WRITE = (1 << 0),
+    VMM_PROT_EXEC = (1 << 1),
+    VMM_PROT_USER = (1 << 2)
+} vmm_prot_t;
 
 typedef struct {
     struct vmm_address_space *address_space;
     uintptr_t base;
     size_t length;
+    int protection;
+    struct vmm_segment_ops *ops;
+    void *data;
     list_t list;
 } vmm_segment_t;
+
+typedef struct vmm_segment_ops {
+    int (* map)(vmm_segment_t *segment, uintptr_t base, size_t length);
+    int (* unmap)(vmm_segment_t *segment, uintptr_t base, size_t length);
+    bool (* fault)(vmm_segment_t *segment, uintptr_t address);
+    void (* free)(vmm_segment_t *segment);
+} vmm_segment_ops_t;
 
 typedef struct vmm_address_space {
     slock_t lock;
     list_t segments;
-    arch_vmm_address_space_t archdep;
 } vmm_address_space_t;
 
-extern vmm_address_space_t g_kernel_address_space;
+extern vmm_address_space_t *g_kernel_address_space;
 
-/**
- * @brief Allocate a number of wired pages
- *
- * @param as Address space
- * @param vaddr Virtual address for pages
- * @param npages Number of pages
- * @param flags Flags
- * @return 0 on success, err on failure
- */
-int vmm_alloc_wired(vmm_address_space_t *as, uintptr_t vaddr, size_t npages, uint64_t flags);
+int vmm_map(vmm_segment_t *segment);
 
-/**
- * @brief 
- *
- * @param as Address space
- * @param vaddr Virtual address to map into
- * @param npages Number of pages
- * @param paddr Physical address to map
- * @param flags Flags
- * @return 0 on success, err on failure
- */
-int vmm_alloc_direct(vmm_address_space_t *as, uintptr_t vaddr, size_t npages, uintptr_t paddr, uint64_t flags);
+int vmm_unmap(vmm_address_space_t *as, uintptr_t vaddr, size_t length);
+
+int vmm_map_anon(vmm_address_space_t *as, uintptr_t vaddr, size_t length, int prot, bool wired);
+
+int vmm_map_direct(vmm_address_space_t *as, uintptr_t vaddr, size_t length, int prot, uintptr_t paddr);
+
+bool vmm_fault(vmm_address_space_t *as, uintptr_t address);
