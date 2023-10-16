@@ -175,3 +175,8 @@ static vfs_node_ops_t node_ops = {
     .readdir = &tmpfs_node_readdir,
     .create = &tmpfs_node_create
 };
+
+vfs_ops_t g_tmpfs_ops = {
+    .mount = &tmpfs_mount,
+    .root = &tmpfs_root
+};

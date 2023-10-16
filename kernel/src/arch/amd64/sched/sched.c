@@ -92,7 +92,7 @@ static void sched_switch(arch_thread_t *this, arch_thread_t *next) {
     if(next->common.proc) {
         arch_vmm_load_address_space(next->common.proc->address_space);
     } else {
-        arch_vmm_load_address_space(&g_kernel_address_space);
+        arch_vmm_load_address_space(g_kernel_address_space);
     }
 
     next->common.cpu = this->common.cpu;

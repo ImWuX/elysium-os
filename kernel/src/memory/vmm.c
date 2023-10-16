@@ -1,56 +1,74 @@
 #include "vmm.h"
-#include <arch/vmm.h>
+#include <errno.h>
+#include <lib/assert.h>
 #include <memory/heap.h>
+#include <memory/vmm/seg_anon.h>
+#include <memory/vmm/seg_direct.h>
+#include <arch/vmm.h>
 
-vmm_address_space_t g_kernel_address_space;
+#define VALIDATE_ARGS(VADDR, LENGTH) (VADDR % ARCH_PAGE_SIZE == 0 && length > 0 && length % ARCH_PAGE_SIZE == 0)
 
-static bool is_region_free(vmm_address_space_t *as, uintptr_t base, size_t length) {
+vmm_address_space_t *g_kernel_address_space;
+
+static bool is_free(vmm_address_space_t *as, uintptr_t base, size_t length) {
     list_t *entry;
     LIST_FOREACH(entry, &as->segments) {
-        vmm_segment_t *seg = LIST_GET(entry, vmm_segment_t, list);
-        if(base >= seg->base + seg->length) continue;
-        if(base + length <= seg->base) continue;
-        return false;
+        vmm_segment_t *other = LIST_GET(entry, vmm_segment_t, list);
+        if(other->base + (other->length - 1) >= base && other->base <= base + (length - 1)) return false;
     }
     return true;
 }
 
-/* @warning Requires address space lock */
-static vmm_segment_t *alloc_segment(vmm_address_space_t *as, uintptr_t base, size_t length) {
-    if(!is_region_free(as, base, length)) return 0;
-    vmm_segment_t *segment = heap_alloc(sizeof(vmm_segment_t));
-    segment->address_space = as;
-    segment->base = base;
-    segment->length = length;
+int vmm_map(vmm_segment_t *segment) {
+    slock_acquire(&segment->address_space->lock);
+    if(!is_free(segment->address_space, segment->base, segment->length)) {
+        segment->ops->free(segment);
+        slock_release(&segment->address_space->lock);
+        return -EEXIST;
+    }
+    int r = segment->ops->map(segment, segment->base, segment->length);
+    if(r != 0) {
+        segment->ops->free(segment);
+        slock_release(&segment->address_space->lock);
+        return r;
+    }
+    list_t *entry;
+    LIST_FOREACH(entry, &segment->address_space->segments) {
+        vmm_segment_t *other_seg = LIST_GET(entry, vmm_segment_t, list);
+        if(other_seg->base > segment->base) break;
+    }
+    list_insert_behind(entry->prev, &segment->list);
+    slock_release(&segment->address_space->lock);
+    return 0;
+}
+
+int vmm_map_anon(vmm_address_space_t *as, uintptr_t vaddr, size_t length, int prot, bool wired) {
+    if(!VALIDATE_ARGS(vaddr, length)) return -EINVAL;
+    return vmm_map(seg_anon(as, vaddr, length, prot, wired));
+}
+
+int vmm_map_direct(vmm_address_space_t *as, uintptr_t vaddr, size_t length, int prot, uintptr_t paddr) {
+    if(!VALIDATE_ARGS(vaddr, length)) return -EINVAL;
+    return vmm_map(seg_direct(as, vaddr, length, prot, paddr));
+}
+
+int vmm_unmap(vmm_address_space_t *as, uintptr_t vaddr, size_t length) {
+    if(!VALIDATE_ARGS(vaddr, length)) return -EINVAL;
+    slock_acquire(&as->lock);
+
+    panic("vmm_unmap is a no-op rn\n");
+
+    slock_release(&as->lock);
+    return 0;
+}
+
+bool vmm_fault(vmm_address_space_t *as, uintptr_t address) {
     list_t *entry;
     LIST_FOREACH(entry, &as->segments) {
-        vmm_segment_t *lseg = LIST_GET(entry, vmm_segment_t, list);
-        if(lseg->base < base) continue;
-        list_insert_before(&lseg->list, &segment->list);
-        return segment;
+        vmm_segment_t *segment = LIST_GET(entry, vmm_segment_t, list);
+        if(segment->base > address) break;
+        if(segment->base + segment->length - 1 < address) continue;
+        return segment->ops->fault(segment, address);
     }
-    list_insert_before(&as->segments, &segment->list);
-    return segment;
-}
-
-/* @warning Currently does not actually allocate a segment.. */
-int vmm_alloc_wired(vmm_address_space_t *as, uintptr_t vaddr, size_t npages, uint64_t flags) {
-    slock_acquire(&as->lock);
-    for(size_t i = 0; i < npages; i++) {
-        pmm_page_t *page = pmm_alloc_page(ARCH_PAGE_SIZE);
-        arch_vmm_map(as, vaddr + i * ARCH_PAGE_SIZE, page->paddr, flags);
-    }
-    slock_release(&as->lock);
-    return 0;
-}
-
-int vmm_alloc_direct(vmm_address_space_t *as, uintptr_t vaddr, size_t npages, uintptr_t paddr, uint64_t flags) {
-    slock_acquire(&as->lock);
-    vmm_segment_t *segment = alloc_segment(as, vaddr, npages * ARCH_PAGE_SIZE);
-    if(!segment) return -1;
-    for(size_t i = 0; i < npages; i++) {
-        arch_vmm_map(as, vaddr + i * ARCH_PAGE_SIZE, paddr + i * ARCH_PAGE_SIZE, flags);
-    }
-    slock_release(&as->lock);
-    return 0;
+    return false;
 }

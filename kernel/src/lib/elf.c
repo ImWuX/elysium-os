@@ -126,9 +126,9 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, elf
             case PT_LOAD:
                 if(phdr->filesz > phdr->memsz) FAIL("Invalid program header (filesz > memsz)");
 
-                uint64_t flags = VMM_FLAGS_USER;
-                if(phdr->flags & PF_W) flags |= VMM_FLAGS_WRITE;
-                if(phdr->flags & PF_X) flags |= VMM_FLAGS_EXEC;
+                uint64_t prot = VMM_PROT_USER;
+                if(phdr->flags & PF_W) prot |= VMM_PROT_WRITE;
+                if(phdr->flags & PF_X) prot |= VMM_PROT_EXEC;
 
                 for(uintptr_t count = 0; count < phdr->memsz;) {
                     uintptr_t alignment_offset = (phdr->vaddr + count) & (ARCH_PAGE_SIZE - 1);
@@ -142,7 +142,7 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, elf
                         if(r < 0 || read_count != read_sz) FAIL("Failed to load program header");
                     }
 
-                    arch_vmm_map(as, phdr->vaddr + count - alignment_offset, page->paddr, flags);
+                    arch_vmm_map(as, phdr->vaddr + count - alignment_offset, page->paddr, prot);
                     count += ARCH_PAGE_SIZE - alignment_offset;
                 }
                 break;

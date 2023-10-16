@@ -2,8 +2,8 @@
 #include <lib/list.h>
 #include <lib/slock.h>
 #include <lib/assert.h>
+#include <arch/vmm.h>
 
-#define INITIAL_SIZE_PAGES 10
 #define MIN_ENTRY_SIZE 8
 #define HEAP_PROTECTION true
 
@@ -16,10 +16,28 @@ typedef struct {
     list_t list;
 } heap_entry_t;
 
-static vmm_address_space_t *g_as;
-static uintptr_t g_base, g_limit, g_size;
 static slock_t g_lock = SLOCK_INIT;
 static list_t g_entries = LIST_INIT_CIRCULAR(g_entries);
+
+static vmm_segment_t g_heap_segment;
+
+int heap_seg_map(vmm_segment_t *segment [[maybe_unused]], uintptr_t base [[maybe_unused]], size_t length [[maybe_unused]]) { return 0; }
+
+int heap_seg_unmap(vmm_segment_t *segment [[maybe_unused]], uintptr_t base[[maybe_unused]] , size_t length[[maybe_unused]] ) { ASSERT_UNREACHABLE(); }
+
+static bool heap_seg_fault(vmm_segment_t *segment, uintptr_t address) {
+    arch_vmm_map(segment->address_space, address & ~0xFFF, pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr, segment->protection);
+    return true;
+}
+
+void heap_seg_free(vmm_segment_t *segment [[maybe_unused]]) { ASSERT_UNREACHABLE(); }
+
+static vmm_segment_ops_t g_ops = {
+    .map = &heap_seg_map,
+    .unmap = &heap_seg_unmap,
+    .fault = &heap_seg_fault,
+    .free = &heap_seg_free
+};
 
 #if HEAP_PROTECTION
 static void update_prot(heap_entry_t *entry) {
@@ -31,36 +49,23 @@ static uint64_t get_prot(heap_entry_t *entry) {
 }
 #endif
 
-static void expand(size_t npages) {
-    ASSERT(g_size + ARCH_PAGE_SIZE * npages <= g_limit);
-    slock_acquire(&g_lock);
-    int r = vmm_alloc_wired(g_as, g_base + g_size, npages, VMM_DEFAULT_KERNEL_FLAGS);
-    ASSERT(r >= 0);
-    if(!list_is_empty(&g_entries) && LIST_GET(g_entries.prev, heap_entry_t, list)->free) {
-        heap_entry_t *entry = LIST_GET(g_entries.prev, heap_entry_t, list);
-        entry->size += npages * ARCH_PAGE_SIZE;
-#if HEAP_PROTECTION
-        update_prot(entry);
-#endif
-    } else {
-        heap_entry_t *new = (heap_entry_t *) (g_base + g_size);
-        new->free = true;
-        new->size = (npages * ARCH_PAGE_SIZE) - sizeof(heap_entry_t);
-#if HEAP_PROTECTION
-        update_prot(new);
-#endif
-        list_insert_before(&g_entries, &new->list);
-    }
-    g_size += ARCH_PAGE_SIZE * npages;
-    slock_release(&g_lock);
-}
-
 void heap_initialize(vmm_address_space_t *address_space, uintptr_t start, uintptr_t end) {
-    g_as = address_space;
-    g_base = start;
-    g_limit = end;
-    g_size = 0;
-    expand(INITIAL_SIZE_PAGES);
+    g_heap_segment = (vmm_segment_t) {
+        .address_space = address_space,
+        .base = start,
+        .length = end - start,
+        .protection = VMM_PROT_WRITE,
+        .ops = &g_ops
+    };
+    ASSERT(vmm_map(&g_heap_segment) == 0);
+
+    heap_entry_t *entry = (heap_entry_t *) g_heap_segment.base;
+    entry->free = true;
+    entry->size = g_heap_segment.length - sizeof(heap_entry_t);
+#if HEAP_PROTECTION
+    update_prot(entry);
+#endif
+    list_insert_behind(&g_entries, &entry->list);
 }
 
 void *heap_alloc_align(size_t size, size_t alignment) {
@@ -115,8 +120,7 @@ void *heap_alloc_align(size_t size, size_t alignment) {
         return (void *) ((uintptr_t) entry + sizeof(heap_entry_t));
     }
     slock_release(&g_lock);
-    expand((size + sizeof(heap_entry_t)) / ARCH_PAGE_SIZE + 1);
-    return heap_alloc_align(size, alignment);
+    ASSERT_UNREACHABLE();
 }
 
 void *heap_alloc(size_t size) {
@@ -124,7 +128,7 @@ void *heap_alloc(size_t size) {
 }
 
 void heap_free(void* address) {
-    ASSERT((uintptr_t) address >= g_base && (uintptr_t) address <= g_limit);
+    ASSERT((uintptr_t) address >= g_heap_segment.base && (uintptr_t) address <= g_heap_segment.base + g_heap_segment.length - 1);
     slock_acquire(&g_lock);
     heap_entry_t *entry = (heap_entry_t *) (address - sizeof(heap_entry_t));
 #if HEAP_PROTECTION

@@ -6,6 +6,7 @@ extern syscall_write
 extern syscall_fb
 extern syscall_kbin
 extern syscall_dbg
+extern syscall_vmm_map
 
 section .data
 syscall_table:
@@ -14,6 +15,7 @@ syscall_table:
     dq syscall_fb           ; 2 (Temporary)
     dq syscall_kbin         ; 3 (Temporary)
     dq syscall_dbg          ; 4
+    dq syscall_vmm_map      ; 5
 .length: dq ($ - syscall_table) / 8
 
 section .text

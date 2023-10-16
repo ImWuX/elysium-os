@@ -2,10 +2,24 @@
 #include <stdint.h>
 #include <memory/vmm.h>
 
+typedef enum {
+    ARCH_VMM_FLAG_WRITE = (1 << 0),
+    ARCH_VMM_FLAG_EXEC = (1 << 1),
+    ARCH_VMM_FLAG_USER = (1 << 2),
+    ARCH_VMM_FLAG_GLOBAL = (1 << 3)
+} arch_vmm_flags_t;
+
 /**
  * @brief Initialize the VMM
  */
 void arch_vmm_init();
+
+/**
+ * @brief Create an address space
+ *
+ * @return New address space
+ */
+vmm_address_space_t *arch_vmm_create();
 
 /**
  * @brief Load a virtual address space
@@ -20,9 +34,9 @@ void arch_vmm_load_address_space(vmm_address_space_t *address_space);
  * @param address_space Address space
  * @param vaddr Virtual address
  * @param paddr Physical address
- * @param flags Architecture independent flags
+ * @param prot Protection
  */
-void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, uint64_t flags);
+void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, uint64_t prot);
 
 /**
  * @brief Retrieve the physical address from an address space
@@ -39,11 +53,3 @@ uintptr_t arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr)
  * @returns Highest userspace address
  */
 uintptr_t arch_vmm_highest_userspace_addr();
-
-/**
- * @brief Fork an address space
- * 
- * @param root Address space to be forked
- * @return New address space
- */
-vmm_address_space_t *arch_vmm_fork(vmm_address_space_t *root);
