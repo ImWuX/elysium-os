@@ -36,12 +36,54 @@ typedef struct vmm_address_space {
 
 extern vmm_address_space_t *g_kernel_address_space;
 
+/**
+ * @brief Maps a segment to its address space
+ * @warning Frees the segment if the operation failed
+ *
+ * @param segment Segment
+ * @return negative errno on failure, zero on success
+ */
 int vmm_map(vmm_segment_t *segment);
 
+/**
+ * @brief Unmaps a region
+ *
+ * @param as Address space
+ * @param vaddr Base
+ * @param length Length
+ * @return negative errno on failure, zero on success
+ */
 int vmm_unmap(vmm_address_space_t *as, uintptr_t vaddr, size_t length);
 
+/**
+ * @brief Maps a region as anonymous memory
+ *
+ * @param as Address space
+ * @param vaddr Base
+ * @param length Length
+ * @param prot Protection flags
+ * @param wired Is memory wired
+ * @return negative errno on failure, zero on success
+ */
 int vmm_map_anon(vmm_address_space_t *as, uintptr_t vaddr, size_t length, int prot, bool wired);
 
+/**
+ * @brief Maps a region as a direct map
+ *
+ * @param as Address space
+ * @param vaddr Base
+ * @param length Length
+ * @param prot Protection flags
+ * @param paddr Physical address to map
+ * @return negative errno on failure, zero on success
+ */
 int vmm_map_direct(vmm_address_space_t *as, uintptr_t vaddr, size_t length, int prot, uintptr_t paddr);
 
+/**
+ * @brief Handle a pagefault
+ *
+ * @param as Address space
+ * @param address Fault address
+ * @return true if fault was a handled
+ */
 bool vmm_fault(vmm_address_space_t *as, uintptr_t address);
