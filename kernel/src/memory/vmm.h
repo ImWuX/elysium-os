@@ -5,6 +5,7 @@
 #include <memory/pmm.h>
 #include <lib/slock.h>
 #include <lib/list.h>
+#include <fs/vfs.h>
 
 typedef enum {
     VMM_PROT_WRITE = (1 << 0),
@@ -41,7 +42,7 @@ extern vmm_address_space_t *g_kernel_address_space;
  * @warning Frees the segment if the operation failed
  *
  * @param segment Segment
- * @return negative errno on failure, zero on success
+ * @return 0 on success, -errno on failure
  */
 int vmm_map(vmm_segment_t *segment);
 
@@ -51,7 +52,7 @@ int vmm_map(vmm_segment_t *segment);
  * @param as Address space
  * @param vaddr Base
  * @param length Length
- * @return negative errno on failure, zero on success
+ * @return 0 on success, -errno on failure
  */
 int vmm_unmap(vmm_address_space_t *as, uintptr_t vaddr, size_t length);
 
@@ -63,7 +64,7 @@ int vmm_unmap(vmm_address_space_t *as, uintptr_t vaddr, size_t length);
  * @param length Length
  * @param prot Protection flags
  * @param wired Is memory wired
- * @return negative errno on failure, zero on success
+ * @return 0 on success, -errno on failure
  */
 int vmm_map_anon(vmm_address_space_t *as, uintptr_t vaddr, size_t length, int prot, bool wired);
 
@@ -75,7 +76,7 @@ int vmm_map_anon(vmm_address_space_t *as, uintptr_t vaddr, size_t length, int pr
  * @param length Length
  * @param prot Protection flags
  * @param paddr Physical address to map
- * @return negative errno on failure, zero on success
+ * @return 0 on success, -errno on failure
  */
 int vmm_map_direct(vmm_address_space_t *as, uintptr_t vaddr, size_t length, int prot, uintptr_t paddr);
 
