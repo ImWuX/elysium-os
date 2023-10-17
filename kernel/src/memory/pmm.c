@@ -2,6 +2,7 @@
 #include <lib/c/string.h>
 #include <lib/assert.h>
 #include <lib/panic.h>
+#include <lib/round.h>
 #include <arch/types.h>
 #include <memory/hhdm.h>
 #include <lib/slock.h>
@@ -40,7 +41,7 @@ void pmm_region_add(int zone_index, uintptr_t base, size_t size) {
     region->page_count = size / ARCH_PAGE_SIZE;
     region->zone->page_count += region->page_count;
 
-    size_t used_pages = DIVUP(sizeof(pmm_region_t) + sizeof(pmm_page_t) * region->page_count, ARCH_PAGE_SIZE);
+    size_t used_pages = ROUND_DIV_UP(sizeof(pmm_region_t) + sizeof(pmm_page_t) * region->page_count, ARCH_PAGE_SIZE);
     region->free_count = region->page_count - used_pages;
     region->zone->free_count += region->free_count;
 
@@ -106,7 +107,7 @@ pmm_page_t *pmm_alloc_page(pmm_allocator_flags_t flags) {
 }
 
 void pmm_free(pmm_page_t *page) {
-    size_t data_base = page->region->base + DIVUP(sizeof(pmm_region_t) + sizeof(pmm_page_t) * page->region->page_count, ARCH_PAGE_SIZE) * ARCH_PAGE_SIZE;
+    size_t data_base = page->region->base + ROUND_UP(sizeof(pmm_region_t) + sizeof(pmm_page_t) * page->region->page_count, ARCH_PAGE_SIZE);
     page->free = true;
     page->region->free_count += order_to_pagecount(page->order);
     page->region->zone->free_count += order_to_pagecount(page->order);
