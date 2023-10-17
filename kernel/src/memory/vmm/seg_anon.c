@@ -2,7 +2,7 @@
 #include <memory/vmm.h>
 #include <memory/heap.h>
 #include <arch/vmm.h>
-#include <klibc/errno.h>
+#include <lib/c/errno.h>
 
 typedef struct {
     bool wired;

@@ -1,6 +1,6 @@
 #include "sched.h"
 #include <stdint.h>
-#include <string.h>
+#include <lib/c/string.h>
 #include <lib/slock.h>
 #include <lib/kprint.h>
 #include <lib/assert.h>

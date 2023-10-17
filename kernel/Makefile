@@ -29,7 +29,7 @@ endif
 	$(ASMC) $(ASMFLAGS) -isrc $< -f elf64 -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) -Isrc -Isrc/klibc -I../../tartarus-bootloader -c $< -o $@
+	$(CC) $(CFLAGS) -Isrc -I../../tartarus-bootloader -c $< -o $@
 
 # TODO: Change -I../../tartarus-bootloader
 

@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <tartarus.h>
-#include <string.h>
+#include <lib/c/string.h>
 #include <cpuid.h>
 #include <chaos.h>
 #include <lib/panic.h>

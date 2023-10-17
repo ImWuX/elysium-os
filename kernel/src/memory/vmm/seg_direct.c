@@ -1,9 +1,9 @@
 #include "seg_direct.h"
-#include <errno.h>
+#include <lib/c/errno.h>
 #include <memory/vmm.h>
 #include <memory/heap.h>
 #include <arch/vmm.h>
-#include <klibc/errno.h>
+#include <lib/c/errno.h>
 
 static int direct_map(vmm_segment_t *segment, uintptr_t base, size_t length) {
     uintptr_t offset = base - segment->base;

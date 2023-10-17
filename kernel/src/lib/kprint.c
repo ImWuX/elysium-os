@@ -1,6 +1,6 @@
 #include "kprint.h"
 #include <stddef.h>
-#include <math.h>
+#include <lib/c/math.h>
 
 #define FLAG_LEFT (1 << 0)
 #define FLAG_SIGN (1 << 1)
