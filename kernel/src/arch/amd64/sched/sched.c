@@ -64,7 +64,6 @@ extern void (* g_fpu_save)(void *area);
 extern void (* g_fpu_restore)(void *area);
 
 static long g_next_tid = 1;
-static long g_next_pid = 1;
 static int g_sched_vector = 0;
 
 /*
@@ -144,15 +143,6 @@ void arch_sched_thread_destroy(thread_t *thread) {
         }
     }
     heap_free(ARCH_THREAD(thread));
-}
-
-process_t *arch_sched_process_create(vmm_address_space_t *address_space) {
-    process_t *proc = heap_alloc(sizeof(process_t));
-    proc->id = __atomic_fetch_add(&g_next_pid, 1, __ATOMIC_RELAXED);
-    proc->lock = SLOCK_INIT;
-    proc->threads = LIST_INIT;
-    proc->address_space = address_space;
-    return proc;
 }
 
 thread_t *arch_sched_thread_create_kernel(void (* func)()) {
