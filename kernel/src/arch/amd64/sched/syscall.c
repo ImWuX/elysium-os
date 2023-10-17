@@ -2,6 +2,7 @@
 #include <lib/assert.h>
 #include <lib/list.h>
 #include <lib/slock.h>
+#include <lib/round.h>
 #include <lib/kprint.h>
 #include <memory/heap.h>
 #include <memory/vmm.h>
@@ -46,7 +47,7 @@ typedef struct {
 int64_t syscall_fb(uint64_t addr, elib_fb_t *fb) {
     ASSERTC(arch_sched_thread_current()->proc, "Should be a userspace thread");
     uint64_t mapsz = g_fb_context.pitch * g_fb_context.height * sizeof(uint32_t);
-    int r = vmm_map_direct(arch_sched_thread_current()->proc->address_space, addr, (mapsz + ARCH_PAGE_SIZE - 1) / ARCH_PAGE_SIZE * ARCH_PAGE_SIZE, VMM_PROT_USER | VMM_PROT_WRITE, (uintptr_t) g_fb_context.address - g_hhdm_address);
+    int r = vmm_map_direct(arch_sched_thread_current()->proc->address_space, addr, ROUND_UP(mapsz, ARCH_PAGE_SIZE), VMM_PROT_USER | VMM_PROT_WRITE, (uintptr_t) g_fb_context.address - g_hhdm_address);
     if(r != 0) return r;
     fb->addr = addr;
     fb->width = g_fb_context.width;
