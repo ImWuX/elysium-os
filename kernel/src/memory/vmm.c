@@ -1,6 +1,7 @@
 #include "vmm.h"
 #include <errno.h>
 #include <lib/assert.h>
+#include <lib/round.h>
 #include <memory/heap.h>
 #include <memory/vmm/seg_anon.h>
 #include <memory/vmm/seg_direct.h>

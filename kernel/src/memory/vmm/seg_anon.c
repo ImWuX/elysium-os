@@ -2,6 +2,7 @@
 #include <memory/vmm.h>
 #include <memory/heap.h>
 #include <arch/vmm.h>
+#include <klibc/errno.h>
 
 typedef struct {
     bool wired;
@@ -15,7 +16,7 @@ static int anon_map(vmm_segment_t *segment, uintptr_t base, size_t length) {
 }
 
 static int anon_unmap(vmm_segment_t *segment [[maybe_unused]], uintptr_t base [[maybe_unused]], size_t length [[maybe_unused]]) {
-    return -1;
+    return -ENOSYS;
 }
 
 static bool anon_fault(vmm_segment_t *segment [[maybe_unused]], uintptr_t address [[maybe_unused]]) {

@@ -3,6 +3,7 @@
 #include <memory/vmm.h>
 #include <memory/heap.h>
 #include <arch/vmm.h>
+#include <klibc/errno.h>
 
 static int direct_map(vmm_segment_t *segment, uintptr_t base, size_t length) {
     uintptr_t offset = base - segment->base;
@@ -13,7 +14,7 @@ static int direct_map(vmm_segment_t *segment, uintptr_t base, size_t length) {
 }
 
 static int direct_unmap(vmm_segment_t *segment [[maybe_unused]], uintptr_t base [[maybe_unused]], size_t length [[maybe_unused]]) {
-    return -1;
+    return -ENOSYS;
 }
 
 static bool direct_fault(vmm_segment_t *segment [[maybe_unused]], uintptr_t address [[maybe_unused]]) {

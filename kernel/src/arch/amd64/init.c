@@ -312,15 +312,12 @@ static void exception_pagefault(interrupt_frame_t *frame) {
             if(elf_r) panic("Could not load the interpreter for startup\n");
         }
 
+        size_t stack_size = ARCH_PAGE_SIZE * 8;
         uintptr_t stack = arch_vmm_highest_userspace_addr();
-        uintptr_t paddr;
-        for(size_t j = 0; j < 8; j++) {
-            paddr = pmm_alloc_page(PMM_GENERAL | PMM_AF_ZERO)->paddr;
-            arch_vmm_map(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * (7 - j), paddr, VMM_PROT_WRITE | VMM_PROT_USER);
-        }
+        ASSERT(vmm_map_anon(as, (stack & ~(ARCH_PAGE_SIZE - 1)) + ARCH_PAGE_SIZE - stack_size, stack_size, VMM_PROT_WRITE | VMM_PROT_USER, false) == 0);
 
         stack &= ~0xF;
-        uint64_t *stackp = (uint64_t *) ((HHDM(paddr) + ARCH_PAGE_SIZE - 1) & ~0xF);
+        uint64_t *stackp = (uint64_t *) ((HHDM(arch_vmm_physical(as, stack & ~(ARCH_PAGE_SIZE - 1))) + ARCH_PAGE_SIZE - 1) & ~0xF);
 
         stackp -= 2; stack -= sizeof(uint64_t) * 2;
         memcpy((void *) stackp, (void *) "tctest.elf", 11);
