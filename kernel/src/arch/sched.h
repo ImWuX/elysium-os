@@ -32,14 +32,6 @@ thread_t *arch_sched_thread_create_kernel(void (* func)());
 thread_t *arch_sched_thread_create_user(process_t *proc, uintptr_t ip, uintptr_t sp);
 
 /**
- * @brief Create a new process
- *
- * @param address_space Address space
- * @return New process
- */
-process_t *arch_sched_process_create(vmm_address_space_t *address_space);
-
-/**
  * @brief Returns the active thread on the current CPU
  *
  * @return Current thread

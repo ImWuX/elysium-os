@@ -1,5 +1,9 @@
 #include "sched.h"
+#include <klibc/string.h>
+#include <memory/heap.h>
 #include <arch/sched.h>
+
+static long g_next_pid = 1;
 
 static slock_t g_sched_processes_lock = SLOCK_INIT;
 list_t g_sched_processes = LIST_INIT;
@@ -11,7 +15,13 @@ static slock_t g_lock = SLOCK_INIT;
 list_t g_sched_threads_queued = LIST_INIT_CIRCULAR(g_sched_threads_queued);
 
 process_t *sched_process_create(vmm_address_space_t *address_space) {
-    process_t *proc = arch_sched_process_create(address_space);
+    process_t *proc = heap_alloc(sizeof(process_t));
+    proc->id = __atomic_fetch_add(&g_next_pid, 1, __ATOMIC_RELAXED);
+    proc->lock = SLOCK_INIT;
+    proc->threads = LIST_INIT;
+    proc->address_space = address_space;
+    memset(&proc->fds, 0, sizeof(process_fd_t *) * PROCESS_MAX_FDS);
+
     slock_acquire(&g_sched_processes_lock);
     list_insert_behind(&g_sched_processes, &proc->list_sched);
     slock_release(&g_sched_processes_lock);
