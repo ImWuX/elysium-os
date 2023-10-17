@@ -1,5 +1,5 @@
 #include "vmm.h"
-#include <errno.h>
+#include <lib/c/errno.h>
 #include <lib/assert.h>
 #include <lib/round.h>
 #include <memory/heap.h>

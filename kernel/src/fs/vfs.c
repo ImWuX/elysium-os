@@ -1,6 +1,6 @@
 #include "vfs.h"
-#include <string.h>
-#include <klibc/errno.h>
+#include <lib/c/string.h>
+#include <lib/c/errno.h>
 #include <lib/assert.h>
 #include <lib/panic.h>
 #include <memory/heap.h>

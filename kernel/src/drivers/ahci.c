@@ -2,7 +2,7 @@
 #include <sys/dev.h>
 #include <drivers/pci.h>
 #include <stdbool.h>
-#include <string.h>
+#include <lib/c/string.h>
 #include <lib/assert.h>
 #include <lib/panic.h>
 #include <memory/hhdm.h>

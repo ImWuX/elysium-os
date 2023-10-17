@@ -1,4 +1,4 @@
-#include <string.h>
+#include <lib/c/string.h>
 #include <lib/list.h>
 #include <lib/slock.h>
 #include <lib/assert.h>

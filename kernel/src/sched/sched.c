@@ -1,5 +1,5 @@
 #include "sched.h"
-#include <klibc/string.h>
+#include <lib/c/string.h>
 #include <memory/heap.h>
 #include <arch/sched.h>
 

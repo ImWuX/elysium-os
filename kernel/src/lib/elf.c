@@ -1,5 +1,5 @@
 #include "elf.h"
-#include <klibc/string.h>
+#include <lib/c/string.h>
 #include <lib/kprint.h>
 #include <lib/assert.h>
 #include <memory/pmm.h>

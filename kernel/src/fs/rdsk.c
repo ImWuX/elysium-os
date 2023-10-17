@@ -1,8 +1,8 @@
 #include "rdsk.h"
 #include <stdint.h>
-#include <string.h>
+#include <lib/c/string.h>
 #include <lib/assert.h>
-#include <klibc/errno.h>
+#include <lib/c/errno.h>
 #include <memory/heap.h>
 
 #define SUPPORTED_REVISION ((1 << 8) | 1)
