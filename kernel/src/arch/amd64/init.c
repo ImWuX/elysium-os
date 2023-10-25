@@ -271,22 +271,23 @@ static void exception_pagefault(interrupt_frame_t *frame) {
         if(r < 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)\n", module->name);
     }
 
-    {
-        vmm_address_space_t *as = arch_vmm_create();
-        vfs_node_t *startup_exec;
-        r = vfs_lookup("/modules/STYX    ELF", &startup_exec, 0);
-        if(r < 0) panic("Could not lookup the startup executable (%i)\n", r);
+    // TODO: Rework syscalls in styx so we can actually use it :D
+    // {
+    //     vmm_address_space_t *as = arch_vmm_create();
+    //     vfs_node_t *startup_exec;
+    //     r = vfs_lookup("/modules/STYX    ELF", &startup_exec, 0);
+    //     if(r < 0) panic("Could not lookup the startup executable (%i)\n", r);
 
-        char *interpreter = 0;
-        elf_auxv_t auxv;
-        bool elf_r = elf_load(startup_exec, as, &interpreter, &auxv);
-        if(elf_r) panic("Could not load the startup executable\n");
-        uintptr_t stack = arch_vmm_highest_userspace_addr();
-        vmm_map_anon(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * 7, 8 * ARCH_PAGE_SIZE, VMM_PROT_WRITE | VMM_PROT_USER, false);
-        process_t *proc = sched_process_create(as);
-        thread_t *thread = arch_sched_thread_create_user(proc, auxv.entry, stack);
-        sched_thread_schedule(thread);
-    }
+    //     char *interpreter = 0;
+    //     elf_auxv_t auxv;
+    //     bool elf_r = elf_load(startup_exec, as, &interpreter, &auxv);
+    //     if(elf_r) panic("Could not load the startup executable\n");
+    //     uintptr_t stack = arch_vmm_highest_userspace_addr();
+    //     vmm_map_anon(as, (stack & ~0xFFF) - ARCH_PAGE_SIZE * 7, 8 * ARCH_PAGE_SIZE, VMM_PROT_WRITE | VMM_PROT_USER, false);
+    //     process_t *proc = sched_process_create(as);
+    //     thread_t *thread = arch_sched_thread_create_user(proc, auxv.entry, stack);
+    //     sched_thread_schedule(thread);
+    // }
 
     {
         bool elf_r;
@@ -296,13 +297,13 @@ static void exception_pagefault(interrupt_frame_t *frame) {
         r = vfs_lookup("/modules/TCTEST  ELF", &startup_exec, 0);
         if(r < 0) panic("Could not lookup tctest.elf (%i)\n", r);
 
-        elf_auxv_t auxv = {};
+        auxv_t auxv = {};
         char *interpreter = 0;
         elf_r = elf_load(startup_exec, as, &interpreter, &auxv);
         if(elf_r) panic("Could not load tctest.elf\n");
         kprintf("Found interpreter: %s\n", interpreter);
 
-        elf_auxv_t interp_auxv = {};
+        auxv_t interp_auxv = {};
         if(interpreter) {
             vfs_node_t *interp_exec;
             r = vfs_lookup(interpreter, &interp_exec, 0);
@@ -312,59 +313,13 @@ static void exception_pagefault(interrupt_frame_t *frame) {
             if(elf_r) panic("Could not load the interpreter for startup\n");
         }
 
-        size_t stack_size = ARCH_PAGE_SIZE * 8;
-        uintptr_t stack = arch_vmm_highest_userspace_addr();
-        ASSERT(vmm_map_anon(as, (stack & ~(ARCH_PAGE_SIZE - 1)) + ARCH_PAGE_SIZE - stack_size, stack_size, VMM_PROT_WRITE | VMM_PROT_USER, false) == 0);
-
-        stack &= ~0xF;
-        uint64_t *stackp = (uint64_t *) ((HHDM(arch_vmm_physical(as, stack & ~(ARCH_PAGE_SIZE - 1))) + ARCH_PAGE_SIZE - 1) & ~0xF);
-
-        stackp -= 2; stack -= sizeof(uint64_t) * 2;
-        memcpy((void *) stackp, (void *) "tctest.elf", 11);
-        uintptr_t stack_w_str = stack;
-
-        stackp -= 2; stack -= sizeof(uint64_t) * 2;
-        memcpy((void *) stackp, (void *) "LD_SHOW_AUXV=1", 15);
-        uintptr_t env_ld_show_auxv = stack;
-
-        stackp -= 3; stack -= sizeof(uint64_t) * 3;
-        stackp[0] = 0; stackp[1] = 0; stackp[2] = 0;
-
-        stackp -= 2; stack -= sizeof(uint64_t) * 2;
-        stackp[0] = 23; stackp[1] = 0;
-
-        stackp -= 2; stack -= sizeof(uint64_t) * 2;
-        stackp[0] = ELF_AUXV_ENTRY; stackp[1] = auxv.entry;
-
-        stackp -= 2; stack -= sizeof(uint64_t) * 2;
-        stackp[0] = ELF_AUXV_PHDR; stackp[1] = auxv.phdr;
-
-        stackp -= 2; stack -= sizeof(uint64_t) * 2;
-        stackp[0] = ELF_AUXV_PHENT; stackp[1] = auxv.phent;
-
-        stackp -= 2; stack -= sizeof(uint64_t) * 2;
-        stackp[0] = ELF_AUXV_PHNUM; stackp[1] = auxv.phnum;
-
-        stackp -= 1; stack -= sizeof(uint64_t) * 1;
-        stackp[0] = 0; // ENVP NULL
-
-        stackp -= 1; stack -= sizeof(uint64_t) * 1;
-        stackp[0] = env_ld_show_auxv; // envp env_ld_show_auxv
-
-        stackp -= 1; stack -= sizeof(uint64_t) * 1;
-        stackp[0] = 0; // ARG NULL
-
-        stackp -= 1; stack -= sizeof(uint64_t) * 1;
-        stackp[0] = stack_w_str; // call arg
-
-        stackp -= 1; stack -= sizeof(uint64_t) * 1;
-        stackp[0] = 1; // argc
-
         kprintf("entry: %#lx; phdr: %#lx; phent: %#lx; phnum: %#lx;\n", auxv.entry, auxv.phdr, auxv.phent, auxv.phnum);
-        kprintf("stack: %#lx; stackp: %#lx;\n", stack, (uintptr_t) stackp);
+
+        char *argv[] = { "tctest.elf", NULL };
+        char *envp[] = { NULL };
 
         process_t *proc = sched_process_create(as);
-        thread_t *thread = arch_sched_thread_create_user(proc, interpreter ? interp_auxv.entry : auxv.entry, stack);
+        thread_t *thread = arch_sched_thread_create_user(proc, interpreter ? interp_auxv.entry : auxv.entry, arch_sched_stack_setup(proc, argv, envp, &auxv));
         sched_thread_schedule(thread);
     }
 

@@ -1,10 +1,12 @@
 #include "sched.h"
 #include <stdint.h>
-#include <lib/c/string.h>
+#include <lib/auxv.h>
 #include <lib/slock.h>
 #include <lib/kprint.h>
 #include <lib/assert.h>
+#include <lib/round.h>
 #include <lib/container.h>
+#include <lib/c/string.h>
 #include <sched/sched.h>
 #include <memory/heap.h>
 #include <memory/hhdm.h>
@@ -15,7 +17,7 @@
 #include <arch/amd64/lapic.h>
 
 #define KERNEL_STACK_SIZE_PG 4
-#define USER_STACK_SIZE_PG 8
+#define USER_STACK_SIZE (8 * ARCH_PAGE_SIZE)
 #define ARCH_THREAD(THREAD) (container_of(THREAD, arch_thread_t, common))
 
 typedef struct {
@@ -185,6 +187,66 @@ thread_t *arch_sched_thread_create_user(process_t *proc, uintptr_t ip, uintptr_t
     list_insert_behind(&proc->threads, &thread->common.list_proc);
     slock_release(&proc->lock);
     return &thread->common;
+}
+
+uintptr_t arch_sched_stack_setup(process_t *proc, char **argv, char **envp, auxv_t *auxv) {
+    #define WRITE_QWORD(VALUE)                                                                                  \
+        do {                                                                                                    \
+            stack -= sizeof(uint64_t);                                                                          \
+            uintptr_t phys_page = arch_vmm_physical(proc->address_space, ROUND_DOWN(stack, ARCH_PAGE_SIZE));    \
+            *(volatile uint64_t *) (HHDM(phys_page) + stack % ARCH_PAGE_SIZE) = (VALUE);                        \
+        } while(false)
+    #define WRITE_STRING(DEST, VALUE, LENGTH)                                                                           \
+        do {                                                                                                            \
+            for(size_t x = 0; x < (LENGTH); x++) {                                                                      \
+                uintptr_t phys_page = arch_vmm_physical(proc->address_space, ROUND_DOWN((DEST), ARCH_PAGE_SIZE));       \
+                *(volatile uint8_t *) (HHDM(phys_page) + ((DEST) + x) % ARCH_PAGE_SIZE) = (((uint8_t *) (VALUE))[x]);   \
+            };                                                                                                          \
+        } while(false)
+
+    uintptr_t stack = arch_vmm_highest_userspace_addr();
+    ASSERT(vmm_map_anon(proc->address_space, ROUND_UP(stack, ARCH_PAGE_SIZE) - USER_STACK_SIZE, USER_STACK_SIZE, VMM_PROT_WRITE | VMM_PROT_USER, false) == 0);
+    stack &= ~0xF;
+
+    int argc = 0;
+    for(; argv[argc]; argc++) stack -= strlen(argv[argc]) + 1;
+    uintptr_t arg_data = stack;
+
+    int envc = 0;
+    for(; envp[envc]; envc++) stack -= strlen(envp[envc]) + 1;
+    uintptr_t env_data = stack;
+
+    stack -= (stack - (12 + 1 + envc + 1 + argc + 1) * sizeof(uint64_t)) % 0x10;
+
+    #define WRITE_AUX(ID, VALUE) WRITE_QWORD(VALUE); WRITE_QWORD(ID);
+    WRITE_AUX(0, 0);
+    WRITE_AUX(AUXV_SECURE, 0);
+    WRITE_AUX(AUXV_ENTRY, auxv->entry);
+    WRITE_AUX(AUXV_PHDR, auxv->phdr);
+    WRITE_AUX(AUXV_PHENT, auxv->phent);
+    WRITE_AUX(AUXV_PHNUM, auxv->phnum);
+    #undef WRITE_AUX
+
+    WRITE_QWORD(0);
+    for(int i = 0; i < envc; i++) {
+        WRITE_QWORD(env_data);
+        size_t str_sz = strlen(envp[i]) + 1;
+        WRITE_STRING(env_data, envp[i], str_sz);
+        env_data += str_sz;
+    }
+
+    WRITE_QWORD(0);
+    for(int i = 0; i < argc; i++) {
+        WRITE_QWORD(arg_data);
+        size_t str_sz = strlen(argv[i]) + 1;
+        WRITE_STRING(arg_data, argv[i], str_sz);
+        arg_data += str_sz;
+    }
+    WRITE_QWORD(argc);
+
+    return stack;
+    #undef WRITE_QWORD
+    #undef WRITE_STRING
 }
 
 thread_t *arch_sched_thread_current() {
