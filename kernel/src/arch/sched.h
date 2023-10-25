@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <lib/auxv.h>
 #include <sched/process.h>
 #include <sched/thread.h>
 #include <memory/vmm.h>
@@ -30,6 +31,17 @@ thread_t *arch_sched_thread_create_kernel(void (* func)());
  * @return New thread
  */
 thread_t *arch_sched_thread_create_user(process_t *proc, uintptr_t ip, uintptr_t sp);
+
+/**
+ * @brief Setup a new user stack
+ *
+ * @param proc Process
+ * @param argv Argument list, NULL terminated
+ * @param envp Environment list, NULL terminated
+ * @param auxv Auxiliary vector, NULL terminated
+ * @return Stack pointer to the new stack
+ */
+uintptr_t arch_sched_stack_setup(process_t *proc, char **argv, char **envp, auxv_t *auxv);
 
 /**
  * @brief Returns the active thread on the current CPU
