@@ -28,6 +28,16 @@ int strcmp(const char *lhs, const char *rhs);
 char *strcpy(char *dest, const char *src);
 
 /**
+ * @brief Copy a string. If a null terminator is reached, the string will be padded with NULLS
+ *
+ * @param dest Destination buffer
+ * @param src Source buffer
+ * @param n Size
+ * @return The destination
+ */
+char *strncpy(char *dest, const char *src, size_t n);
+
+/**
  * @brief Fill memory with a value
  *
  * @param dest Destination

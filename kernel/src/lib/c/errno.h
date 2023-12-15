@@ -121,3 +121,5 @@
 #define ENAVAIL 119 /* No XENIX semaphores available */
 #define EISNAM 120 /* Is a named type file */
 #define EREMOTEIO 121 /* Remote I/O error */
+
+#define EGENERIC 300

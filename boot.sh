@@ -77,7 +77,7 @@ case $SIM in
         qemu_args+=(-cpu qemu64)
         qemu_args+=(-drive format=raw,file=build/disk.img)
         qemu_args+=(-smp cores=4)
-        qemu_args+=(-vnc :0,websocket=on)
+        # qemu_args+=(-vnc :0,websocket=on)
         qemu_args+=(-D ./log.txt)
         qemu_args+=(-d int)
         qemu_args+=(-M smm=off)

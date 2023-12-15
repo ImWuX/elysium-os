@@ -20,7 +20,7 @@ process_t *sched_process_create(vmm_address_space_t *address_space) {
     proc->lock = SLOCK_INIT;
     proc->threads = LIST_INIT;
     proc->address_space = address_space;
-    memset(&proc->fds, 0, sizeof(process_fd_t *) * PROCESS_MAX_FDS);
+    memset(&proc->fds, 0, sizeof(process_resource_t *) * PROCESS_MAX_FDS);
 
     slock_acquire(&g_sched_processes_lock);
     list_insert_behind(&g_sched_processes, &proc->list_sched);

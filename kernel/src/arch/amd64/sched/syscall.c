@@ -4,6 +4,8 @@
 #include <lib/slock.h>
 #include <lib/round.h>
 #include <lib/kprint.h>
+#include <lib/c/errno.h>
+#include <lib/c/string.h>
 #include <memory/heap.h>
 #include <memory/vmm.h>
 #include <memory/hhdm.h>
@@ -18,70 +20,32 @@
 
 #define MSR_EFER_SCE 1
 
+typedef struct {
+    uint64_t value;
+    uint64_t errno;
+} syscall_return_t;
+
 extern void syscall_entry();
 
-extern draw_context_t g_fb_context;
-
-static slock_t g_kbq_lock = SLOCK_INIT;
-static list_t g_kbq = LIST_INIT_CIRCULAR(g_kbq);
-
-int64_t syscall_exit(int code) {
-    kprintf("syscall :: exit (code: %i%s, tid: %li)\n", code, code == -0xDEAD ? " (MLIBC PANIC)" : "", arch_sched_thread_current()->id);
+void syscall_exit(int code) {
+    kprintf("syscall :: exit(code: %i, tid: %li) -> exit\n", code, arch_sched_thread_current()->id);
     arch_sched_thread_current()->state = THREAD_STATE_DESTROY;
     sched_next();
     __builtin_unreachable();
 }
 
-int64_t syscall_write(uint64_t ch) {
-    putchar((int) ch);
-    return 0;
+syscall_return_t syscall_debug(char c) {
+    syscall_return_t ret = {};
+    putchar(c);
+    return ret;
 }
 
-typedef struct {
-    uint64_t addr;
-    uint64_t pitch;
-    uint64_t width;
-    uint64_t height;
-} elib_fb_t;
-
-int64_t syscall_fb(uint64_t addr, elib_fb_t *fb) {
-    ASSERTC(arch_sched_thread_current()->proc, "Should be a userspace thread");
-    uint64_t mapsz = g_fb_context.pitch * g_fb_context.height * sizeof(uint32_t);
-    int r = vmm_map_direct(arch_sched_thread_current()->proc->address_space, addr, ROUND_UP(mapsz, ARCH_PAGE_SIZE), VMM_PROT_USER | VMM_PROT_WRITE, (uintptr_t) g_fb_context.address - g_hhdm_address);
-    if(r != 0) return r;
-    fb->addr = addr;
-    fb->width = g_fb_context.width;
-    fb->height = g_fb_context.height;
-    fb->pitch = g_fb_context.pitch;
-    return 0;
-}
-
-typedef struct {
-    uint8_t ch;
-    list_t list;
-} kb_event_t;
-
-int64_t syscall_kbin(char *ch) {
-    slock_acquire(&g_kbq_lock);
-    if(list_is_empty(&g_kbq)) {
-        slock_release(&g_kbq_lock);
-        return -1;
+syscall_return_t syscall_alloc_anon(size_t size) {
+    syscall_return_t ret = {};
+    if(size == 0 || size % ARCH_PAGE_SIZE) {
+        ret.errno = EINVAL;
+        return ret;
     }
-    kb_event_t *ev = LIST_GET(g_kbq.next, kb_event_t, list);
-    list_delete(&ev->list);
-    *ch = (char) ev->ch;
-    heap_free(ev);
-    slock_release(&g_kbq_lock);
-    return 0;
-}
-
-int64_t syscall_dbg(uint64_t ch) {
-    putchar((int) ch);
-    return 0;
-}
-
-uintptr_t syscall_vmm_map(uint64_t size) {
-    if(size == 0 || size % ARCH_PAGE_SIZE) return 0;
     static uintptr_t address = 0x50000000;
     int r;
     while(true) {
@@ -89,19 +53,29 @@ uintptr_t syscall_vmm_map(uint64_t size) {
         if(r == 0) break;
         address += ARCH_PAGE_SIZE;
     }
-    uintptr_t ret_addr = address;
+    ret.value = address;
     address += size;
-    kprintf("syscall :: vmm_map(%#lx, %#lx)\n", ret_addr, size);
-    return ret_addr;
+    kprintf("syscall :: alloc_anon(size: %#lx) -> %#lx\n", size, ret.value);
+    return ret;
 }
 
-static void consume_kb_event(uint8_t ch) {
-    kb_event_t *kbev = heap_alloc(sizeof(kb_event_t));
-    kbev->ch = ch;
-    slock_acquire(&g_kbq_lock);
-    list_insert_before(&g_kbq, &kbev->list);
-    slock_release(&g_kbq_lock);
+syscall_return_t syscall_fs_set(void *ptr) {
+    syscall_return_t ret = {};
+    msr_write(MSR_FS_BASE, (uint64_t) ptr);
+    kprintf("syscall :: fs_set(ptr: %#lx) -> void\n", (uint64_t) ptr);
+    return ret;
 }
+
+// static slock_t g_kbq_lock = SLOCK_INIT;
+// static list_t g_kbq = LIST_INIT_CIRCULAR(g_kbq);
+
+// static void consume_kb_event(uint8_t ch) {
+//     kb_event_t *kbev = heap_alloc(sizeof(kb_event_t));
+//     kbev->ch = ch;
+//     slock_acquire(&g_kbq_lock);
+//     list_insert_before(&g_kbq, &kbev->list);
+//     slock_release(&g_kbq_lock);
+// }
 
 void syscall_init() {
     msr_write(MSR_EFER, msr_read(MSR_EFER) | MSR_EFER_SCE);
@@ -109,5 +83,5 @@ void syscall_init() {
     msr_write(MSR_LSTAR, (uint64_t) &syscall_entry);
     msr_write(MSR_SFMASK, msr_read(MSR_SFMASK) | (1 << 9));
 
-    ps2kb_set_handler(&consume_kb_event);
+    // ps2kb_set_handler(&consume_kb_event);
 }

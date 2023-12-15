@@ -79,7 +79,7 @@ typedef struct {
     elf64_xword_t align; /* Alignment */
 } __attribute__((packed)) elf_phdr_t;
 
-bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, elf_auxv_t *auxv) {
+bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, auxv_t *auxv) {
     vfs_rw_t rw;
     size_t read_count;
     int r;
