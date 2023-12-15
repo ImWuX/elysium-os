@@ -35,6 +35,7 @@ static vmm_segment_ops_t ops = {
     .free = &anon_free
 };
 
+// CRITICAL: DO COALESCING!!!
 // static bool can_coalesce(vmm_segment_t *segment) {
 //     vmm_segment_t *prev = NULL;
 //     vmm_segment_t *next = NULL;

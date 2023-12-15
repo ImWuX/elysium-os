@@ -33,9 +33,16 @@ isr_stub:
     mov rax, ds
     push rax
 
+    ; TODO: storing fs.. might not be necessary
+    mov rax, fs
+    push rax
+
     xor rbp, rbp
     mov rdi, rsp                                            ; RDI to be used as a pointer to the int frame
     call interrupt_handler                                  ; Call interrupt handler
+
+    pop rax
+    mov fs, rax
 
     pop rax
     mov ds, rax

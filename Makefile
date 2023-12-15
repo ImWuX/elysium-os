@@ -1,10 +1,12 @@
 BUILD = $(realpath ./build)
 FILES = $(realpath ./files)
 TARTARUS = $(realpath ../tartarus-bootloader)
+CHARIOT = $(realpath ../chariot/chariot)
+BOOTSTRAP = $(realpath ../elysium-bootstrap)
 ARCH ?= amd64
 
 # Phony Targets
-.PHONY: all clean $(BUILD)/kernel.elf $(BUILD)/ksymb.txt $(BUILD)/disk.img
+.PHONY: all clean $(BUILD)/kernel.elf $(BUILD)/ksymb.txt $(BUILD)/root.rdk $(BUILD)/disk.img
 
 all: $(BUILD)/kernel.elf $(BUILD)/disk.img clean
 
@@ -17,7 +19,11 @@ $(BUILD)/kernel.elf:
 $(BUILD)/ksymb.txt: $(BUILD)/kernel.elf
 	nm $(BUILD)/kernel.elf -n > $(BUILD)/ksymb.txt
 
-$(BUILD)/disk.img: $(BUILD)/kernel.elf $(BUILD)/ksymb.txt
+$(BUILD)/root.rdk:
+	(cd $(BOOTSTRAP) && $(CHARIOT) --verbose source:test test root)
+	cp $(BOOTSTRAP)/.chariot-cache/built/root/root.rdk $@
+
+$(BUILD)/disk.img: $(BUILD)/kernel.elf $(BUILD)/ksymb.txt $(BUILD)/root.rdk
 	@ echo "\e[33m>> Creating Disk Image\e[0m"
 	cp $(BUILD)/empty.img $@
 ifeq ($(ARCH), amd64)
@@ -49,7 +55,7 @@ else
 	$(MAKE) -C $(TARTARUS)/core clean TARGET=amd64-uefi64
 endif
 endif
-	sudo cp $(BUILD)/kernel.elf $(BUILD)/ksymb.txt $(FILES)/* loop_mount_point/
+	sudo cp $(BUILD)/kernel.elf $(BUILD)/ksymb.txt $(BUILD)/root.rdk $(FILES)/* loop_mount_point/
 	sync
 	sudo umount loop_mount_point
 	sudo losetup -d `cat loop_device_name`

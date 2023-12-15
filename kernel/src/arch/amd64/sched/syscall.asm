@@ -1,21 +1,19 @@
 SYSCALL_RSP_OFFSET equ 16
 KERNEL_STACK_BASE_OFFSET equ 24
 
+extern syscall_unimplemented
 extern syscall_exit
-extern syscall_write
-extern syscall_fb
-extern syscall_kbin
-extern syscall_dbg
-extern syscall_vmm_map
+extern syscall_debug
+extern syscall_alloc_anon
+extern syscall_fs_set
 
 section .data
 syscall_table:
     dq syscall_exit         ; 0
-    dq syscall_write        ; 1
-    dq syscall_fb           ; 2 (Temporary)
-    dq syscall_kbin         ; 3 (Temporary)
-    dq syscall_dbg          ; 4
-    dq syscall_vmm_map      ; 5
+    dq syscall_debug        ; 1
+    dq syscall_alloc_anon   ; 2
+    times 7 dq 0
+    dq syscall_fs_set       ; 10
 .length: dq ($ - syscall_table) / 8
 
 section .text
@@ -25,7 +23,6 @@ syscall_entry:
     mov qword [gs:SYSCALL_RSP_OFFSET], rsp
     mov rsp, qword [gs:KERNEL_STACK_BASE_OFFSET]
 
-    push rbx
     push rcx
     push rdx
     push rbp
@@ -48,10 +45,16 @@ syscall_entry:
     cmp rax, qword [syscall_table.length]
     jge .invalid_syscall
 
+    mov rax, [syscall_table + rax * 8]
+    cmp rax, 0
+    je .invalid_syscall
+
     ; RDI, RSI, RDX contain the first 3 arguments, this also matches the first 3 arguments for the Sys V ABI.
     ; R10 contains the next argument, this does not match SysV. Lastly, R8 and R9 are passed which will match SysV again.
     mov rcx, r10
-    call [syscall_table + rax * 8]
+    call rax
+
+    mov rbx, rdx ; Cannot use rdx for return value
 
     .invalid_syscall:
 
@@ -73,7 +76,6 @@ syscall_entry:
     pop rbp
     pop rdx
     pop rcx
-    pop rbx
 
     mov rsp, qword [gs:SYSCALL_RSP_OFFSET]
     swapgs

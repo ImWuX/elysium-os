@@ -248,14 +248,14 @@ static void exception_pagefault(interrupt_frame_t *frame) {
 
     sched_init();
 
-    tartarus_module_t *sroot_module = 0;
+    tartarus_module_t *sysroot_module = 0;
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
-        if(strcmp("SROOT   RDK", module->name) == 0) sroot_module = module;
+        if(strcmp("ROOT    RDK", module->name) == 0) sysroot_module = module;
     }
-    ASSERT(sroot_module);
+    ASSERT(sysroot_module);
 
-    int r = vfs_mount(&g_rdsk_ops, 0, (void *) HHDM(sroot_module->paddr));
+    int r = vfs_mount(&g_rdsk_ops, 0, (void *) HHDM(sysroot_module->paddr));
     if(r < 0) panic("Failed to mount RDSK (%i)\n", r);
     r = vfs_mount(&g_tmpfs_ops, "/modules", (void *) 0);
     if(r < 0) panic("Failed to mount /modules (%i)\n", r);
@@ -270,6 +270,9 @@ static void exception_pagefault(interrupt_frame_t *frame) {
         r = file->ops->rw(file, &rw, &write_count);
         if(r < 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)\n", module->name);
     }
+
+    r = vfs_mount(&g_tmpfs_ops, "/tmp", (void *) 0);
+    if(r < 0) panic("Failed to mount /tmp (%i)\n", r);
 
     // TODO: Rework syscalls in styx so we can actually use it :D
     // {
@@ -294,17 +297,17 @@ static void exception_pagefault(interrupt_frame_t *frame) {
 
         vmm_address_space_t *as = arch_vmm_create();
         vfs_node_t *startup_exec;
-        r = vfs_lookup("/modules/TCTEST  ELF", &startup_exec, 0);
-        if(r < 0) panic("Could not lookup tctest.elf (%i)\n", r);
+        r = vfs_lookup("/usr/local/bin/test", &startup_exec, 0);
+        if(r < 0) panic("Could not lookup test executable (%i)\n", r);
 
         auxv_t auxv = {};
         char *interpreter = 0;
         elf_r = elf_load(startup_exec, as, &interpreter, &auxv);
-        if(elf_r) panic("Could not load tctest.elf\n");
-        kprintf("Found interpreter: %s\n", interpreter);
+        if(elf_r) panic("Could not load test executable\n");
 
         auxv_t interp_auxv = {};
         if(interpreter) {
+            kprintf("Found interpreter: %s\n", interpreter);
             vfs_node_t *interp_exec;
             r = vfs_lookup(interpreter, &interp_exec, 0);
             if(r < 0) panic("Could not lookup the interpreter for startup (%i)\n", r);
@@ -315,7 +318,7 @@ static void exception_pagefault(interrupt_frame_t *frame) {
 
         kprintf("entry: %#lx; phdr: %#lx; phent: %#lx; phnum: %#lx;\n", auxv.entry, auxv.phdr, auxv.phent, auxv.phnum);
 
-        char *argv[] = { "tctest.elf", NULL };
+        char *argv[] = { "/usr/local/bin/test", NULL };
         char *envp[] = { NULL };
 
         process_t *proc = sched_process_create(as);
