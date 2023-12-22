@@ -1,6 +1,21 @@
-include ../toolchain.mk
 ifndef ARCH
     $(error ARCH is not specified)
+endif
+
+ifndef TARTARUS_INCLUDE
+	$(error TARTARUS_INCLUDE is not specified)
+endif
+
+ifndef CC
+	$(error CC is not specified)
+endif
+
+ifndef LD
+	$(error LD is not specified)
+endif
+
+ifndef ASMC
+	$(error ASMC is not specified)
 endif
 
 CFLAGS = -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -Wall -Wextra -Wno-unused-variable -fno-stack-protector -fno-stack-check -fno-omit-frame-pointer -O2 -D __ARCH_$(shell echo $(ARCH) | tr a-z A-Z)
@@ -29,9 +44,7 @@ endif
 	$(ASMC) $(ASMFLAGS) -isrc $< -f elf64 -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) -Isrc -I../../tartarus-bootloader -c $< -o $@
-
-# TODO: Change -I../../tartarus-bootloader
+	$(CC) $(CFLAGS) -Isrc -I$(TARTARUS_INCLUDE) -c $< -o $@
 
 # Clean Targets
 clean:
