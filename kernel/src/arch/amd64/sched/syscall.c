@@ -66,6 +66,27 @@ syscall_return_t syscall_fs_set(void *ptr) {
     return ret;
 }
 
+// TODO: Temporary (should be included from our abi-bits somehow)
+struct utsname {
+	char sysname[65];
+	char nodename[65];
+	char release[65];
+	char version[65];
+	char machine[65];
+	char domainname[65];
+};
+
+syscall_return_t syscall_uname(struct utsname *buf) {
+    syscall_return_t ret = {};
+
+    strncpy(buf->sysname, "Elysium", sizeof(buf->sysname));
+    strncpy(buf->nodename, "elysium", sizeof(buf->nodename));
+    strncpy(buf->release, "pre-alpha", sizeof(buf->release));
+    strncpy(buf->version, "pre-alpha (" __DATE__ " " __TIME__ ")", sizeof(buf->version));
+
+    return ret;
+}
+
 // static slock_t g_kbq_lock = SLOCK_INIT;
 // static list_t g_kbq = LIST_INIT_CIRCULAR(g_kbq);
 

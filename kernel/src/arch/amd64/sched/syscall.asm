@@ -6,6 +6,7 @@ extern syscall_exit
 extern syscall_debug
 extern syscall_alloc_anon
 extern syscall_fs_set
+extern syscall_uname
 
 section .data
 syscall_table:
@@ -14,6 +15,7 @@ syscall_table:
     dq syscall_alloc_anon   ; 2
     times 7 dq 0
     dq syscall_fs_set       ; 10
+    dq syscall_uname        ; 11
 .length: dq ($ - syscall_table) / 8
 
 section .text
