@@ -1,15 +1,15 @@
-root/
+linux-headers/
 
 # DevOps
 compile_commands.json
-
-# IDE
 .vscode/
 .cache/
 
 # Output
-build/*
+.chariot-cache/
+build/
 log.txt
+
 *.img
 *.bin
 *.o
