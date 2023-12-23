@@ -92,11 +92,11 @@ modifiers = [
     """ }
 ]
 
-[source.cross-binutils] # TODO: We really dont need a copy of this... fix somehow. branching type?
+[source.cross-binutils]
 type = "tar.gz"
 url = "https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.gz"
 
-[source.cross-gcc] # TODO: We really dont need a copy of this... fix somehow. branching type?
+[source.cross-gcc]
 type = "tar.gz"
 url = "https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.gz"
 modifiers = [
@@ -187,13 +187,13 @@ install = [
     "DESTDIR=$INSTALL make install-target-libgcc"
 ]
 
-[host.cross-binutils] # TODO: Probably not needed but it was done to ease the port of the build
+[host.cross-binutils]
 dependencies = ["source:cross-binutils"]
 configure = ["$SOURCE:cross-binutils/configure --target=x86_64-elf --prefix=$PREFIX --disable-nls --disable-werror --with-sysroot"]
 build = ["make -j$THREADS all"]
 install = ["DESTDIR=$INSTALL make install"]
 
-[host.cross-gcc] # TODO: Probably not needed but it was done to ease the port of the build
+[host.cross-gcc]
 runtime-dependencies = ["host:cross-binutils"]
 dependencies = ["source:cross-gcc"]
 configure = ["$SOURCE:cross-gcc/configure --target=x86_64-elf --prefix=$PREFIX --disable-nls --enable-languages=c --without-headers"]
