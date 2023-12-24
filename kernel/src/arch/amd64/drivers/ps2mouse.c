@@ -34,8 +34,8 @@ static void mouse_handler([[maybe_unused]] interrupt_frame_t *registers) {
 	}
 }
 
-void ps2mouse_set_handler(ps2mouse_handler_t mouse_handler) {
-    g_mouse_handler = mouse_handler;
+void ps2mouse_set_handler(ps2mouse_handler_t handler) {
+    g_mouse_handler = handler;
 }
 
 void ps2mouse_initialize(ps2_ports_t port) {
