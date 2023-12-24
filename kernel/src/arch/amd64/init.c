@@ -297,7 +297,7 @@ static void exception_pagefault(interrupt_frame_t *frame) {
 
         vmm_address_space_t *as = arch_vmm_create();
         vfs_node_t *startup_exec;
-        r = vfs_lookup("/usr/local/bin/test", &startup_exec, 0);
+        r = vfs_lookup("/usr/bin/test", &startup_exec, 0);
         if(r < 0) panic("Could not lookup test executable (%i)\n", r);
 
         auxv_t auxv = {};
@@ -318,7 +318,7 @@ static void exception_pagefault(interrupt_frame_t *frame) {
 
         kprintf("entry: %#lx; phdr: %#lx; phent: %#lx; phnum: %#lx;\n", auxv.entry, auxv.phdr, auxv.phent, auxv.phnum);
 
-        char *argv[] = { "/usr/local/bin/test", NULL };
+        char *argv[] = { "/usr/bin/test", NULL };
         char *envp[] = { NULL };
 
         process_t *proc = sched_process_create(as);

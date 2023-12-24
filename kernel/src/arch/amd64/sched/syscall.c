@@ -1,4 +1,5 @@
 #include "syscall.h"
+#include <sys/utsname.h>
 #include <lib/assert.h>
 #include <lib/list.h>
 #include <lib/slock.h>
@@ -65,16 +66,6 @@ syscall_return_t syscall_fs_set(void *ptr) {
     kprintf("syscall :: fs_set(ptr: %#lx) -> void\n", (uint64_t) ptr);
     return ret;
 }
-
-// TODO: Temporary (should be included from our abi-bits somehow)
-struct utsname {
-	char sysname[65];
-	char nodename[65];
-	char release[65];
-	char version[65];
-	char machine[65];
-	char domainname[65];
-};
 
 syscall_return_t syscall_uname(struct utsname *buf) {
     syscall_return_t ret = {};
