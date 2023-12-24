@@ -58,7 +58,7 @@ url = "mlibc-sysdeps"
 
 [source.mlibc]
 type = "tar.gz"
-url = "https://github.com/managarm/mlibc/archive/refs/tags/4.0.0-rc1.tar.gz"
+url = "https://github.com/managarm/mlibc/archive/5ea203152ce7b4423dfbe6999e66434c0800ffbe.tar.gz"
 modifiers = [
     { type = "patch", source = "patches", file = "mlibc.diff" },
     { type = "merge", source = "mlibc-sysdeps" }
@@ -293,12 +293,25 @@ build = [
         IA32_LIBGCC=$SOURCE:support/libgcc-i686.a AMD64_LIBGCC=$SOURCE:support/libgcc-x86_64.a
     """
 ]
-install = ["cp bios/disk/mbr.bin core/tartarus.sys tartarus.h $INSTALL"]
+install = [
+    "mkdir -p $INSTALL/usr/share/tartarus",
+    "cp bios/disk/mbr.bin core/tartarus.sys $INSTALL/usr/share/tartarus",
+    "mkdir -p $INSTALL/usr/include",
+    "cp tartarus.h $INSTALL/usr/include"
+]
+
+[target.kernel-headers]
+dependencies = ["mlibc-headers", "tartarus"]
+configure = ["cp -r $ROOT/usr/include/* ."]
+install = [
+    "mkdir -p $INSTALL/usr/include",
+    "cp -r . $INSTALL/usr/include"
+]
 
 [target.kernel]
-dependencies = ["source:kernel", "source:tartarus", "host:cross-gcc"]
+dependencies = ["source:kernel", "host:gcc", "kernel-headers"]
 configure = ["cp -r $SOURCE:kernel/* ."]
-build = ["make -j$THREADS src/kernel.elf ARCH=amd64 TARTARUS_INCLUDE=$SOURCE:tartarus CC=x86_64-elf-gcc LD=x86_64-elf-ld ASMC=nasm"]
+build = ["make -j$THREADS src/kernel.elf ARCH=amd64 CC=x86_64-elysium-gcc LD=x86_64-elysium-ld ASMC=nasm"]
 install = ["cp src/kernel.elf $INSTALL"]
 
 # Sysroot #
@@ -313,7 +326,7 @@ configure = [
     "cp $SOURCE:test/Makefile ."
 ]
 build = ["make -j$THREADS all"]
-install = ["DESTDIR=$INSTALL PREFIX=$PREFIX make install"] # TODO: Prefix here is sus.. really need to up the tooling game
+install = ["DESTDIR=$INSTALL PREFIX=/usr make install"] # TODO: Prefix here is sus.. really need to up the tooling game
 
 [target.root]
 dependencies = ["mlibc", "test", "host:rdsk"]

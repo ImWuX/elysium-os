@@ -2,10 +2,6 @@ ifndef ARCH
     $(error ARCH is not specified)
 endif
 
-ifndef TARTARUS_INCLUDE
-	$(error TARTARUS_INCLUDE is not specified)
-endif
-
 ifndef CC
 	$(error CC is not specified)
 endif
@@ -18,11 +14,13 @@ ifndef ASMC
 	$(error ASMC is not specified)
 endif
 
-CFLAGS = -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -Wall -Wextra -Wno-unused-variable -fno-stack-protector -fno-stack-check -fno-omit-frame-pointer -O2 -D __ARCH_$(shell echo $(ARCH) | tr a-z A-Z)
-ASMFLAGS = -Werror
-
-# Debug Symbols
+CFLAGS = -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -O2
+CFLAGS += -Wall -Wextra -Wno-unused-variable -Wno-microsoft-anon-tag -Wvla -Wshadow
+CFLAGS += -fno-stack-protector -fno-stack-check -fno-omit-frame-pointer -fno-strict-aliasing
+CFLAGS += -D__ARCH_$(shell echo $(ARCH) | tr a-z A-Z) -D__MLIBC_ABI_ONLY
 CFLAGS += -g
+
+ASMFLAGS = -Werror
 
 # Sources
 ASM_SOURCES = $(shell find src/ -type f -name "*.asm" -not -path "src/arch/*")
@@ -44,7 +42,7 @@ endif
 	$(ASMC) $(ASMFLAGS) -isrc $< -f elf64 -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) -Isrc -I$(TARTARUS_INCLUDE) -c $< -o $@
+	$(CC) $(CFLAGS) -Isrc -c $< -o $@
 
 # Clean Targets
 clean:
