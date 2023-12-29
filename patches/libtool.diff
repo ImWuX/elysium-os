@@ -1,0 +1,159 @@
+diff -Naru libtool-2.4.7/build-aux/config.guess libtool-2.4.7-patched/build-aux/config.guess
+--- libtool-2.4.7/build-aux/config.guess	2022-03-17 03:44:30.000000000 +0100
++++ libtool-2.4.7-patched/build-aux/config.guess	2023-11-22 10:23:25.553009757 +0100
+@@ -932,6 +932,9 @@
+     *:SerenityOS:*:*)
+         GUESS=$UNAME_MACHINE-pc-serenity
+         ;;
++    *:Elysium:*:*)
++        GUESS=$UNAME_MACHINE-pc-elysium
++        ;;
+     *:Interix*:*)
+ 	case $UNAME_MACHINE in
+ 	    x86)
+diff -Naru libtool-2.4.7/build-aux/config.sub libtool-2.4.7-patched/build-aux/config.sub
+--- libtool-2.4.7/build-aux/config.sub	2022-03-17 03:44:30.000000000 +0100
++++ libtool-2.4.7-patched/build-aux/config.sub	2023-11-22 10:21:53.463917559 +0100
+@@ -1754,7 +1754,7 @@
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+-	     | fiwix* )
++	     | fiwix* | elysium* )
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+diff -Naru libtool-2.4.7/build-aux/ltmain.in libtool-2.4.7-patched/build-aux/ltmain.in
+--- libtool-2.4.7/build-aux/ltmain.in	2022-03-17 03:43:39.000000000 +0100
++++ libtool-2.4.7-patched/build-aux/ltmain.in	2023-11-18 23:47:39.416370949 +0100
+@@ -6497,7 +6497,7 @@
+ 	      fi
+ 	    else
+ 	      # We cannot seem to hardcode it, guess we'll fake it.
+-	      add_dir=-L$libdir
++	      add_dir=-L$lt_sysroot$libdir
+ 	      # Try looking first in the location we're being installed to.
+ 	      if test -n "$inst_prefix_dir"; then
+ 		case $libdir in
+diff -Naru libtool-2.4.7/libtoolize.in libtool-2.4.7-patched/libtoolize.in
+--- libtool-2.4.7/libtoolize.in	2022-03-17 03:43:39.000000000 +0100
++++ libtool-2.4.7-patched/libtoolize.in	2023-11-18 23:49:09.594727476 +0100
+@@ -1891,7 +1891,7 @@
+   # Do not remove config.guess, config.sub or install-sh, we don't
+   # install them without --install, and the project may not be using
+   # Automake.  Similarly, do not remove Gnulib files.
+-  all_pkgaux_files="compile depcomp missing ltmain.sh"
++  all_pkgaux_files=""
+   all_pkgmacro_files="libtool.m4 ltargz.m4 ltdl.m4 ltoptions.m4 ltsugar.m4 ltversion.in ltversion.m4 lt~obsolete.m4"
+   all_pkgltdl_files="COPYING.LIB Makefile Makefile.in Makefile.inc Makefile.am README acinclude.m4 aclocal.m4 argz_.h argz.c config.h.in config-h.in configure configure.ac configure.in libltdl/lt__alloc.h libltdl/lt__argz.h libltdl/lt__dirent.h libltdl/lt__glibc.h libltdl/lt__private.h libltdl/lt__strl.h libltdl/lt_dlloader.h libltdl/lt_error.h libltdl/lt_system.h libltdl/slist.h loaders/dld_link.c loaders/dlopen.c loaders/dyld.c loaders/load_add_on.c loaders/loadlibrary.c loaders/preopen.c loaders/shl_load.c lt__alloc.c lt__argz.c lt__dirent.c lt__strl.c lt_dlloader.c lt_error.c ltdl.c ltdl.h ltdl.mk slist.c"
+ 
+diff -Naru libtool-2.4.7/m4/libtool.m4 libtool-2.4.7-patched/m4/libtool.m4
+--- libtool-2.4.7/m4/libtool.m4	2022-03-17 03:43:39.000000000 +0100
++++ libtool-2.4.7-patched/m4/libtool.m4	2023-11-18 23:55:53.737866256 +0100
+@@ -1696,7 +1696,7 @@
+     lt_cv_sys_max_cmd_len=12288;    # 12K is about right
+     ;;
+ 
+-  gnu*)
++  gnu* | elysium*)
+     # Under GNU Hurd, this test is not required because there is
+     # no limit to the length of command line arguments.
+     # Libtool will interpret -1 as no limit whatsoever
+@@ -2907,6 +2907,18 @@
+   dynamic_linker='GNU/Linux ld.so'
+   ;;
+ 
++elysium*)
++  version_type=linux # correct to gnu/linux during the next big refactor
++  need_lib_prefix=no
++  need_version=no
++  library_names_spec='$libname$release$shared_ext$versuffix $libname$release$shared_ext$major $libname$shared_ext'
++  soname_spec='$libname$release$shared_ext$major'
++  dynamic_linker='mlibc ld.so'
++  shlibpath_var=LD_LIBRARY_PATH
++  shlibpath_overrides_runpath=no
++  hardcode_into_libs=yes
++  ;;
++
+ netbsd*)
+   version_type=sunos
+   need_lib_prefix=no
+@@ -3551,6 +3563,10 @@
+   lt_cv_deplibs_check_method='match_pattern /lib[[^/]]+(\.so|\.a)$'
+   ;;
+ 
++elysium*)
++  lt_cv_deplibs_check_method=pass_all
++  ;;
++
+ irix5* | irix6* | nonstopux*)
+   case $LD in
+   *-32|*"-32 ") libmagic=32-bit;;
+@@ -4446,6 +4462,8 @@
+ 	;;
+       netbsd*)
+ 	;;
++      elysium*)
++  ;;
+       *qnx* | *nto*)
+         # QNX uses GNU C++, but need to define -shared option too, otherwise
+         # it will coredump.
+@@ -4794,6 +4812,12 @@
+       _LT_TAGVAR(lt_prog_compiler_static, $1)='-Bstatic'
+       ;;
+ 
++    elysium*)
++      _LT_TAGVAR(lt_prog_compiler_wl, $1)='-Wl,'
++      _LT_TAGVAR(lt_prog_compiler_pic, $1)='-fPIC'
++      _LT_TAGVAR(lt_prog_compiler_static, $1)='-static'
++      ;;
++
+     *nto* | *qnx*)
+       # QNX uses GNU C++, but need to define -shared option too, otherwise
+       # it will coredump.
+@@ -5273,6 +5297,11 @@
+       fi
+       ;;
+ 
++    elysium*)
++	_LT_TAGVAR(archive_cmds, $1)='$CC -shared $pic_flag $libobjs $deplibs $compiler_flags $wl-soname $wl$soname -o $lib'
++	_LT_TAGVAR(archive_expsym_cmds, $1)='$CC -shared $pic_flag $libobjs $deplibs $compiler_flags $wl-soname $wl$soname $wl-retain-symbols-file $wl$export_symbols -o $lib'
++      ;;
++
+     netbsd*)
+       if echo __ELF__ | $CC -E - | $GREP __ELF__ >/dev/null; then
+ 	_LT_TAGVAR(archive_cmds, $1)='$LD -Bshareable $libobjs $deplibs $linker_flags -o $lib'
+@@ -5815,6 +5844,9 @@
+       esac
+       ;;
+ 
++    elysium*)
++      ;;
++
+     netbsd*)
+       if echo __ELF__ | $CC -E - | $GREP __ELF__ >/dev/null; then
+ 	_LT_TAGVAR(archive_cmds, $1)='$LD -Bshareable -o $lib $libobjs $deplibs $linker_flags'  # a.out
+@@ -7115,6 +7147,10 @@
+ 	esac
+ 	;;
+ 
++      elysium*)
++    _LT_TAGVAR(ld_shlibs, $1)=yes
++	    ;;
++
+       netbsd*)
+         if echo __ELF__ | $CC -E - | $GREP __ELF__ >/dev/null; then
+ 	  _LT_TAGVAR(archive_cmds, $1)='$LD -Bshareable  -o $lib $predep_objects $libobjs $deplibs $postdep_objects $linker_flags'
+diff -Naru libtool-2.4.7/m4/ltdl.m4 libtool-2.4.7-patched/m4/ltdl.m4
+--- libtool-2.4.7/m4/ltdl.m4	2022-03-17 03:43:39.000000000 +0100
++++ libtool-2.4.7-patched/m4/ltdl.m4	2023-11-18 23:56:19.008765390 +0100
+@@ -497,6 +497,9 @@
+     # at 6.2 and later dlopen does load deplibs.
+     lt_cv_sys_dlopen_deplibs=yes
+     ;;
++  elysium*)
++    lt_cv_sys_dlopen_deplibs=yes
++    ;;
+   netbsd*)
+     lt_cv_sys_dlopen_deplibs=yes
+     ;;
