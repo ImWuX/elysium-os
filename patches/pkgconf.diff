@@ -1,0 +1,12 @@
+diff -Naru pkgconf-pkgconf-2.0.3/configure.ac pkgconf-pkgconf-2.0.3-modified/configure.ac
+--- pkgconf-pkgconf-2.0.3/configure.ac	2023-09-02 21:18:48.000000000 -0700
++++ pkgconf-pkgconf-2.0.3-modified/configure.ac	2023-12-22 19:59:35.617106812 -0800
+@@ -11,7 +11,7 @@
+ dnl implied.  In no event shall the authors be liable for any damages arising
+ dnl from the use of this software.
+ 
+-AC_PREREQ([2.71])
++AC_PREREQ([2.69])
+ AC_INIT([pkgconf],[2.0.3],[https://github.com/pkgconf/pkgconf/issues/new])
+ AC_CONFIG_SRCDIR([cli/main.c])
+ AC_CONFIG_MACRO_DIR([m4])
