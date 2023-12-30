@@ -1,5 +1,7 @@
 #!/bin/sh
 
+PREFIX="/usr/local"
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --libgcc=*)
@@ -7,6 +9,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --prefix=*)
             PREFIX=${1#*=}
+            ;;
+        --target=*)
+            TARGET=${1#*=}
             ;;
         -*|--*)
             echo "Unknown option \"$1\""
@@ -21,7 +26,12 @@ done
 set -- "${POSITIONAL_ARGS[@]}"
 
 if [ -z "$LIBGCC" ]; then
-    >&2 echo "Missing LIBGCC path"
+    >&2 echo "Missing libgcc path"
+    exit 1
+fi
+
+if [ -z "$TARGET" ]; then
+    >&2 echo "No target provided"
     exit 1
 fi
 
@@ -39,3 +49,4 @@ echo "CC := x86_64-elf-gcc" >> $CONFMK
 echo "LD := x86_64-elf-ld" >> $CONFMK
 echo "LIBGCC := $LIBGCC" >> $CONFMK
 echo "PREFIX := $PREFIX" >> $CONFMK
+echo "ARCH := $TARGET" >> $CONFMK
