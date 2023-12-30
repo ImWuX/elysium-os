@@ -96,7 +96,7 @@ type = "local"
 url = "kernel"
 
 [target.kernel]
-dependencies = ["source:kernel", "source:support", "host:cross-gcc"]
-configure = ["$SOURCE:kernel/conf.sh --prefix=$PREFIX --libgcc=$SOURCE:support/libgcc-x86_64.a"]
-build = ["make all"]
+dependencies = ["source:kernel", "source:support", "host:cross-gcc", "tartarus"]
+configure = ["$SOURCE:kernel/conf.sh --target=x86_64 --prefix=$PREFIX --libgcc=$SOURCE:support/libgcc-x86_64.a"]
+build = ["make all SYSROOT=$ROOT"]
 install = ["DESTDIR=$INSTALL make install"]
