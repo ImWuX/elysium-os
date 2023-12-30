@@ -1,7 +1,7 @@
 include conf.mk
 
 ifndef DESTDIR
-DESTDIR=/
+DESTDIR=/	
 endif
 
 # Flags
@@ -31,10 +31,10 @@ $(BUILD)/kernel.elf: $(ASM_SOURCES:.asm=_asm.o) $(C_SOURCES:.c=.o) $(LIBGCC)
 endif
 
 %_asm.o: %.asm
-	$(ASMC) $(ASMFLAGS) -isrc $< -f elf64 -o $@
+	$(ASMC) $(ASMFLAGS) -i$(SRC) $< -f elf64 -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) -Isrc -c $< -o $@
+	$(CC) $(CFLAGS) -I$(SRC) -c $< -o $@
 
 install:
 	mkdir -p $(DESTDIR)$(PREFIX)/share
