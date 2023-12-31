@@ -3,7 +3,6 @@
 
 /**
  * @brief Converts a physical address to a virtual HHDM address.
- *
  * @param address physical address
  * @return virtual address in the HHDM
  */

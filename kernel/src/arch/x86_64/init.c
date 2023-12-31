@@ -14,7 +14,7 @@ static void pch(char ch) {
 
     g_kprint_putchar = pch;
 
-    kprintf("Hello World\n");
+    kprintf("Elysium pre-alpha\n");
 
     for(;;);
     __builtin_unreachable();
