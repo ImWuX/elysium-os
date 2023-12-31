@@ -4,7 +4,7 @@
 /**
  * @brief Converts a physical address to a virtual HHDM address.
  * @param address physical address
- * @return virtual address in the HHDM
+ * @returns virtual address in the HHDM
  */
 #define HHDM(ADDRESS) ((uintptr_t) (ADDRESS) + g_hhdm_base)
 
