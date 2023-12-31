@@ -18,6 +18,7 @@ qemu_args+=(-k en-us)
 qemu_args+=(-serial file:/dev/stdout)
 qemu_args+=(-monitor stdio)
 qemu_args+=(-no-reboot)
+qemu_args+=(-no-shutdown)
 qemu_args+=(-net none)
 
 qemu-system-x86_64 "${qemu_args[@]}"

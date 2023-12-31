@@ -2,34 +2,39 @@ OUTPUT_ARCH(i386:x86-64)
 OUTPUT_FORMAT(elf64-x86-64)
 ENTRY(init)
 
-ld_kernel_start = 0xFFFFFFFF80000000;
+PHDRS
+{
+    text    PT_LOAD FLAGS((1 << 0) | (1 << 2));
+    data    PT_LOAD FLAGS((1 << 1) | (1 << 2));
+    rodata  PT_LOAD FLAGS((1 << 2));
+}
 
 SECTIONS
 {
-    . = ld_kernel_start;
+    . = 0xFFFFFFFF80000000;
+
+    ld_kernel_start = .;
 
     .text : {
         *(.text .text.*)
-    }
+    } :text
 
-    .data : {
-        *(.data .data.*)
-    }
+    . += CONSTANT(MAXPAGESIZE);
 
     .rodata : {
         *(.rodata .rodata.*)
-    }
+    } :rodata
+
+    . += CONSTANT(MAXPAGESIZE);
+
+    .data : {
+        *(.data .data.*)
+    } :data
 
     .bss : {
         *(COMMON)
         *(.bss .bss.*)
-    }
-
-    .drivers : {
-        ld_drivers_start = .;
-        KEEP(*(.drivers*));
-        ld_drivers_end = .;
-    }
+    } :data
 
     ld_kernel_end = .;
 
