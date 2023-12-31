@@ -6,7 +6,7 @@
 #include <arch/types.h>
 #include <memory/hhdm.h>
 
-pmm_zone_t g_pmm_zones[PMM_ZONE_COUNT];
+pmm_zone_t g_pmm_zones[PMM_ZONE_MAX + 1] = {};
 
 static inline uint8_t pagecount_to_order(size_t pages) {
     if(pages == 1) return 0;
@@ -17,60 +17,84 @@ static inline size_t order_to_pagecount(uint8_t order) {
     return (size_t) 1 << order;
 }
 
-void pmm_zone_create(int zone_index, char *name, uintptr_t start, uintptr_t end) {
-    memset(&g_pmm_zones[zone_index], 0, sizeof(pmm_zone_t));
-    g_pmm_zones[zone_index].name = name;
-    g_pmm_zones[zone_index].start = start;
-    g_pmm_zones[zone_index].end = end;
-    g_pmm_zones[zone_index].lock = SPINLOCK_INIT;
-    g_pmm_zones[zone_index].regions = LIST_INIT;
-    for(int i = 0; i <= PMM_MAX_ORDER; i++) g_pmm_zones[zone_index].lists[i] = LIST_INIT;
+void pmm_zone_register(int zone_index, char *name, uintptr_t start, uintptr_t end) {
+    ASSERT(!g_pmm_zones[zone_index].present);
+    for(int i = 0; i <= PMM_ZONE_MAX; i++) {
+        pmm_zone_t *zone = &g_pmm_zones[i];
+        if(!zone->present) continue;
+        ASSERT(start >= zone->end || end <= zone->start);
+    }
+
+    pmm_zone_t *zone = &g_pmm_zones[zone_index];
+    zone->present = true;
+    zone->name = name;
+    zone->start = start;
+    zone->end = end;
+    zone->lock = SPINLOCK_INIT;
+    zone->regions = LIST_INIT;
+    for(int i = 0; i <= PMM_MAX_ORDER; i++) zone->lists[i] = LIST_INIT;
 }
 
-void pmm_region_add(int zone_index, uintptr_t base, size_t size) {
-    pmm_region_t *region = (pmm_region_t *) HHDM(base);
-    region->zone = &g_pmm_zones[zone_index];
-    region->base = base;
-    region->page_count = size / ARCH_PAGE_SIZE;
-    region->zone->page_count += region->page_count;
+void pmm_region_add(uintptr_t base, size_t size) {
+    for(int i = 0; i <= PMM_ZONE_MAX; i++) {
+        pmm_zone_t *zone = &g_pmm_zones[i];
+        if(!zone->present) continue;
 
-    size_t used_pages = ROUND_DIV_UP(sizeof(pmm_region_t) + sizeof(pmm_page_t) * region->page_count, ARCH_PAGE_SIZE);
-    region->free_count = region->page_count - used_pages;
-    region->zone->free_count += region->free_count;
+        uintptr_t local_base = base;
+        uintptr_t local_size = size;
+        if(base + size <= zone->start || base >= zone->end) continue;
+        if(local_base < zone->start) {
+            local_size -= zone->start - local_base;
+            local_base = zone->start;
+        }
+        if(local_base + local_size > zone->end) local_size = zone->end - local_base;
+        kprintf("> %#10lx, %#10lx, %#10lx, %s\n", local_size, local_base, local_base + local_size, zone->name);
 
-    for(size_t i = 0; i < region->page_count; i++) {
-        region->pages[i] = (pmm_page_t) {
-            .region = region,
-            .free = true,
-            .paddr = region->base + i * ARCH_PAGE_SIZE
-        };
+        pmm_region_t *region = (pmm_region_t *) HHDM(local_base);
+        region->zone = zone;
+        region->base = local_base;
+        region->page_count = local_size / ARCH_PAGE_SIZE;
+        region->zone->page_count += region->page_count;
+
+        size_t used_pages = ROUND_DIV_UP(sizeof(pmm_region_t) + sizeof(pmm_page_t) * region->page_count, ARCH_PAGE_SIZE);
+        region->free_count = region->page_count - used_pages;
+        region->zone->free_count += region->free_count;
+
+        for(size_t j = 0; j < region->page_count; j++) {
+            region->pages[j] = (pmm_page_t) {
+                .region = region,
+                .free = true,
+                .paddr = region->base + j * ARCH_PAGE_SIZE
+            };
+        }
+
+        for(size_t j = 0; j < used_pages; j++) {
+            region->pages[j].free = false;
+        }
+
+        for(size_t j = used_pages, free_pages = region->free_count; free_pages;) {
+            pmm_order_t order = pagecount_to_order(free_pages);
+            if(free_pages & (free_pages - 1)) order--;
+            if(order > PMM_MAX_ORDER) order = PMM_MAX_ORDER;
+
+            pmm_page_t *page = &region->pages[j];
+            page->order = order;
+            list_insert_behind(&region->zone->lists[order], &page->list);
+
+            size_t order_size = order_to_pagecount(order);
+            free_pages -= order_size;
+            j += order_size;
+        }
+
+        list_insert_behind(&region->zone->regions, &region->list);
     }
-
-    for(size_t i = 0; i < used_pages; i++) {
-        region->pages[i].free = false;
-    }
-
-    for(size_t i = used_pages, free_pages = region->free_count; free_pages;) {
-        pmm_order_t order = pagecount_to_order(free_pages);
-        if(free_pages & (free_pages - 1)) order--;
-        if(order > PMM_MAX_ORDER) order = PMM_MAX_ORDER;
-
-        pmm_page_t *page = &region->pages[i];
-        page->order = order;
-        list_insert_behind(&region->zone->lists[order], &page->list);
-
-        size_t order_size = order_to_pagecount(order);
-        free_pages -= order_size;
-        i += order_size;
-    }
-
-    list_insert_behind(&region->zone->regions, &region->list);
 }
 
 pmm_page_t *pmm_alloc(pmm_order_t order, pmm_allocator_flags_t flags) {
     ASSERT(order <= PMM_MAX_ORDER);
     pmm_order_t avl_order = order;
-    pmm_zone_t *zone = &g_pmm_zones[(flags >> PMM_ZONE_AF_SHIFT) & PMM_ZONE_AF_MASK];
+    pmm_zone_t *zone = &g_pmm_zones[flags & PMM_ZONE_AF_MASK];
+    ASSERT(zone->present);
     spinlock_acquire(&zone->lock);
     while(list_is_empty(&zone->lists[avl_order])) {
         ASSERTC(++avl_order <= PMM_MAX_ORDER, "Out of memory");
