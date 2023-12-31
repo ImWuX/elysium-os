@@ -6,13 +6,7 @@
 #include <arch/types.h>
 #include <memory/hhdm.h>
 
-#define DIVUP(VAL, DIVISOR) (((VAL) + (DIVISOR) - 1) / (DIVISOR))
-
 pmm_zone_t g_pmm_zones[PMM_ZONE_COUNT];
-
-static inline size_t get_local_pfn(pmm_page_t *page) {
-    return (page->paddr - page->region->base) / ARCH_PAGE_SIZE;
-}
 
 static inline uint8_t pagecount_to_order(size_t pages) {
     if(pages == 1) return 0;
@@ -25,12 +19,12 @@ static inline size_t order_to_pagecount(uint8_t order) {
 
 void pmm_zone_create(int zone_index, char *name, uintptr_t start, uintptr_t end) {
     memset(&g_pmm_zones[zone_index], 0, sizeof(pmm_zone_t));
-    g_pmm_zones[zone_index].lock = SPINLOCK_INIT;
-    g_pmm_zones[zone_index].regions = LIST_INIT;
-    for(int i = 0; i <= PMM_MAX_ORDER; i++) g_pmm_zones[zone_index].lists[i] = LIST_INIT;
     g_pmm_zones[zone_index].name = name;
     g_pmm_zones[zone_index].start = start;
     g_pmm_zones[zone_index].end = end;
+    g_pmm_zones[zone_index].lock = SPINLOCK_INIT;
+    g_pmm_zones[zone_index].regions = LIST_INIT;
+    for(int i = 0; i <= PMM_MAX_ORDER; i++) g_pmm_zones[zone_index].lists[i] = LIST_INIT;
 }
 
 void pmm_region_add(int zone_index, uintptr_t base, size_t size) {
@@ -84,7 +78,7 @@ pmm_page_t *pmm_alloc(pmm_order_t order, pmm_allocator_flags_t flags) {
     pmm_page_t *page = LIST_GET(zone->lists[avl_order].next, pmm_page_t, list);
     list_delete(&page->list);
     for(; avl_order > order; avl_order--) {
-        pmm_page_t *buddy = &page->region->pages[get_local_pfn(page) + (order_to_pagecount(avl_order - 1))];
+        pmm_page_t *buddy = &page->region->pages[((page->paddr - page->region->base) / ARCH_PAGE_SIZE) + (order_to_pagecount(avl_order - 1))];
         buddy->order = avl_order - 1;
         list_insert_behind(&zone->lists[avl_order - 1], &buddy->list);
     }
