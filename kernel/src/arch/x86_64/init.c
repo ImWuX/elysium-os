@@ -26,8 +26,6 @@ static void pch(char ch) {
         g_panic_symbols_length = module->size;
     }
 
-    panic("test panic\n");
-
     arch_cpu_halt();
     __builtin_unreachable();
 }
