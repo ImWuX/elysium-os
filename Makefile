@@ -10,16 +10,23 @@ mkimg/mkimg:
 build:
 	mkdir -p build
 
-build/elysium.img: build mkimg/mkimg
-	chariot tartarus source:kernel kernel
+build/kernel.elf: build
+	chariot source:kernel kernel
+	cp $(CHARIOT_BUILT)/kernel/usr/local/share/kernel.elf $@
+
+build/kernsymb.txt: build/kernel.elf
+	nm build/kernel.elf -n > $@
+
+build/elysium.img: build mkimg/mkimg build/kernel.elf build/kernsymb.txt
+	chariot tartarus
 	mkimg/mkimg \
 		--bootsect=$(CHARIOT_BUILT)/tartarus/usr/share/tartarus/mbr.bin \
 		--tartarus=$(CHARIOT_BUILT)/tartarus/usr/share/tartarus/tartarus.sys \
-		--kernel=$(CHARIOT_BUILT)/kernel/usr/local/share/kernel.elf \
-		--conf=support/tartarus.cfg $@
+		--kernel=build/kernel.elf \
+		--files=support/tartarus.cfg,build/kernsymb.txt $@
 
 setup_dev:
 	chariot cross-gcc tartarus
 
 clean:
-	rm -rf build/elysium.img
+	rm -rf build/*

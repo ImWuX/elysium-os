@@ -7,7 +7,7 @@
                 "${workspaceFolder}/.chariot-cache/built/tartarus/usr/include"
             ],
             "defines": [
-                "__ARCH_AMD64",
+                "__ARCH_X86_64",
                 "__MLIBC_ABI_ONLY",
                 "true=1",
                 "false=0",

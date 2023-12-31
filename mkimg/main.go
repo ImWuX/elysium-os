@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/diskfs/go-diskfs"
 	"github.com/diskfs/go-diskfs/disk"
@@ -18,7 +20,7 @@ func main() {
 	bootsectorPath := flag.String("bootsect", "", "Path boot sector")
 	tartarusPath := flag.String("tartarus", "", "Path to tartarus.sys")
 	kernelPath := flag.String("kernel", "", "Path to kernel")
-	confPath := flag.String("conf", "", "Path to tartarus configuration")
+	files := flag.String("files", "", "Comma separated list of files to copy into the root filesystem")
 	size := flag.Uint("size", 64, "Disk size in mb")
 	flag.Parse()
 	args := flag.Args()
@@ -29,10 +31,6 @@ func main() {
 
 	if *kernelPath == "" {
 		panic(fmt.Errorf("Kernel is required for this target"))
-	}
-
-	if *confPath == "" {
-		panic(fmt.Errorf("Tartarus configuration is required for this target"))
 	}
 
 	if err := os.RemoveAll(args[0]); err != nil {
@@ -110,6 +108,9 @@ func main() {
 		}
 
 		copyFile(*kernelPath, "/kernel.elf")
-		copyFile(*confPath, "/tartarus.cfg")
+
+		for _, filePath := range strings.Split(*files, ",") {
+			copyFile(filePath, path.Join("/", path.Base(filePath)))
+		}
 	}
 }
