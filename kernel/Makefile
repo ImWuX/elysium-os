@@ -1,7 +1,7 @@
 include conf.mk
 
 ifndef DESTDIR
-DESTDIR=/	
+DESTDIR=/
 endif
 
 # Flags
@@ -21,9 +21,9 @@ C_SOURCES = $(shell find $(SRC) -type f -name "*.c" -not -path "arch/*")
 C_SOURCES += $(shell find $(SRC)/arch/$(ARCH) -type f -name "*.c")
 
 # Targets
-.PHONY: all install
+.PHONY: all install clean
 
-all: $(BUILD)/kernel.elf
+all: $(BUILD)/kernel.elf clean
 
 ifeq ($(ARCH), x86_64)
 $(BUILD)/kernel.elf: $(ASM_SOURCES:.asm=_asm.o) $(C_SOURCES:.c=.o) $(LIBGCC)
@@ -39,3 +39,6 @@ endif
 install:
 	mkdir -p $(DESTDIR)$(PREFIX)/share
 	cp $(BUILD)/kernel.elf $(DESTDIR)$(PREFIX)/share
+
+clean:
+	rm -f $(shell find $(SRC) -type f -name "*.o")
