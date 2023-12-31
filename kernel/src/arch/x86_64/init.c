@@ -43,21 +43,12 @@ static void init_common() {
         g_panic_symbols_length = module->size;
     }
 
-    pmm_zone_create(PMM_ZONE_INDEX_DMA, "DMA", 0, 0x100'0000);
-    pmm_zone_create(PMM_ZONE_INDEX_NORMAL, "Normal", 0x100'0000, UINTPTR_MAX);
+    pmm_zone_register(PMM_ZONE_DMA, "DMA", 0, 0x100'0000);
+    pmm_zone_register(PMM_ZONE_NORMAL, "Normal", 0x100'0000, UINTPTR_MAX);
     for(int i = 0; i < boot_info->memory_map_size; i++) {
         tartarus_mmap_entry_t entry = boot_info->memory_map[i];
         if(entry.type != TARTARUS_MEMAP_TYPE_USABLE) continue;
-        if(entry.base < 0x100'0000) {
-            if(entry.base + entry.length > 0x100'0000) {
-                pmm_region_add(PMM_ZONE_INDEX_DMA, entry.base, 0x100'0000 - entry.base);
-                pmm_region_add(PMM_ZONE_INDEX_NORMAL, 0x100'0000, entry.length - (0x100'0000 - entry.base));
-            } else {
-                pmm_region_add(PMM_ZONE_INDEX_DMA, entry.base, entry.length);
-            }
-        } else {
-            pmm_region_add(PMM_ZONE_INDEX_NORMAL, entry.base, entry.length);
-        }
+        pmm_region_add(entry.base, entry.length);
     }
 
     g_cpus_initialized = 0;
