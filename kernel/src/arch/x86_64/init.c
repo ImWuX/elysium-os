@@ -10,8 +10,23 @@
 
 uintptr_t g_hhdm_base;
 
+static volatile int g_cpus_initialized;
+
 static void pch(char ch) {
     port_outb(0x3F8, ch);
+}
+
+static void init_common() {
+    kprintf("CPU %i\n", g_cpus_initialized);
+
+    __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
+}
+
+[[noreturn]] __attribute__((naked)) void init_ap() {
+    init_common();
+
+    arch_cpu_halt();
+    __builtin_unreachable();
 }
 
 [[noreturn]] void init(tartarus_boot_info_t *boot_info) {
@@ -43,6 +58,16 @@ static void pch(char ch) {
         } else {
             pmm_region_add(PMM_ZONE_INDEX_NORMAL, entry.base, entry.length);
         }
+    }
+
+    g_cpus_initialized = 0;
+    for(int i = 0; i < boot_info->cpu_count; i++) {
+        if(i == boot_info->bsp_index) {
+            init_common();
+            continue;
+        }
+        *boot_info->cpus[i].wake_on_write = (uint64_t) &init_ap;
+        while(i >= g_cpus_initialized);
     }
 
     arch_cpu_halt();
