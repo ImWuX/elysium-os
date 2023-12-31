@@ -49,7 +49,7 @@ static void stack_trace(stack_frame_t *stack_frame) {
 }
 
 [[noreturn]] void panic_stack_trace(stack_frame_t *frame, const char *fmt, ...) {
-    kprintf("KERNEL PANIC\n");
+    kprintf("Kernel Panic\n");
     va_list list;
 	va_start(list, format);
     kprintv(fmt, list);
@@ -61,7 +61,7 @@ static void stack_trace(stack_frame_t *stack_frame) {
 #endif
 
 [[noreturn]] void panic(const char *fmt, ...) {
-    kprintf("KERNEL PANIC\n");
+    kprintf("Kernel Panic\n");
     va_list list;
 	va_start(list, format);
     kprintv(fmt, list);
