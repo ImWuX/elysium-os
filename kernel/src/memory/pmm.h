@@ -8,10 +8,12 @@
 
 #define PMM_ZONE_AF_MASK 0b111
 #define PMM_ZONE_MAX PMM_ZONE_AF_MASK
+#define PMM_ZONE_NORMAL 0
+#define PMM_ZONE_DMA 1
 
 #define PMM_AF_ZERO (1 << 3)
 
-#define PMM_STANDARD (0)
+#define PMM_STANDARD (PMM_ZONE_NORMAL)
 
 typedef uint16_t pmm_allocator_flags_t;
 typedef uint8_t pmm_order_t;
