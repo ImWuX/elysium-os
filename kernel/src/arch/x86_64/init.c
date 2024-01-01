@@ -9,6 +9,7 @@
 #include <arch/vmm.h>
 #include <arch/x86_64/port.h>
 #include <arch/x86_64/msr.h>
+#include <arch/x86_64/gdt.h>
 
 #define OFFSET_RSP(OFFSET) asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp" : : "rm" (OFFSET) : "rax", "memory")
 #define OFFSET_RBP(OFFSET) asm volatile("mov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (OFFSET) : "rax", "memory")
@@ -37,6 +38,8 @@ static void init_common() {
     uint64_t efer = msr_read(MSR_EFER);
     efer |= 1 << 11; /* EFER.NXE */
     msr_write(MSR_EFER, efer);
+
+    gdt_load();
 
     __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
 }
