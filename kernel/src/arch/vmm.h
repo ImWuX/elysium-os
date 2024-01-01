@@ -33,6 +33,7 @@ void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t
  * @brief Translate a virtual address to a physical address.
  * @param address_space
  * @param vaddr virtual address
- * @returns physical address
+ * @param out physical address
+ * @returns success
  */
-uintptr_t arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr);
+bool arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t *out);
