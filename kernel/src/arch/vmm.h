@@ -28,3 +28,11 @@ void arch_vmm_load_address_space(vmm_address_space_t *address_space);
  * @param flags
  */
 void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, int flags);
+
+/**
+ * @brief Translate a virtual address to a physical address.
+ * @param address_space
+ * @param vaddr virtual address
+ * @returns physical address
+ */
+uintptr_t arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr);

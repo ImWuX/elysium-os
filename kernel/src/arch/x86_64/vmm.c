@@ -104,3 +104,17 @@ void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t
     pte_set_address(&current_table[index], paddr);
     spinlock_release(&address_space->lock);
 }
+
+uintptr_t arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr) {
+    spinlock_acquire(&address_space->lock);
+    uint64_t *current_table = (uint64_t *) HHDM(ARCH_AS(address_space)->cr3);
+    for(int i = 4; i > 1; i--) {
+        int index = VADDR_TO_INDEX(vaddr, i);
+        if(!(current_table[index] & PTE_FLAG_PRESENT)) return 0;
+        current_table = (uint64_t *) HHDM(pte_get_address(current_table[index]));
+    }
+    uint64_t entry = current_table[VADDR_TO_INDEX(vaddr, 1)];
+    spinlock_release(&address_space->lock);
+    if(entry & PTE_FLAG_PRESENT) return pte_get_address(entry);
+    return 0;
+}
