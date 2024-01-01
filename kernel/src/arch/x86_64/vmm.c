@@ -46,11 +46,11 @@ static inline uint64_t read_cr3() {
     return value;
 }
 
-static int flags_to_x86_flags(int flags) {
-    int x86_flags = 0;
+static uint64_t flags_to_x86_flags(int flags) {
+    uint64_t x86_flags = 0;
     if(flags & ARCH_VMM_FLAG_WRITE) x86_flags |= PTE_FLAG_RW;
     if(flags & ARCH_VMM_FLAG_USER) x86_flags |= PTE_FLAG_USER;
-    if(!(flags & ARCH_VMM_FLAG_EXEC)) x86_flags |= PTE_FLAG_NX;
+    if((flags & ARCH_VMM_FLAG_EXEC) == 0) x86_flags |= PTE_FLAG_NX;
     if(flags & ARCH_VMM_FLAG_GLOBAL) x86_flags |= PTE_FLAG_GLOBAL;
     return x86_flags;
 }
@@ -79,27 +79,27 @@ void arch_vmm_load_address_space(vmm_address_space_t *address_space) {
 }
 
 void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, int flags) {
-    flags = flags_to_x86_flags(flags);
+    uint64_t x86_flags = flags_to_x86_flags(flags);
     spinlock_acquire(&address_space->lock);
     uint64_t *current_table = (uint64_t *) HHDM(ARCH_AS(address_space)->cr3);
     for(int i = 4; i > 1; i--) {
         int index = (vaddr >> (i * 9 + 3)) & 0x1FF;
         if(current_table[index] & PTE_FLAG_PRESENT) {
-            if(!(flags & PTE_FLAG_NX)) current_table[index] &= ~PTE_FLAG_NX;
+            if(!(x86_flags & PTE_FLAG_NX)) current_table[index] &= ~PTE_FLAG_NX;
         } else {
             pmm_page_t *page = pmm_alloc_page(PMM_STANDARD | PMM_AF_ZERO);
             current_table[index] = PTE_FLAG_PRESENT;
             pte_set_address(&current_table[index], page->paddr);
-            if(flags & PTE_FLAG_NX) current_table[index] |= PTE_FLAG_NX;
+            if(x86_flags & PTE_FLAG_NX) current_table[index] |= PTE_FLAG_NX;
         }
-        if(flags & PTE_FLAG_RW) current_table[index] |= PTE_FLAG_RW;
-        if(flags & PTE_FLAG_USER) current_table[index] |= PTE_FLAG_USER;
+        if(x86_flags & PTE_FLAG_RW) current_table[index] |= PTE_FLAG_RW;
+        if(x86_flags & PTE_FLAG_USER) current_table[index] |= PTE_FLAG_USER;
         current_table = (uint64_t *) HHDM(pte_get_address(current_table[index]));
     }
 
     int index = (vaddr >> 12) & 0x1FF;
     current_table[index] = PTE_FLAG_PRESENT;
-    current_table[index] |= flags;
+    current_table[index] |= x86_flags;
     pte_set_address(&current_table[index], paddr);
     spinlock_release(&address_space->lock);
 }
