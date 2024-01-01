@@ -6,7 +6,11 @@
 #include <lib/string.h>
 #include <arch/cpu.h>
 #include <arch/types.h>
+#include <arch/vmm.h>
 #include <arch/x86_64/port.h>
+
+#define OFFSET_RSP(OFFSET) asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp" : : "rm" (OFFSET) : "rax", "memory")
+#define OFFSET_RBP(OFFSET) asm volatile("mov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (OFFSET) : "rax", "memory")
 
 uintptr_t g_hhdm_base;
 
@@ -19,10 +23,19 @@ static void pch(char ch) {
 static void init_common() {
     kprintf("CPU %i\n", g_cpus_initialized);
 
+    uint64_t cr4;
+    asm volatile("mov %%cr4, %0" : "=r" (cr4) : : "memory");
+    cr4 |= 1 << 7; /* CR4.PGE */
+    asm volatile("mov %0, %%cr4" : : "r" (cr4) : "memory");
+
     __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
 }
 
 [[noreturn]] __attribute__((naked)) void init_ap() {
+    OFFSET_RSP(g_hhdm_base);
+    OFFSET_RBP(g_hhdm_base);
+    arch_vmm_load_address_space(g_vmm_kernel_address_space);
+
     init_common();
 
     arch_cpu_halt();
@@ -50,6 +63,11 @@ static void init_common() {
         if(entry.type != TARTARUS_MEMAP_TYPE_USABLE) continue;
         pmm_region_add(entry.base, entry.length);
     }
+
+    arch_vmm_init();
+    OFFSET_RSP(g_hhdm_base);
+    OFFSET_RBP(g_hhdm_base);
+    arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
     g_cpus_initialized = 0;
     for(int i = 0; i < boot_info->cpu_count; i++) {
