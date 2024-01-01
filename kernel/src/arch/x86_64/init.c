@@ -8,6 +8,7 @@
 #include <arch/types.h>
 #include <arch/vmm.h>
 #include <arch/x86_64/port.h>
+#include <arch/x86_64/msr.h>
 
 #define OFFSET_RSP(OFFSET) asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp" : : "rm" (OFFSET) : "rax", "memory")
 #define OFFSET_RBP(OFFSET) asm volatile("mov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (OFFSET) : "rax", "memory")
@@ -23,10 +24,19 @@ static void pch(char ch) {
 static void init_common() {
     kprintf("CPU %i\n", g_cpus_initialized);
 
+    uint64_t pat = msr_read(MSR_PAT);
+    pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
+    pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
+    msr_write(MSR_PAT, pat);
+
     uint64_t cr4;
     asm volatile("mov %%cr4, %0" : "=r" (cr4) : : "memory");
     cr4 |= 1 << 7; /* CR4.PGE */
     asm volatile("mov %0, %%cr4" : : "r" (cr4) : "memory");
+
+    uint64_t efer = msr_read(MSR_EFER);
+    efer |= 1 << 11; /* EFER.NXE */
+    msr_write(MSR_EFER, efer);
 
     __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
 }
@@ -78,6 +88,21 @@ static void init_common() {
         *boot_info->cpus[i].wake_on_write = (uint64_t) &init_ap;
         while(i >= g_cpus_initialized);
     }
+
+    kprintf("\n");
+    kprintf("Physical Memory Map\n");
+    for(int i = 0; i <= PMM_ZONE_MAX; i++) {
+        pmm_zone_t *zone = &g_pmm_zones[i];
+        if(!zone->present) continue;
+
+        kprintf("• %s\n", zone->name);
+        list_t *entry;
+        LIST_FOREACH(entry, &zone->regions) {
+            pmm_region_t *region = LIST_GET(entry, pmm_region_t, list);
+            kprintf("  • %#-12lx %lu/%lu pages\n", region->base, region->free_count, region->page_count);
+        }
+    }
+    kprintf("\n");
 
     arch_cpu_halt();
     __builtin_unreachable();
