@@ -48,7 +48,6 @@ void pmm_region_add(uintptr_t base, size_t size) {
             local_base = zone->start;
         }
         if(local_base + local_size > zone->end) local_size = zone->end - local_base;
-        kprintf("> %#10lx, %#10lx, %#10lx, %s\n", local_size, local_base, local_base + local_size, zone->name);
 
         pmm_region_t *region = (pmm_region_t *) HHDM(local_base);
         region->zone = zone;
