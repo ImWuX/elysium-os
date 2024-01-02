@@ -45,6 +45,7 @@ CONFMK="$DSTDIR/conf.mk"
 echo "SRC := $SRCDIR/src" > $CONFMK
 echo "SUPPORT := $SRCDIR/support" >> $CONFMK
 echo "BUILD := $DSTDIR/build" >> $CONFMK
+echo "ASMC := nasm" >> $CONFMK
 echo "CC := x86_64-elf-gcc" >> $CONFMK
 echo "LD := x86_64-elf-ld" >> $CONFMK
 echo "LIBGCC := $LIBGCC" >> $CONFMK

@@ -10,6 +10,9 @@
 #include <arch/x86_64/port.h>
 #include <arch/x86_64/msr.h>
 #include <arch/x86_64/gdt.h>
+#include <arch/x86_64/interrupt.h>
+#include <arch/x86_64/exception.h>
+#include <arch/x86_64/dev/pic8259.h>
 
 #define OFFSET_RSP(OFFSET) asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp" : : "rm" (OFFSET) : "rax", "memory")
 #define OFFSET_RBP(OFFSET) asm volatile("mov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (OFFSET) : "rax", "memory")
@@ -35,12 +38,6 @@ static void init_common() {
     cr4 |= 1 << 7; /* CR4.PGE */
     asm volatile("mov %0, %%cr4" : : "r" (cr4) : "memory");
 
-    uint64_t efer = msr_read(MSR_EFER);
-    efer |= 1 << 11; /* EFER.NXE */
-    msr_write(MSR_EFER, efer);
-
-    gdt_load();
-
     __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
 }
 
@@ -48,6 +45,9 @@ static void init_common() {
     OFFSET_RSP(g_hhdm_base);
     OFFSET_RBP(g_hhdm_base);
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
+
+    gdt_load();
+    interrupt_load_idt();
 
     init_common();
 
@@ -82,13 +82,24 @@ static void init_common() {
     OFFSET_RBP(g_hhdm_base);
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
+    pic8259_remap();
+    g_interrupt_irq_eoi = pic8259_eoi;
+    interrupt_init();
+
+    gdt_load();
+    interrupt_load_idt();
+
+    for(int i = 0; i < 32; i++) {
+        interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_unhandled);
+    }
+
     g_cpus_initialized = 0;
     for(int i = 0; i < boot_info->cpu_count; i++) {
         if(i == boot_info->bsp_index) {
             init_common();
             continue;
         }
-        *boot_info->cpus[i].wake_on_write = (uint64_t) &init_ap;
+        *boot_info->cpus[i].wake_on_write = (uint64_t) init_ap;
         while(i >= g_cpus_initialized);
     }
 
