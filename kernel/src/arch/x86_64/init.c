@@ -7,6 +7,7 @@
 #include <arch/cpu.h>
 #include <arch/types.h>
 #include <arch/vmm.h>
+#include <arch/x86_64/lapic.h>
 #include <arch/x86_64/port.h>
 #include <arch/x86_64/msr.h>
 #include <arch/x86_64/gdt.h>
@@ -38,6 +39,10 @@ static void init_common() {
     cr4 |= 1 << 7; /* CR4.PGE */
     asm volatile("mov %0, %%cr4" : : "r" (cr4) : "memory");
 
+    lapic_initialize();
+    gdt_load();
+    interrupt_load_idt();
+
     __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
 }
 
@@ -45,9 +50,6 @@ static void init_common() {
     OFFSET_RSP(g_hhdm_base);
     OFFSET_RBP(g_hhdm_base);
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
-
-    gdt_load();
-    interrupt_load_idt();
 
     init_common();
 
@@ -83,11 +85,9 @@ static void init_common() {
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
     pic8259_remap();
-    g_interrupt_irq_eoi = pic8259_eoi;
+    pic8259_disable();
+    g_interrupt_irq_eoi = lapic_eoi;
     interrupt_init();
-
-    gdt_load();
-    interrupt_load_idt();
 
     for(int i = 0; i < 32; i++) {
         interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_unhandled);
