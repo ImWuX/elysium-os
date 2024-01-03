@@ -96,7 +96,7 @@ static void tlb_shootdown(vmm_address_space_t *address_space) {
     // END OF TOGGLE
 }
 
-static void tlb_shootdown_handler(interrupt_frame_t *frame) {
+static void tlb_shootdown_handler([[maybe_unused]] interrupt_frame_t *frame) {
     arch_cpu_t *cpu = ARCH_CPU(arch_cpu_current());
     if(read_cr3() == cpu->tlb_shootdown_cr3) write_cr3(read_cr3());
     spinlock_release(&cpu->tlb_shootdown_lock);
