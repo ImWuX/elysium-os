@@ -2,7 +2,6 @@
 #include <stdint.h>
 
 typedef struct {
-    uint64_t fs;
     uint64_t ds;
     uint64_t es;
     uint64_t r15;
