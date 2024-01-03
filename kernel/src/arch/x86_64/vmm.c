@@ -76,6 +76,7 @@ static void tlb_shootdown(vmm_address_space_t *address_space) {
         }
 
         spinlock_acquire(&cpu->tlb_shootdown_lock);
+        spinlock_acquire(&cpu->tlb_shootdown_check);
         cpu->tlb_shootdown_cr3 = ARCH_AS(address_space)->cr3;
 
         asm volatile("" : : : "memory");
@@ -83,14 +84,15 @@ static void tlb_shootdown(vmm_address_space_t *address_space) {
 
         volatile int timeout = 0;
         do {
-            if(timeout++ % 100 != 0) {
+            if(timeout++ % 500 != 0) {
                 asm volatile("pause");
                 continue;
             }
             if(timeout >= 3000) break;
             lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | LAPIC_IPI_ASSERT);
-        } while(!spinlock_try_acquire(&cpu->tlb_shootdown_lock));
+        } while(!spinlock_try_acquire(&cpu->tlb_shootdown_check));
 
+        spinlock_release(&cpu->tlb_shootdown_check);
         spinlock_release(&cpu->tlb_shootdown_lock);
     }
     arch_interrupt_ipl(old_ipl);
@@ -98,8 +100,9 @@ static void tlb_shootdown(vmm_address_space_t *address_space) {
 
 static void tlb_shootdown_handler([[maybe_unused]] interrupt_frame_t *frame) {
     arch_cpu_t *cpu = ARCH_CPU(arch_cpu_current());
+    if(spinlock_try_acquire(&cpu->tlb_shootdown_check)) return spinlock_release(&cpu->tlb_shootdown_check);
     if(read_cr3() == cpu->tlb_shootdown_cr3) write_cr3(read_cr3());
-    spinlock_release(&cpu->tlb_shootdown_lock);
+    spinlock_release(&cpu->tlb_shootdown_check);
 }
 
 void arch_vmm_init() {
