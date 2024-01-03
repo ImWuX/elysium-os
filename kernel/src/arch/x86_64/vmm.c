@@ -1,7 +1,12 @@
 #include <arch/vmm.h>
+#include <lib/assert.h>
 #include <lib/container.h>
 #include <memory/pmm.h>
 #include <memory/hhdm.h>
+#include <arch/cpu.h>
+#include <arch/x86_64/cpu.h>
+#include <arch/x86_64/lapic.h>
+#include <arch/x86_64/interrupt.h>
 
 #define ARCH_AS(ADDRESS_SPACE) (container_of(ADDRESS_SPACE, arch_vmm_address_space_t, common))
 
@@ -25,6 +30,7 @@ typedef struct {
     vmm_address_space_t common;
 } arch_vmm_address_space_t;
 
+static uint8_t g_tlb_shootdown_vector;
 static arch_vmm_address_space_t g_initial_address_space;
 
 static inline void pte_set_address(uint64_t *entry, uintptr_t address) {
@@ -57,14 +63,52 @@ static uint64_t flags_to_x86_flags(int flags) {
 }
 
 static void tlb_shootdown(vmm_address_space_t *address_space) {
+    if(g_cpus_initialized == 0) return;
+
     // TODO: TOGGLE interrupts / stop scheduling
-    if(read_cr3() == ARCH_AS(address_space)->cr3) write_cr3(read_cr3());
+
+    for(int i = 0; i < g_cpus_initialized; i++) {
+        arch_cpu_t *cpu = &g_cpus[i];
+
+        if(cpu == ARCH_CPU(arch_cpu_current())) {
+            if(read_cr3() == ARCH_AS(address_space)->cr3) write_cr3(read_cr3());
+            continue;
+        }
+
+        spinlock_acquire(&cpu->tlb_shootdown_lock);
+        cpu->tlb_shootdown_cr3 = ARCH_AS(address_space)->cr3;
+
+        asm volatile("" : : : "memory");
+        lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | LAPIC_IPI_ASSERT);
+
+        volatile int timeout = 0;
+        do {
+            if(timeout++ % 100 != 0) {
+                asm volatile("pause");
+                continue;
+            }
+            if(timeout >= 3000) break;
+            lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | LAPIC_IPI_ASSERT);
+        } while(!spinlock_try_acquire(&cpu->tlb_shootdown_lock));
+
+        spinlock_release(&cpu->tlb_shootdown_lock);
+    }
     // END OF TOGGLE
+}
+
+static void tlb_shootdown_handler(interrupt_frame_t *frame) {
+    arch_cpu_t *cpu = ARCH_CPU(arch_cpu_current());
+    if(read_cr3() == cpu->tlb_shootdown_cr3) write_cr3(read_cr3());
+    spinlock_release(&cpu->tlb_shootdown_lock);
 }
 
 void arch_vmm_init() {
     g_initial_address_space.common.lock = SPINLOCK_INIT;
     g_initial_address_space.cr3 = pmm_alloc_page(PMM_STANDARD | PMM_AF_ZERO)->paddr;
+
+    int vector = interrupt_request(INTERRUPT_PRIORITY_KERNHIGH, tlb_shootdown_handler);
+    ASSERT(vector != -1);
+    g_tlb_shootdown_vector = (uint8_t) vector;
 
     uint64_t *old_pml4 = (uint64_t *) HHDM(read_cr3());
     uint64_t *pml4 = (uint64_t *) HHDM(g_initial_address_space.cr3);

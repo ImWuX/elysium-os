@@ -22,8 +22,8 @@
 
 uintptr_t g_hhdm_base;
 
-volatile int g_cpus_initialized;
-arch_cpu_t *g_cpus;
+arch_cpu_t *g_cpus = NULL;
+volatile int g_cpus_initialized = 0;
 
 static void pch(char ch) {
     port_outb(0x3F8, ch);
@@ -33,6 +33,10 @@ static void init_common() {
     arch_cpu_t *cpu = &g_cpus[g_cpus_initialized];
     memset(cpu, 0, sizeof(arch_cpu_t));
     cpu->lapic_id = lapic_id();
+    cpu->tlb_shootdown_lock = SPINLOCK_INIT;
+
+    // TODO: this will be replace with thread once we have a scheduler
+    msr_write(MSR_GS_BASE, (uint64_t) cpu);
 
     kprintf("CPU %i\n", cpu->lapic_id);
 

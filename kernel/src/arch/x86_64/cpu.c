@@ -1,3 +1,5 @@
+#include "cpu.h"
+#include <stddef.h>
 #include <arch/cpu.h>
 
 void arch_cpu_relax() {
@@ -8,4 +10,10 @@ void arch_cpu_relax() {
     asm volatile("cli");
     for(;;) asm volatile("hlt");
     __builtin_unreachable();
+}
+
+cpu_t *arch_cpu_current() {
+    arch_cpu_t *cpu = NULL;
+    asm volatile("mov %%gs:0, %0" : "=r" (cpu));
+    return &cpu->common;
 }
