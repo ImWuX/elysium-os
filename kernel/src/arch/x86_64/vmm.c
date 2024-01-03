@@ -4,6 +4,7 @@
 #include <memory/pmm.h>
 #include <memory/hhdm.h>
 #include <arch/cpu.h>
+#include <arch/interrupt.h>
 #include <arch/x86_64/cpu.h>
 #include <arch/x86_64/lapic.h>
 #include <arch/x86_64/interrupt.h>
@@ -65,8 +66,7 @@ static uint64_t flags_to_x86_flags(int flags) {
 static void tlb_shootdown(vmm_address_space_t *address_space) {
     if(g_cpus_initialized == 0) return;
 
-    // TODO: TOGGLE interrupts / stop scheduling
-
+    arch_interrupt_ipl_t old_ipl = arch_interrupt_ipl(ARCH_INTERRUPT_IPL_CRITICAL);
     for(int i = 0; i < g_cpus_initialized; i++) {
         arch_cpu_t *cpu = &g_cpus[i];
 
@@ -93,7 +93,7 @@ static void tlb_shootdown(vmm_address_space_t *address_space) {
 
         spinlock_release(&cpu->tlb_shootdown_lock);
     }
-    // END OF TOGGLE
+    arch_interrupt_ipl(old_ipl);
 }
 
 static void tlb_shootdown_handler([[maybe_unused]] interrupt_frame_t *frame) {
@@ -106,7 +106,7 @@ void arch_vmm_init() {
     g_initial_address_space.common.lock = SPINLOCK_INIT;
     g_initial_address_space.cr3 = pmm_alloc_page(PMM_STANDARD | PMM_AF_ZERO)->paddr;
 
-    int vector = interrupt_request(INTERRUPT_PRIORITY_KERNHIGH, tlb_shootdown_handler);
+    int vector = interrupt_request(INTERRUPT_PRIORITY_IPC, tlb_shootdown_handler);
     ASSERT(vector != -1);
     g_tlb_shootdown_vector = (uint8_t) vector;
 

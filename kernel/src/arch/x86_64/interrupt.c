@@ -1,5 +1,6 @@
 #include "interrupt.h"
 #include <lib/kprint.h>
+#include <arch/interrupt.h>
 #include <arch/x86_64/gdt.h>
 
 #define FLAGS_NORMAL 0x8E
@@ -27,6 +28,18 @@ typedef struct {
     interrupt_priority_t priority;
 } interrupt_entry_t;
 
+static interrupt_priority_t g_ipl_to_interrupt_map[] = {
+    [ARCH_INTERRUPT_IPL_NORMAL] = INTERRUPT_PRIORITY_NORMAL,
+    [ARCH_INTERRUPT_IPL_IPC] = INTERRUPT_PRIORITY_IPC,
+    [ARCH_INTERRUPT_IPL_CRITICAL] = INTERRUPT_PRIORITY_CRITICAL
+};
+
+static arch_interrupt_ipl_t g_interrupt_to_ipl_map[] = {
+    [INTERRUPT_PRIORITY_NORMAL] = ARCH_INTERRUPT_IPL_NORMAL,
+    [INTERRUPT_PRIORITY_IPC] = ARCH_INTERRUPT_IPL_IPC,
+    [INTERRUPT_PRIORITY_CRITICAL] = ARCH_INTERRUPT_IPL_CRITICAL
+};
+
 extern uint64_t g_isr_stubs[IDT_SIZE];
 
 static idt_entry_t g_idt[IDT_SIZE];
@@ -42,6 +55,16 @@ static void set_idt_gate(uint8_t gate, uintptr_t handler, uint16_t segment, uint
     g_idt[gate].flags = flags;
     g_idt[gate].ist = 0;
     g_idt[gate].rsv0 = 0;
+}
+
+static void ipl_set(interrupt_priority_t priority) {
+    asm volatile("mov %0, %%cr8" : : "r" (priority));
+}
+
+static interrupt_priority_t ipl_get() {
+    uint64_t ipl;
+    asm volatile("mov %%cr8, %0" : "=r" (ipl));
+    return (interrupt_priority_t) ipl;
 }
 
 void interrupt_handler(interrupt_frame_t *frame) {
@@ -76,4 +99,10 @@ int interrupt_request(interrupt_priority_t priority, interrupt_handler_t handler
         return i;
     }
     return -1;
+}
+
+arch_interrupt_ipl_t arch_interrupt_ipl(arch_interrupt_ipl_t ipl) {
+    arch_interrupt_ipl_t old = g_interrupt_to_ipl_map[ipl_get()];
+    ipl_set(g_ipl_to_interrupt_map[ipl]);
+    return old;
 }
