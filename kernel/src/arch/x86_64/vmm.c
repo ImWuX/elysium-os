@@ -56,6 +56,12 @@ static uint64_t flags_to_x86_flags(int flags) {
     return x86_flags;
 }
 
+static void tlb_shootdown(vmm_address_space_t *address_space) {
+    // TODO: TOGGLE interrupts / stop scheduling
+    if(read_cr3() == ARCH_AS(address_space)->cr3) write_cr3(read_cr3());
+    // END OF TOGGLE
+}
+
 void arch_vmm_init() {
     g_initial_address_space.common.lock = SPINLOCK_INIT;
     g_initial_address_space.cr3 = pmm_alloc_page(PMM_STANDARD | PMM_AF_ZERO)->paddr;
@@ -97,11 +103,32 @@ void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t
         if(x86_flags & PTE_FLAG_USER) current_table[index] |= PTE_FLAG_USER;
         current_table = (uint64_t *) HHDM(pte_get_address(current_table[index]));
     }
-
     int index = VADDR_TO_INDEX(vaddr, 1);
     current_table[index] = PTE_FLAG_PRESENT;
     current_table[index] |= x86_flags;
     pte_set_address(&current_table[index], paddr);
+
+    tlb_shootdown(address_space);
+    spinlock_release(&address_space->lock);
+}
+
+void arch_vmm_unmap(vmm_address_space_t *address_space, uintptr_t vaddr) {
+    spinlock_acquire(&address_space->lock);
+    uint64_t *current_table = (uint64_t *) HHDM(ARCH_AS(address_space)->cr3);
+    for(int i = 4; i > 1; i--) {
+        int index = VADDR_TO_INDEX(vaddr, i);
+        if(!(current_table[index] & PTE_FLAG_PRESENT)) {
+            spinlock_release(&address_space->lock);
+            goto cleanup;
+        }
+        current_table = (uint64_t *) HHDM(pte_get_address(current_table[index]));
+    }
+    int index = VADDR_TO_INDEX(vaddr, 1);
+    if(!(current_table[index] & PTE_FLAG_PRESENT)) goto cleanup;
+    current_table[index] = 0;
+
+    cleanup:
+    tlb_shootdown(address_space);
     spinlock_release(&address_space->lock);
 }
 
@@ -110,7 +137,10 @@ bool arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr, uint
     uint64_t *current_table = (uint64_t *) HHDM(ARCH_AS(address_space)->cr3);
     for(int i = 4; i > 1; i--) {
         int index = VADDR_TO_INDEX(vaddr, i);
-        if(!(current_table[index] & PTE_FLAG_PRESENT)) return false;
+        if(!(current_table[index] & PTE_FLAG_PRESENT)) {
+            spinlock_release(&address_space->lock);
+            return false;
+        }
         current_table = (uint64_t *) HHDM(pte_get_address(current_table[index]));
     }
     uint64_t entry = current_table[VADDR_TO_INDEX(vaddr, 1)];
