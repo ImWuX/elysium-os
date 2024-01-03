@@ -1,12 +1,14 @@
 #include <tartarus.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
+#include <memory/heap.h>
 #include <lib/kprint.h>
 #include <lib/panic.h>
 #include <lib/string.h>
 #include <arch/cpu.h>
 #include <arch/types.h>
 #include <arch/vmm.h>
+#include <arch/x86_64/cpu.h>
 #include <arch/x86_64/lapic.h>
 #include <arch/x86_64/port.h>
 #include <arch/x86_64/msr.h>
@@ -20,14 +22,19 @@
 
 uintptr_t g_hhdm_base;
 
-static volatile int g_cpus_initialized;
+volatile int g_cpus_initialized;
+arch_cpu_t *g_cpus;
 
 static void pch(char ch) {
     port_outb(0x3F8, ch);
 }
 
 static void init_common() {
-    kprintf("CPU %i\n", g_cpus_initialized);
+    arch_cpu_t *cpu = &g_cpus[g_cpus_initialized];
+    memset(cpu, 0, sizeof(arch_cpu_t));
+    cpu->lapic_id = lapic_id();
+
+    kprintf("CPU %i\n", cpu->lapic_id);
 
     uint64_t pat = msr_read(MSR_PAT);
     pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
@@ -79,11 +86,6 @@ static void init_common() {
         pmm_region_add(entry.base, entry.length);
     }
 
-    arch_vmm_init();
-    OFFSET_RSP(g_hhdm_base);
-    OFFSET_RBP(g_hhdm_base);
-    arch_vmm_load_address_space(g_vmm_kernel_address_space);
-
     pic8259_remap();
     pic8259_disable();
     g_interrupt_irq_eoi = lapic_eoi;
@@ -93,7 +95,15 @@ static void init_common() {
         interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_unhandled);
     }
 
+    arch_vmm_init();
+    OFFSET_RSP(g_hhdm_base);
+    OFFSET_RBP(g_hhdm_base);
+    arch_vmm_load_address_space(g_vmm_kernel_address_space);
+
+    heap_initialize(g_vmm_kernel_address_space, 0xFFFF'8400'0000'0000, 0xFFFF'8500'0000'0000);
+
     g_cpus_initialized = 0;
+    g_cpus = heap_alloc(sizeof(arch_cpu_t) * boot_info->cpu_count);
     for(int i = 0; i < boot_info->cpu_count; i++) {
         if(i == boot_info->bsp_index) {
             init_common();
