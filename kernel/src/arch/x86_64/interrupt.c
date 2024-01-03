@@ -58,7 +58,7 @@ static void set_idt_gate(uint8_t gate, uintptr_t handler, uint16_t segment, uint
 }
 
 static void ipl_set(interrupt_priority_t priority) {
-    asm volatile("mov %0, %%cr8" : : "r" (priority));
+    asm volatile("mov %0, %%cr8" : : "r" ((uint64_t) priority));
 }
 
 static interrupt_priority_t ipl_get() {
