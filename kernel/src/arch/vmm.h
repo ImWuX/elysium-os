@@ -30,6 +30,13 @@ void arch_vmm_load_address_space(vmm_address_space_t *address_space);
 void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, int flags);
 
 /**
+ * @brief Unmap a virtual address from address space.
+ * @param address_space
+ * @param vaddr virtual address
+ */
+void arch_vmm_unmap(vmm_address_space_t *address_space, uintptr_t vaddr);
+
+/**
  * @brief Translate a virtual address to a physical address.
  * @param address_space
  * @param vaddr virtual address
