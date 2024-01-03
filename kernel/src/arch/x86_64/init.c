@@ -8,6 +8,7 @@
 #include <arch/cpu.h>
 #include <arch/types.h>
 #include <arch/vmm.h>
+#include <arch/interrupt.h>
 #include <arch/x86_64/cpu.h>
 #include <arch/x86_64/lapic.h>
 #include <arch/x86_64/port.h>
@@ -32,11 +33,10 @@ static void pch(char ch) {
 static void init_common() {
     arch_cpu_t *cpu = &g_cpus[g_cpus_initialized];
     memset(cpu, 0, sizeof(arch_cpu_t));
+    cpu->this = cpu;
     cpu->lapic_id = lapic_id();
+    cpu->tlb_shootdown_check = SPINLOCK_INIT;
     cpu->tlb_shootdown_lock = SPINLOCK_INIT;
-
-    // TODO: this will be replace with thread once we have a scheduler
-    msr_write(MSR_GS_BASE, (uint64_t) cpu);
 
     kprintf("CPU %i\n", cpu->lapic_id);
 
@@ -54,6 +54,9 @@ static void init_common() {
     gdt_load();
     interrupt_load_idt();
 
+    // TODO: this will be replace with thread once we have a scheduler
+    msr_write(MSR_GS_BASE, (uint64_t) cpu);
+
     __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
 }
 
@@ -63,8 +66,9 @@ static void init_common() {
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
     init_common();
+    asm volatile("sti");
 
-    arch_cpu_halt();
+    for(;;) asm volatile("hlt");
     __builtin_unreachable();
 }
 
@@ -131,7 +135,12 @@ static void init_common() {
         }
     }
     kprintf("\n");
+    asm volatile("sti");
 
-    arch_cpu_halt();
+    pmm_page_t *page = pmm_alloc_page(PMM_STANDARD);
+    arch_vmm_map(g_vmm_kernel_address_space, 0x5000, page->paddr, ARCH_VMM_FLAG_WRITE);
+    arch_vmm_unmap(g_vmm_kernel_address_space, 0x5000);
+
+    for(;;) asm volatile("hlt");
     __builtin_unreachable();
 }
