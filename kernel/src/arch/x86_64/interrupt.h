@@ -32,7 +32,9 @@ typedef struct {
 
 typedef enum {
     INTERRUPT_PRIORITY_EXCEPTION = 0x0,
-    INTERRUPT_PRIORITY_KERNHIGH = 0xF
+    INTERRUPT_PRIORITY_NORMAL = 0x5,
+    INTERRUPT_PRIORITY_IPC = 0xE,
+    INTERRUPT_PRIORITY_CRITICAL = 0xF
 } interrupt_priority_t;
 
 typedef void (* interrupt_handler_t)(interrupt_frame_t *frame);
