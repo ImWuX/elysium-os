@@ -30,7 +30,7 @@ typedef struct {
     uint64_t ss;
 } interrupt_frame_t;
 
-typedef enum : uint64_t {
+typedef enum {
     INTERRUPT_PRIORITY_EXCEPTION = 0x0,
     INTERRUPT_PRIORITY_NORMAL = 0x5,
     INTERRUPT_PRIORITY_IPC = 0xE,
