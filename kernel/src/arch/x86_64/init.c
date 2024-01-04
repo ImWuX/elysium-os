@@ -5,6 +5,7 @@
 #include <lib/kprint.h>
 #include <lib/panic.h>
 #include <lib/string.h>
+#include <lib/assert.h>
 #include <arch/cpu.h>
 #include <arch/types.h>
 #include <arch/vmm.h>
@@ -56,6 +57,8 @@ static void init_common() {
 
     // TODO: this will be replace with thread once we have a scheduler
     msr_write(MSR_GS_BASE, (uint64_t) cpu);
+
+    arch_interrupt_ipl(ARCH_INTERRUPT_IPL_NORMAL);
 
     __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
 }
@@ -136,10 +139,6 @@ static void init_common() {
     }
     kprintf("\n");
     asm volatile("sti");
-
-    pmm_page_t *page = pmm_alloc_page(PMM_STANDARD);
-    arch_vmm_map(g_vmm_kernel_address_space, 0x5000, page->paddr, ARCH_VMM_FLAG_WRITE);
-    arch_vmm_unmap(g_vmm_kernel_address_space, 0x5000);
 
     for(;;) asm volatile("hlt");
     __builtin_unreachable();
