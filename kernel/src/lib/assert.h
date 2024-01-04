@@ -1,6 +1,15 @@
 #pragma once
 #include <lib/panic.h>
 
+/**
+ * @brief Make an assertion & panic on failure.
+ * @param ASSERTION
+ */
 #define ASSERT(ASSERTION) if(!(ASSERTION)) panic("Assertion \"%s\" failed\n", #ASSERTION);
+
+/**
+ * @brief Make an assertion & panic with a comment on failure.
+ * @param ASSERTION
+ * @param COMMENT
+ */
 #define ASSERTC(ASSERTION, COMMENT) if(!(ASSERTION)) panic("Assertion \"%s\" failed (%s)\n", #ASSERTION, COMMENT)
-#define ASSERT_UNREACHABLE() panic("Assertion unreachable failed. %s:%i\n", __FILE__, __LINE__); __builtin_unreachable()
