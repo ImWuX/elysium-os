@@ -19,8 +19,7 @@
 #include <arch/x86_64/exception.h>
 #include <arch/x86_64/dev/pic8259.h>
 
-#define OFFSET_RSP(OFFSET) asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp" : : "rm" (OFFSET) : "rax", "memory")
-#define OFFSET_RBP(OFFSET) asm volatile("mov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (OFFSET) : "rax", "memory")
+#define ADJUST_STACK(OFFSET) asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp\nmov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (OFFSET) : "rax", "memory")
 
 uintptr_t g_hhdm_base;
 
@@ -64,8 +63,7 @@ static void init_common() {
 }
 
 [[noreturn]] __attribute__((naked)) void init_ap() {
-    OFFSET_RSP(g_hhdm_base);
-    OFFSET_RBP(g_hhdm_base);
+    ADJUST_STACK(g_hhdm_base);
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
     init_common();
@@ -101,14 +99,12 @@ static void init_common() {
     pic8259_disable();
     g_interrupt_irq_eoi = lapic_eoi;
     interrupt_init();
-
     for(int i = 0; i < 32; i++) {
         interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_unhandled);
     }
 
     arch_vmm_init();
-    OFFSET_RSP(g_hhdm_base);
-    OFFSET_RBP(g_hhdm_base);
+    ADJUST_STACK(g_hhdm_base);
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
     heap_initialize(g_vmm_kernel_address_space, 0xFFFF'8400'0000'0000, 0xFFFF'8500'0000'0000);
