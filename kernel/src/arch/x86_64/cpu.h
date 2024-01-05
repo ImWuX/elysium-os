@@ -1,9 +1,10 @@
 #pragma once
 #include <stdint.h>
 #include <sys/cpu.h>
+#include <lib/container.h>
 #include <lib/spinlock.h>
 
-#define ARCH_CPU(CPU) (container_of(CPU, arch_cpu_t, common))
+#define ARCH_CPU(CPU) (CONTAINER_OF(CPU, arch_cpu_t, common))
 
 typedef struct arch_cpu {
     struct arch_cpu *this; // TODO: this can be removed once gs is set to thread
