@@ -9,24 +9,24 @@ typedef struct list {
 } list_t;
 
 /**
- * @brief Insert a new node behind an existing node in a list.
- * @param position node to insert behind
- * @param node
+ * @brief Insert a new element behind an existing element in a list.
+ * @param position element to insert behind
+ * @param element
  */
-void list_insert_behind(list_t *position, list_t *node);
+void list_append(list_t *position, list_t *element);
 
 /**
- * @brief Insert a new node before an existing node in a list.
- * @param position node to insert before
- * @param node
+ * @brief Insert a new element before an existing element in a list.
+ * @param position element to insert before
+ * @param element
  */
-void list_insert_before(list_t *position, list_t *node);
+void list_prepend(list_t *position, list_t *element);
 
 /**
- * @brief Delete a node from a list.
- * @param node
+ * @brief Delete a element from a list.
+ * @param element
  */
-void list_delete(list_t *node);
+void list_delete(list_t *element);
 
 /**
  * @brief Test if a list is empty.
@@ -36,13 +36,13 @@ void list_delete(list_t *node);
 bool list_is_empty(list_t *list);
 
 /**
- * @brief Get the structure/container that the node is embedded in.
- * @param node embedded node
+ * @brief Get the structure/container that the element is embedded in.
+ * @param element embedded element
  * @param type type of container
  * @param member name of the list embedded in container
  * @returns pointer to container
  */
-#define LIST_GET(NODE, TYPE, MEMBER) ((TYPE *) ((uintptr_t) (NODE) - __builtin_offsetof(TYPE, MEMBER)))
+#define LIST_GET(ELEMENT, TYPE, MEMBER) ((TYPE *) ((uintptr_t) (ELEMENT) - __builtin_offsetof(TYPE, MEMBER)))
 
 /**
  * @brief Iterate over a list.

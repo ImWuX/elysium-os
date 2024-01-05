@@ -78,14 +78,14 @@ void pmm_region_add(uintptr_t base, size_t size) {
 
             pmm_page_t *page = &region->pages[j];
             page->order = order;
-            list_insert_behind(&region->zone->lists[order], &page->list);
+            list_append(&region->zone->lists[order], &page->list);
 
             size_t order_size = order_to_pagecount(order);
             free_pages -= order_size;
             j += order_size;
         }
 
-        list_insert_behind(&region->zone->regions, &region->list);
+        list_append(&region->zone->regions, &region->list);
     }
 }
 
@@ -103,7 +103,7 @@ pmm_page_t *pmm_alloc(pmm_order_t order, pmm_allocator_flags_t flags) {
     for(; avl_order > order; avl_order--) {
         pmm_page_t *buddy = &page->region->pages[((page->paddr - page->region->base) / ARCH_PAGE_SIZE) + (order_to_pagecount(avl_order - 1))];
         buddy->order = avl_order - 1;
-        list_insert_behind(&zone->lists[avl_order - 1], &buddy->list);
+        list_append(&zone->lists[avl_order - 1], &buddy->list);
     }
     spinlock_release(&zone->lock);
     page->order = order;
@@ -141,6 +141,6 @@ void pmm_free(pmm_page_t *page) {
         page->order++;
         if(buddy->paddr < page->paddr) page = buddy;
     }
-    list_insert_behind(&zone->lists[page->order], &page->list);
+    list_append(&zone->lists[page->order], &page->list);
     spinlock_release(&zone->lock);
 }

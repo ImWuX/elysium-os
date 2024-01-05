@@ -54,7 +54,7 @@ static void expand(size_t npages) {
 #if HEAP_PROTECTION
         update_prot(new);
 #endif
-        list_insert_before(&g_entries, &new->list);
+        list_prepend(&g_entries, &new->list);
     }
     g_size += ARCH_PAGE_SIZE * npages;
     spinlock_release(&g_lock);
@@ -94,7 +94,7 @@ void *heap_alloc_align(size_t size, size_t alignment) {
         heap_entry_t *new = (heap_entry_t *) ((uintptr_t) entry + offset);
         new->free = true;
         new->size = entry->size - offset;
-        list_insert_behind(&entry->list, &new->list);
+        list_append(&entry->list, &new->list);
         entry->size = offset - sizeof(heap_entry_t);
 #if HEAP_PROTECTION
         update_prot(new);
@@ -108,7 +108,7 @@ void *heap_alloc_align(size_t size, size_t alignment) {
             heap_entry_t *overflow = (heap_entry_t *) ((uintptr_t) entry + sizeof(heap_entry_t) + size);
             overflow->free = true;
             overflow->size = entry->size - size - sizeof(heap_entry_t);
-            list_insert_behind(&entry->list, &overflow->list);
+            list_append(&entry->list, &overflow->list);
             entry->size = size;
 #if HEAP_PROTECTION
             update_prot(overflow);
