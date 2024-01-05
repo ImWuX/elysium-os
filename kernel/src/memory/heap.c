@@ -16,7 +16,7 @@ typedef struct {
 #endif
     size_t size;
     bool free;
-    list_t list;
+    list_element_t list_elem;
 } heap_entry_t;
 
 static vmm_address_space_t *g_as;
@@ -41,8 +41,8 @@ static void expand(size_t npages) {
         pmm_page_t *page = pmm_alloc_page(PMM_STANDARD);
         arch_vmm_map(g_as, g_base + g_size + i * ARCH_PAGE_SIZE, page->paddr, ARCH_VMM_FLAG_WRITE);
     }
-    if(!list_is_empty(&g_entries) && LIST_GET(g_entries.prev, heap_entry_t, list)->free) {
-        heap_entry_t *entry = LIST_GET(g_entries.prev, heap_entry_t, list);
+    if(!list_is_empty(&g_entries) && LIST_GET(g_entries.prev, heap_entry_t, list_elem)->free) {
+        heap_entry_t *entry = LIST_GET(g_entries.prev, heap_entry_t, list_elem);
         entry->size += npages * ARCH_PAGE_SIZE;
 #if HEAP_PROTECTION
         update_prot(entry);
@@ -54,7 +54,7 @@ static void expand(size_t npages) {
 #if HEAP_PROTECTION
         update_prot(new);
 #endif
-        list_prepend(&g_entries, &new->list);
+        list_prepend(&g_entries, &new->list_elem);
     }
     g_size += ARCH_PAGE_SIZE * npages;
     spinlock_release(&g_lock);
@@ -71,9 +71,9 @@ void heap_initialize(vmm_address_space_t *address_space, uintptr_t start, uintpt
 void *heap_alloc_align(size_t size, size_t alignment) {
     ASSERT(size > 0);
     spinlock_acquire(&g_lock);
-    list_t *lentry;
-    LIST_FOREACH(lentry, &g_entries) {
-        heap_entry_t *entry = LIST_GET(lentry, heap_entry_t, list);
+    list_element_t *elem;
+    LIST_FOREACH(elem, &g_entries) {
+        heap_entry_t *entry = LIST_GET(elem, heap_entry_t, list_elem);
         if(!entry->free) continue;
 #if HEAP_PROTECTION
     ASSERT(get_prot(entry) == 0);
@@ -94,7 +94,7 @@ void *heap_alloc_align(size_t size, size_t alignment) {
         heap_entry_t *new = (heap_entry_t *) ((uintptr_t) entry + offset);
         new->free = true;
         new->size = entry->size - offset;
-        list_append(&entry->list, &new->list);
+        list_append(&entry->list_elem, &new->list_elem);
         entry->size = offset - sizeof(heap_entry_t);
 #if HEAP_PROTECTION
         update_prot(new);
@@ -108,7 +108,7 @@ void *heap_alloc_align(size_t size, size_t alignment) {
             heap_entry_t *overflow = (heap_entry_t *) ((uintptr_t) entry + sizeof(heap_entry_t) + size);
             overflow->free = true;
             overflow->size = entry->size - size - sizeof(heap_entry_t);
-            list_append(&entry->list, &overflow->list);
+            list_append(&entry->list_elem, &overflow->list_elem);
             entry->size = size;
 #if HEAP_PROTECTION
             update_prot(overflow);
@@ -136,21 +136,21 @@ void heap_free(void* address) {
     ASSERT(get_prot(entry) == 0);
 #endif
     entry->free = true;
-    if(entry->list.next != &g_entries) {
-        heap_entry_t *next = LIST_GET(entry->list.next, heap_entry_t, list);
+    if(LIST_NEXT(&entry->list_elem) != &g_entries) {
+        heap_entry_t *next = LIST_GET(LIST_NEXT(&entry->list_elem), heap_entry_t, list_elem);
         if(next->free) {
             entry->size += sizeof(heap_entry_t) + next->size;
-            list_delete(&next->list);
+            list_delete(&next->list_elem);
 #if HEAP_PROTECTION
             update_prot(entry);
 #endif
         }
     }
-    if(entry->list.prev != &g_entries) {
-        heap_entry_t *prev = LIST_GET(entry->list.prev, heap_entry_t, list);
+    if(LIST_PREVIOUS(&entry->list_elem) != &g_entries) {
+        heap_entry_t *prev = LIST_GET(LIST_PREVIOUS(&entry->list_elem), heap_entry_t, list_elem);
         if(prev->free) {
             prev->size += sizeof(heap_entry_t) + entry->size;
-            list_delete(&entry->list);
+            list_delete(&entry->list_elem);
 #if HEAP_PROTECTION
             update_prot(prev);
 #endif
