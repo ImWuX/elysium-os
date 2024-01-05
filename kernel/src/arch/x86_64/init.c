@@ -5,6 +5,7 @@
 #include <lib/kprint.h>
 #include <lib/panic.h>
 #include <lib/string.h>
+#include <lib/list.h>
 #include <lib/assert.h>
 #include <arch/cpu.h>
 #include <arch/types.h>
@@ -129,7 +130,7 @@ static void init_common() {
         kprintf("• %s\n", zone->name);
         list_t *entry;
         LIST_FOREACH(entry, &zone->regions) {
-            pmm_region_t *region = LIST_GET(entry, pmm_region_t, list);
+            pmm_region_t *region = LIST_GET(entry, pmm_region_t, list_elem);
             kprintf("  • %#-12lx %lu/%lu pages\n", region->base, region->free_count, region->page_count);
         }
     }
