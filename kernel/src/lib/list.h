@@ -44,14 +44,14 @@ bool list_is_empty(list_t *list);
  * @param MEMBER name of the list embedded in container
  * @returns pointer to container
  */
-#define LIST_GET(ELEMENT, TYPE, MEMBER) ((TYPE *) ((uintptr_t) (ELEMENT) - __builtin_offsetof(TYPE, MEMBER)))
+#define LIST_CONTAINER_GET(ELEMENT, TYPE, MEMBER) ((TYPE *) ((uintptr_t) (ELEMENT) - __builtin_offsetof(TYPE, MEMBER)))
 
 /**
  * @brief Iterate over a list.
+ * @param LIST list_t to iterate over
  * @param ELEM_PTR list_element_t* to be used as iterator
- * @param LIST_HEAD list_t to iterate over
  */
-#define LIST_FOREACH(ELEM_PTR, LIST) for((ELEM_PTR) = (LIST)->next; (ELEM_PTR) && (ELEM_PTR) != (LIST); (ELEM_PTR) = (ELEM_PTR)->next)
+#define LIST_FOREACH(LIST, ELEM_PTR) for((ELEM_PTR) = (LIST)->next; (ELEM_PTR) && (ELEM_PTR) != (LIST); (ELEM_PTR) = (ELEM_PTR)->next)
 
 /**
  * @brief Get the next element in a list.
