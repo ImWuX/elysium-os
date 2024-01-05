@@ -78,14 +78,14 @@ void pmm_region_add(uintptr_t base, size_t size) {
 
             pmm_page_t *page = &region->pages[j];
             page->order = order;
-            list_append(&region->zone->lists[order], &page->list);
+            list_append(&region->zone->lists[order], &page->list_elem);
 
             size_t order_size = order_to_pagecount(order);
             free_pages -= order_size;
             j += order_size;
         }
 
-        list_append(&region->zone->regions, &region->list);
+        list_append(&region->zone->regions, &region->list_elem);
     }
 }
 
@@ -98,12 +98,12 @@ pmm_page_t *pmm_alloc(pmm_order_t order, pmm_allocator_flags_t flags) {
     while(list_is_empty(&zone->lists[avl_order])) {
         ASSERTC(++avl_order <= PMM_MAX_ORDER, "Out of memory");
     }
-    pmm_page_t *page = LIST_GET(zone->lists[avl_order].next, pmm_page_t, list);
-    list_delete(&page->list);
+    pmm_page_t *page = LIST_GET(zone->lists[avl_order].next, pmm_page_t, list_elem);
+    list_delete(&page->list_elem);
     for(; avl_order > order; avl_order--) {
         pmm_page_t *buddy = &page->region->pages[((page->paddr - page->region->base) / ARCH_PAGE_SIZE) + (order_to_pagecount(avl_order - 1))];
         buddy->order = avl_order - 1;
-        list_append(&zone->lists[avl_order - 1], &buddy->list);
+        list_append(&zone->lists[avl_order - 1], &buddy->list_elem);
     }
     spinlock_release(&zone->lock);
     page->order = order;
@@ -136,11 +136,11 @@ void pmm_free(pmm_page_t *page) {
         pmm_page_t *buddy = &page->region->pages[(buddy_addr - page->region->base) / ARCH_PAGE_SIZE];
         if(!buddy->free || buddy->order != page->order) break;
 
-        list_delete(&buddy->list);
+        list_delete(&buddy->list_elem);
         buddy->order++;
         page->order++;
         if(buddy->paddr < page->paddr) page = buddy;
     }
-    list_append(&zone->lists[page->order], &page->list);
+    list_append(&zone->lists[page->order], &page->list_elem);
     spinlock_release(&zone->lock);
 }

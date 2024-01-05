@@ -31,7 +31,7 @@ typedef struct {
 } pmm_zone_t;
 
 typedef struct pmm_page {
-    list_t list;
+    list_element_t list_elem;
     struct pmm_region *region;
     uintptr_t paddr;
     uint8_t order : 3;
@@ -39,7 +39,7 @@ typedef struct pmm_page {
 } pmm_page_t;
 
 typedef struct pmm_region {
-    list_t list;
+    list_element_t list_elem;
     pmm_zone_t *zone;
     uintptr_t base;
     size_t page_count;
