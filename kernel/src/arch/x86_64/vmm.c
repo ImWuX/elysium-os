@@ -9,7 +9,7 @@
 #include <arch/x86_64/lapic.h>
 #include <arch/x86_64/interrupt.h>
 
-#define ARCH_AS(ADDRESS_SPACE) (container_of(ADDRESS_SPACE, arch_vmm_address_space_t, common))
+#define ARCH_AS(ADDRESS_SPACE) (CONTAINER_OF(ADDRESS_SPACE, arch_vmm_address_space_t, common))
 
 #define VADDR_TO_INDEX(VADDR, LEVEL) (((VADDR) >> ((LEVEL) * 9 + 3)) & 0x1FF)
 #define ADDRESS_MASK ((uint64_t) 0x000FFFFFFFFFF000)
