@@ -27,6 +27,7 @@ typedef enum {
 } pte_flag_t;
 
 typedef struct {
+    spinlock_t cr3_lock;
     uintptr_t cr3;
     vmm_address_space_t common;
 } arch_vmm_address_space_t;
@@ -108,6 +109,7 @@ static void tlb_shootdown_handler([[maybe_unused]] interrupt_frame_t *frame) {
 void arch_vmm_init() {
     g_initial_address_space.common.lock = SPINLOCK_INIT;
     g_initial_address_space.cr3 = pmm_alloc_page(PMM_STANDARD | PMM_AF_ZERO)->paddr;
+    g_initial_address_space.cr3_lock = SPINLOCK_INIT;
 
     int vector = interrupt_request(INTERRUPT_PRIORITY_IPC, tlb_shootdown_handler);
     ASSERT(vector != -1);
@@ -134,7 +136,7 @@ void arch_vmm_load_address_space(vmm_address_space_t *address_space) {
 
 void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, int flags) {
     uint64_t x86_flags = flags_to_x86_flags(flags);
-    spinlock_acquire(&address_space->lock);
+    spinlock_acquire(&ARCH_AS(address_space)->cr3_lock);
     uint64_t *current_table = (uint64_t *) HHDM(ARCH_AS(address_space)->cr3);
     for(int i = 4; i > 1; i--) {
         int index = VADDR_TO_INDEX(vaddr, i);
@@ -156,16 +158,16 @@ void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t
     pte_set_address(&current_table[index], paddr);
 
     tlb_shootdown(address_space);
-    spinlock_release(&address_space->lock);
+    spinlock_release(&ARCH_AS(address_space)->cr3_lock);
 }
 
 void arch_vmm_unmap(vmm_address_space_t *address_space, uintptr_t vaddr) {
-    spinlock_acquire(&address_space->lock);
+    spinlock_acquire(&ARCH_AS(address_space)->cr3_lock);
     uint64_t *current_table = (uint64_t *) HHDM(ARCH_AS(address_space)->cr3);
     for(int i = 4; i > 1; i--) {
         int index = VADDR_TO_INDEX(vaddr, i);
         if(!(current_table[index] & PTE_FLAG_PRESENT)) {
-            spinlock_release(&address_space->lock);
+            spinlock_release(&ARCH_AS(address_space)->cr3_lock);
             goto cleanup;
         }
         current_table = (uint64_t *) HHDM(pte_get_address(current_table[index]));
@@ -176,22 +178,22 @@ void arch_vmm_unmap(vmm_address_space_t *address_space, uintptr_t vaddr) {
 
     cleanup:
     tlb_shootdown(address_space);
-    spinlock_release(&address_space->lock);
+    spinlock_release(&ARCH_AS(address_space)->cr3_lock);
 }
 
 bool arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t *out) {
-    spinlock_acquire(&address_space->lock);
+    spinlock_acquire(&ARCH_AS(address_space)->cr3_lock);
     uint64_t *current_table = (uint64_t *) HHDM(ARCH_AS(address_space)->cr3);
     for(int i = 4; i > 1; i--) {
         int index = VADDR_TO_INDEX(vaddr, i);
         if(!(current_table[index] & PTE_FLAG_PRESENT)) {
-            spinlock_release(&address_space->lock);
+            spinlock_release(&ARCH_AS(address_space)->cr3_lock);
             return false;
         }
         current_table = (uint64_t *) HHDM(pte_get_address(current_table[index]));
     }
     uint64_t entry = current_table[VADDR_TO_INDEX(vaddr, 1)];
-    spinlock_release(&address_space->lock);
+    spinlock_release(&ARCH_AS(address_space)->cr3_lock);
     if(!(entry & PTE_FLAG_PRESENT)) return false;
     *out = pte_get_address(entry);
     return true;
