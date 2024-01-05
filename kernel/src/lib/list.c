@@ -1,22 +1,22 @@
 #include "list.h"
 
-void list_insert_behind(list_t *position, list_t *node) {
-    node->prev = position;
-    node->next = position->next;
-    if(position->next) position->next->prev = node;
-    position->next = node;
+void list_append(list_t *position, list_t *element) {
+    element->prev = position;
+    element->next = position->next;
+    if(position->next) position->next->prev = element;
+    position->next = element;
 }
 
-void list_insert_before(list_t *position, list_t *node) {
-    node->next = position;
-    node->prev = position->prev;
-    if(position->prev) position->prev->next = node;
-    position->prev = node;
+void list_prepend(list_t *position, list_t *element) {
+    element->next = position;
+    element->prev = position->prev;
+    if(position->prev) position->prev->next = element;
+    position->prev = element;
 }
 
-void list_delete(list_t *node) {
-    if(node->prev) node->prev->next = node->next;
-    if(node->next) node->next->prev = node->prev;
+void list_delete(list_t *element) {
+    if(element->prev) element->prev->next = element->next;
+    if(element->next) element->next->prev = element->prev;
 }
 
 bool list_is_empty(list_t *list) {
