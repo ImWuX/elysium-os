@@ -98,7 +98,7 @@ pmm_page_t *pmm_alloc(pmm_order_t order, pmm_allocator_flags_t flags) {
     while(list_is_empty(&zone->lists[avl_order])) {
         ASSERTC(++avl_order <= PMM_MAX_ORDER, "Out of memory");
     }
-    pmm_page_t *page = LIST_GET(LIST_NEXT(&zone->lists[avl_order]), pmm_page_t, list_elem);
+    pmm_page_t *page = LIST_CONTAINER_GET(LIST_NEXT(&zone->lists[avl_order]), pmm_page_t, list_elem);
     list_delete(&page->list_elem);
     for(; avl_order > order; avl_order--) {
         pmm_page_t *buddy = &page->region->pages[((page->paddr - page->region->base) / ARCH_PAGE_SIZE) + (order_to_pagecount(avl_order - 1))];

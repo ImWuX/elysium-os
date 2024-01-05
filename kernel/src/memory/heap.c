@@ -41,8 +41,8 @@ static void expand(size_t npages) {
         pmm_page_t *page = pmm_alloc_page(PMM_STANDARD);
         arch_vmm_map(g_as, g_base + g_size + i * ARCH_PAGE_SIZE, page->paddr, ARCH_VMM_FLAG_WRITE);
     }
-    if(!list_is_empty(&g_entries) && LIST_GET(g_entries.prev, heap_entry_t, list_elem)->free) {
-        heap_entry_t *entry = LIST_GET(g_entries.prev, heap_entry_t, list_elem);
+    if(!list_is_empty(&g_entries) && LIST_CONTAINER_GET(LIST_PREVIOUS(&g_entries), heap_entry_t, list_elem)->free) {
+        heap_entry_t *entry = LIST_CONTAINER_GET(LIST_PREVIOUS(&g_entries), heap_entry_t, list_elem);
         entry->size += npages * ARCH_PAGE_SIZE;
 #if HEAP_PROTECTION
         update_prot(entry);
@@ -72,8 +72,8 @@ void *heap_alloc_align(size_t size, size_t alignment) {
     ASSERT(size > 0);
     spinlock_acquire(&g_lock);
     list_element_t *elem;
-    LIST_FOREACH(elem, &g_entries) {
-        heap_entry_t *entry = LIST_GET(elem, heap_entry_t, list_elem);
+    LIST_FOREACH(&g_entries, elem) {
+        heap_entry_t *entry = LIST_CONTAINER_GET(elem, heap_entry_t, list_elem);
         if(!entry->free) continue;
 #if HEAP_PROTECTION
     ASSERT(get_prot(entry) == 0);
@@ -137,7 +137,7 @@ void heap_free(void* address) {
 #endif
     entry->free = true;
     if(LIST_NEXT(&entry->list_elem) != &g_entries) {
-        heap_entry_t *next = LIST_GET(LIST_NEXT(&entry->list_elem), heap_entry_t, list_elem);
+        heap_entry_t *next = LIST_CONTAINER_GET(LIST_NEXT(&entry->list_elem), heap_entry_t, list_elem);
         if(next->free) {
             entry->size += sizeof(heap_entry_t) + next->size;
             list_delete(&next->list_elem);
@@ -147,7 +147,7 @@ void heap_free(void* address) {
         }
     }
     if(LIST_PREVIOUS(&entry->list_elem) != &g_entries) {
-        heap_entry_t *prev = LIST_GET(LIST_PREVIOUS(&entry->list_elem), heap_entry_t, list_elem);
+        heap_entry_t *prev = LIST_CONTAINER_GET(LIST_PREVIOUS(&entry->list_elem), heap_entry_t, list_elem);
         if(prev->free) {
             prev->size += sizeof(heap_entry_t) + entry->size;
             list_delete(&entry->list_elem);

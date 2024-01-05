@@ -128,9 +128,9 @@ static void init_common() {
         if(!zone->present) continue;
 
         kprintf("• %s\n", zone->name);
-        list_t *entry;
-        LIST_FOREACH(entry, &zone->regions) {
-            pmm_region_t *region = LIST_GET(entry, pmm_region_t, list_elem);
+        list_element_t *elem;
+        LIST_FOREACH(&zone->regions, elem) {
+            pmm_region_t *region = LIST_CONTAINER_GET(elem, pmm_region_t, list_elem);
             kprintf("  • %#-12lx %lu/%lu pages\n", region->base, region->free_count, region->page_count);
         }
     }
