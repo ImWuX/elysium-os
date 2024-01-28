@@ -12,6 +12,7 @@
 #include <arch/vmm.h>
 #include <arch/interrupt.h>
 #include <arch/x86_64/cpu.h>
+#include <arch/x86_64/vmm.h>
 #include <arch/x86_64/lapic.h>
 #include <arch/x86_64/port.h>
 #include <arch/x86_64/msr.h>
@@ -24,8 +25,8 @@
 
 uintptr_t g_hhdm_base;
 
-arch_cpu_t *g_cpus = NULL;
-volatile int g_cpus_initialized = 0;
+arch_cpu_t g_cpus[256] = {};
+volatile size_t g_cpus_initialized = 0;
 
 static void pch(char ch) {
     port_outb(0x3F8, ch);
@@ -38,8 +39,7 @@ static void init_common() {
     cpu->lapic_id = lapic_id();
     cpu->tlb_shootdown_check = SPINLOCK_INIT;
     cpu->tlb_shootdown_lock = SPINLOCK_INIT;
-
-    kprintf("CPU %i\n", cpu->lapic_id);
+    cpu->common.address_space = g_vmm_kernel_address_space;
 
     uint64_t pat = msr_read(MSR_PAT);
     pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
@@ -101,18 +101,24 @@ static void init_common() {
     g_interrupt_irq_eoi = lapic_eoi;
     interrupt_init();
     for(int i = 0; i < 32; i++) {
-        interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_unhandled);
+        switch(i) {
+            case 0xe:
+                interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, vmm_page_fault_handler);
+                break;
+            default:
+                interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_unhandled);
+                break;
+        }
     }
 
     arch_vmm_init();
     ADJUST_STACK(g_hhdm_base);
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
-    heap_initialize(g_vmm_kernel_address_space, 0xFFFF'8400'0000'0000, 0xFFFF'8500'0000'0000);
-
+    size_t max_cpus = sizeof(g_cpus) / sizeof(arch_cpu_t);
     g_cpus_initialized = 0;
-    g_cpus = heap_alloc(sizeof(arch_cpu_t) * boot_info->cpu_count);
-    for(int i = 0; i < boot_info->cpu_count; i++) {
+    if(boot_info->cpu_count > max_cpus) kprintf("WARNING: This system contains more than %lu cpus, only %lu will be initialized.", max_cpus, max_cpus);
+    for(size_t i = 0; i < (boot_info->cpu_count > max_cpus ? max_cpus : boot_info->cpu_count); i++) {
         if(i == boot_info->bsp_index) {
             init_common();
             continue;
@@ -121,21 +127,36 @@ static void init_common() {
         while(i >= g_cpus_initialized);
     }
 
+    asm volatile("sti");
+
+    heap_initialize(g_vmm_kernel_address_space, 0xFFFF'8400'0000'0000, 0xFFFF'8500'0000'0000);
+
     kprintf("\n");
     kprintf("Physical Memory Map\n");
     for(int i = 0; i <= PMM_ZONE_MAX; i++) {
         pmm_zone_t *zone = &g_pmm_zones[i];
         if(!zone->present) continue;
 
-        kprintf("• %s\n", zone->name);
-        list_element_t *elem;
+        kprintf("- %s\n", zone->name);
         LIST_FOREACH(&zone->regions, elem) {
             pmm_region_t *region = LIST_CONTAINER_GET(elem, pmm_region_t, list_elem);
-            kprintf("  • %#-12lx %lu/%lu pages\n", region->base, region->free_count, region->page_count);
+            kprintf("  - %#-12lx %lu/%lu pages\n", region->base, region->free_count, region->page_count);
         }
     }
-    kprintf("\n");
-    asm volatile("sti");
+
+    void *random_addr = vmm_map(g_vmm_kernel_address_space, NULL, 0x5000, VMM_PROT_READ, VMM_FLAG_NONE, &g_seg_anon, NULL);
+    kprintf("\nVMM randomly allocated address: %#lx\n", random_addr);
+
+    kprintf("MAP 1\n");
+    LIST_FOREACH(&g_vmm_kernel_address_space->segments, elem) { vmm_segment_t *segment = LIST_CONTAINER_GET(elem, vmm_segment_t, list_elem); kprintf("-- (%s) %#lx + %#lx\n", segment->driver->name, segment->base, segment->length); }
+
+    vmm_unmap(g_vmm_kernel_address_space, random_addr + 0x2000, 0x1000);
+    kprintf("MAP 2\n");
+    LIST_FOREACH(&g_vmm_kernel_address_space->segments, elem2) { vmm_segment_t *segment = LIST_CONTAINER_GET(elem2, vmm_segment_t, list_elem); kprintf("-- (%s) %#lx + %#lx\n", segment->driver->name, segment->base, segment->length); }
+
+    vmm_unmap(g_vmm_kernel_address_space, random_addr + 0x4000, 0x1000);
+    kprintf("MAP 3\n");
+    LIST_FOREACH(&g_vmm_kernel_address_space->segments, elem3) { vmm_segment_t *segment = LIST_CONTAINER_GET(elem3, vmm_segment_t, list_elem); kprintf("-- (%s) %#lx + %#lx\n", segment->driver->name, segment->base, segment->length); }
 
     for(;;) asm volatile("hlt");
     __builtin_unreachable();

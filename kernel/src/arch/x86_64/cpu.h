@@ -15,5 +15,5 @@ typedef struct arch_cpu {
     spinlock_t tlb_shootdown_lock;
 } arch_cpu_t;
 
-extern arch_cpu_t *g_cpus;
-extern volatile int g_cpus_initialized;
+extern arch_cpu_t g_cpus[];
+extern volatile size_t g_cpus_initialized;

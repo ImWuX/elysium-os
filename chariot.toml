@@ -74,7 +74,7 @@ url = "../tartarus-bootloader"
 dependencies = ["source:tartarus", "source:support", "host:cross-gcc"]
 configure = ["cp -r $SOURCE:tartarus/* ."]
 build = [
-    "make -j$THREADS -C bios disk/mbr.bin",
+    "make -j$THREADS -C bios disk/mbr.bin ASMC=nasm",
     """
     make -j$THREADS -C core tartarus.sys TARGET=amd64-bios \
         CC=x86_64-elf-gcc OBJCPY=x86_64-elf-objcopy LD=x86_64-elf-ld ASMC=nasm GIT=git \

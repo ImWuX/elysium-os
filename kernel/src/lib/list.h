@@ -49,9 +49,9 @@ bool list_is_empty(list_t *list);
 /**
  * @brief Iterate over a list.
  * @param LIST list_t to iterate over
- * @param ELEM_PTR list_element_t* to be used as iterator
+ * @param ELEM_PTR_NAME list_element_t* iterator name
  */
-#define LIST_FOREACH(LIST, ELEM_PTR) for((ELEM_PTR) = (LIST)->next; (ELEM_PTR) && (ELEM_PTR) != (LIST); (ELEM_PTR) = (ELEM_PTR)->next)
+#define LIST_FOREACH(LIST, ELEM_PTR_NAME) list_element_t *(ELEM_PTR_NAME); for((ELEM_PTR_NAME) = (LIST)->next; (ELEM_PTR_NAME) && (ELEM_PTR_NAME) != (LIST); (ELEM_PTR_NAME) = (ELEM_PTR_NAME)->next)
 
 /**
  * @brief Get the next element in a list.
