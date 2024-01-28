@@ -159,7 +159,12 @@ void vmm_unmap(vmm_address_space_t *address_space, void *address, size_t length)
 }
 
 bool vmm_fault(vmm_address_space_t *address_space, uintptr_t address, int flags) {
-    vmm_segment_t *segment = addr_to_segment(address_space, address);
+    vmm_segment_t *segment = NULL;
+    if(ADDRESS_IN_BOUNDS(g_vmm_kernel_address_space, address)) {
+        segment = addr_to_segment(g_vmm_kernel_address_space, address);
+    } else {
+        segment = addr_to_segment(address_space, address);
+    }
     if(!segment) return false;
     return segment->driver->ops.fault(segment, address, flags);
 }
