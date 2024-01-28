@@ -26,7 +26,7 @@ build/elysium.img: build mkimg/mkimg build/kernel.elf build/kernsymb.txt
 		--files=support/tartarus.cfg,build/kernsymb.txt $@
 
 setup_dev:
-	chariot cross-gcc tartarus
+	chariot host:cross-gcc tartarus
 
 clean:
 	rm -rf build/*
