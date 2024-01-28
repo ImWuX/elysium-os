@@ -4,7 +4,7 @@
 #include <memory/heap.h>
 #include <lib/kprint.h>
 #include <lib/panic.h>
-#include <lib/string.h>
+#include <lib/mem.h>
 #include <lib/list.h>
 #include <lib/assert.h>
 #include <lib/round.h>
@@ -181,29 +181,6 @@ static void init_common() {
 
     void *random_addr = vmm_map(g_vmm_kernel_address_space, NULL, 0x5000, VMM_PROT_READ, VMM_FLAG_NONE, &g_seg_anon, NULL);
     kprintf("\nVMM randomly allocated address: %#lx\n", random_addr);
-
-    kprintf("MAP 1\n");
-    LIST_FOREACH(&g_vmm_kernel_address_space->segments, elem) { vmm_segment_t *segment = LIST_CONTAINER_GET(elem, vmm_segment_t, list_elem); kprintf("-- (%s) %#lx + %#lx\n", segment->driver->name, segment->base, segment->length); }
-
-    vmm_unmap(g_vmm_kernel_address_space, random_addr + 0x2000, 0x1000);
-    kprintf("MAP 2\n");
-    LIST_FOREACH(&g_vmm_kernel_address_space->segments, elem2) { vmm_segment_t *segment = LIST_CONTAINER_GET(elem2, vmm_segment_t, list_elem); kprintf("-- (%s) %#lx + %#lx\n", segment->driver->name, segment->base, segment->length); }
-
-    vmm_unmap(g_vmm_kernel_address_space, random_addr + 0x4000, 0x1000);
-    kprintf("MAP 3\n");
-    LIST_FOREACH(&g_vmm_kernel_address_space->segments, elem3) { vmm_segment_t *segment = LIST_CONTAINER_GET(elem3, vmm_segment_t, list_elem); kprintf("-- (%s) %#lx + %#lx\n", segment->driver->name, segment->base, segment->length); }
-
-    kprintf("\n\n");
-
-    pmm_page_t *rpage = pmm_alloc_pages(10, PMM_STANDARD);
-    seg_fixed_data_t *fixed_data = heap_alloc(sizeof(seg_fixed_data_t));
-    *fixed_data = SEG_FIXED_DATA(rpage->paddr);
-    void *raddr = vmm_map(g_vmm_kernel_address_space, NULL, ARCH_PAGE_SIZE * 10, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, &g_seg_fixed, fixed_data);
-    kprintf("MAP 4\n");
-    LIST_FOREACH(&g_vmm_kernel_address_space->segments, elem4) { vmm_segment_t *segment = LIST_CONTAINER_GET(elem4, vmm_segment_t, list_elem); kprintf("-- (%s) %#lx + %#lx\n", segment->driver->name, segment->base, segment->length); }
-    *(uint8_t *) (raddr + 0x6500) = 0x69;
-    // vmm_unmap(g_vmm_kernel_address_space, raddr + 0x2000, 0x2000);
-    kprintf(">> %x\n", *(uint8_t *) HHDM(rpage->paddr + 0x6500));
 
     for(;;) asm volatile("hlt");
     __builtin_unreachable();

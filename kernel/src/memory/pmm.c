@@ -1,5 +1,5 @@
 #include "pmm.h"
-#include <lib/string.h>
+#include <lib/mem.h>
 #include <lib/assert.h>
 #include <lib/panic.h>
 #include <lib/round.h>
