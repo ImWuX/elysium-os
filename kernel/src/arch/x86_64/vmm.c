@@ -125,7 +125,8 @@ static void tlb_shootdown_handler([[maybe_unused]] interrupt_frame_t *frame) {
     spinlock_release(&cpu->tlb_shootdown_check);
 }
 
-void arch_vmm_init() {
+vmm_address_space_t *arch_vmm_init() {
+    g_initial_address_space.common.segments = LIST_INIT;
     g_initial_address_space.common.lock = SPINLOCK_INIT;
     g_initial_address_space.common.start = KERNELSPACE_START;
     g_initial_address_space.common.end = KERNELSPACE_END;
@@ -148,7 +149,7 @@ void arch_vmm_init() {
         pte_set_address(&pml4[i], page->paddr);
     }
 
-    g_vmm_kernel_address_space = &g_initial_address_space.common;
+    return &g_initial_address_space.common;
 }
 
 void arch_vmm_load_address_space(vmm_address_space_t *address_space) {
@@ -224,6 +225,8 @@ void vmm_page_fault_handler(interrupt_frame_t *frame) {
     int flags = 0;
     if(!(frame->err_code & PAGEFAULT_FLAG_PRESENT)) flags |= VMM_FAULT_NONPRESENT;
 
+    // TODO: // CRITICAL: PASS TO INITAL ADDRESS SPACE IF WITHIN BOUNDS OR WHATEVER
+    // CRITICAL: MAYBE IMPLEMENT SOME TYPE OF PARENT OR SIBLING AS SYSTEM??
     uint64_t cr2;
     asm volatile("movq %%cr2, %0" : "=r" (cr2));
     if(!vmm_fault(arch_cpu_current()->address_space, cr2, flags)) exception_unhandled(frame);

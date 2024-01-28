@@ -7,6 +7,7 @@
 #include <lib/string.h>
 #include <lib/list.h>
 #include <lib/assert.h>
+#include <lib/round.h>
 #include <arch/cpu.h>
 #include <arch/types.h>
 #include <arch/vmm.h>
@@ -24,6 +25,10 @@
 #define ADJUST_STACK(OFFSET) asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp\nmov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (OFFSET) : "rax", "memory")
 
 uintptr_t g_hhdm_base;
+size_t g_hhdm_size;
+
+static vmm_segment_t g_hhdm_segment;
+static vmm_segment_t g_kernel_segment;
 
 arch_cpu_t g_cpus[256] = {};
 volatile size_t g_cpus_initialized = 0;
@@ -59,7 +64,6 @@ static void init_common() {
     msr_write(MSR_GS_BASE, (uint64_t) cpu);
 
     arch_interrupt_ipl(ARCH_INTERRUPT_IPL_NORMAL);
-
     __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
 }
 
@@ -76,6 +80,7 @@ static void init_common() {
 
 [[noreturn]] void init(tartarus_boot_info_t *boot_info) {
     g_hhdm_base = boot_info->hhdm_base;
+    g_hhdm_size = boot_info->hhdm_size;
 
     g_kprint_putchar = pch;
 
@@ -88,6 +93,7 @@ static void init_common() {
         g_panic_symbols_length = module->size;
     }
 
+    // Initialize physical memory
     pmm_zone_register(PMM_ZONE_DMA, "DMA", 0, 0x100'0000);
     pmm_zone_register(PMM_ZONE_NORMAL, "Normal", 0x100'0000, UINTPTR_MAX);
     for(int i = 0; i < boot_info->memory_map_size; i++) {
@@ -96,6 +102,7 @@ static void init_common() {
         pmm_region_add(entry.base, entry.length);
     }
 
+    // Setup interrupts & exceptions (not enabled yet)
     pic8259_remap();
     pic8259_disable();
     g_interrupt_irq_eoi = lapic_eoi;
@@ -111,26 +118,54 @@ static void init_common() {
         }
     }
 
-    arch_vmm_init();
+    // Initialize virtual memory
+    g_vmm_kernel_address_space = arch_vmm_init();
+
+    g_hhdm_segment.address_space = g_vmm_kernel_address_space;
+    g_hhdm_segment.base = ROUND_DOWN(g_hhdm_base, ARCH_PAGE_SIZE);
+    g_hhdm_segment.length = ROUND_UP(g_hhdm_size, ARCH_PAGE_SIZE);
+    g_hhdm_segment.protection = VMM_PROT_READ | VMM_PROT_WRITE;
+    g_hhdm_segment.driver = &g_seg_prot;
+    g_hhdm_segment.driver_data = "HHDM";
+    list_append(&g_vmm_kernel_address_space->segments, &g_hhdm_segment.list_elem);
+
+    g_kernel_segment.address_space = g_vmm_kernel_address_space;
+    g_kernel_segment.base = ROUND_DOWN(boot_info->kernel_vaddr, ARCH_PAGE_SIZE);
+    g_kernel_segment.length = ROUND_UP(boot_info->kernel_size, ARCH_PAGE_SIZE);
+    g_kernel_segment.protection = VMM_PROT_READ | VMM_PROT_WRITE;
+    g_kernel_segment.driver = &g_seg_prot;
+    g_kernel_segment.driver_data = "Kernel";
+    list_append(&g_vmm_kernel_address_space->segments, &g_kernel_segment.list_elem);
+
     ADJUST_STACK(g_hhdm_base);
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
-    size_t max_cpus = sizeof(g_cpus) / sizeof(arch_cpu_t);
-    g_cpus_initialized = 0;
-    if(boot_info->cpu_count > max_cpus) kprintf("WARNING: This system contains more than %lu cpus, only %lu will be initialized.", max_cpus, max_cpus);
-    for(size_t i = 0; i < (boot_info->cpu_count > max_cpus ? max_cpus : boot_info->cpu_count); i++) {
-        if(i == boot_info->bsp_index) {
-            init_common();
-            continue;
-        }
-        *boot_info->cpus[i].wake_on_write = (uint64_t) init_ap;
-        while(i >= g_cpus_initialized);
-    }
-
+    // Common init
+    init_common();
     asm volatile("sti");
 
-    heap_initialize(g_vmm_kernel_address_space, 0xFFFF'8400'0000'0000, 0xFFFF'8500'0000'0000);
+    // Initialize heap
+    heap_initialize(g_vmm_kernel_address_space, 0x100'0000'0000);
 
+    // Wake AP's
+    size_t max_cpus = sizeof(g_cpus) / sizeof(arch_cpu_t);
+    if(boot_info->cpu_count > max_cpus) kprintf("WARNING: This system contains more than %lu cpus, only %lu will be initialized.", max_cpus, max_cpus);
+    for(size_t i = 0; i < (boot_info->cpu_count > max_cpus ? max_cpus : boot_info->cpu_count); i++) {
+        if(i == boot_info->bsp_index) continue;
+
+        size_t cur_init_count = g_cpus_initialized;
+        *boot_info->cpus[i].wake_on_write = (uint64_t) init_ap;
+        while(cur_init_count >= g_cpus_initialized);
+    }
+
+    /**
+     *
+     *
+     * TESTING STUFF BELOW
+     *  v  v  v  v  v  v
+     *
+     *
+     */
     kprintf("\n");
     kprintf("Physical Memory Map\n");
     for(int i = 0; i <= PMM_ZONE_MAX; i++) {
@@ -157,6 +192,18 @@ static void init_common() {
     vmm_unmap(g_vmm_kernel_address_space, random_addr + 0x4000, 0x1000);
     kprintf("MAP 3\n");
     LIST_FOREACH(&g_vmm_kernel_address_space->segments, elem3) { vmm_segment_t *segment = LIST_CONTAINER_GET(elem3, vmm_segment_t, list_elem); kprintf("-- (%s) %#lx + %#lx\n", segment->driver->name, segment->base, segment->length); }
+
+    kprintf("\n\n");
+
+    pmm_page_t *rpage = pmm_alloc_pages(10, PMM_STANDARD);
+    seg_fixed_data_t *fixed_data = heap_alloc(sizeof(seg_fixed_data_t));
+    *fixed_data = SEG_FIXED_DATA(rpage->paddr);
+    void *raddr = vmm_map(g_vmm_kernel_address_space, NULL, ARCH_PAGE_SIZE * 10, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, &g_seg_fixed, fixed_data);
+    kprintf("MAP 4\n");
+    LIST_FOREACH(&g_vmm_kernel_address_space->segments, elem4) { vmm_segment_t *segment = LIST_CONTAINER_GET(elem4, vmm_segment_t, list_elem); kprintf("-- (%s) %#lx + %#lx\n", segment->driver->name, segment->base, segment->length); }
+    *(uint8_t *) (raddr + 0x6500) = 0x69;
+    // vmm_unmap(g_vmm_kernel_address_space, raddr + 0x2000, 0x2000);
+    kprintf(">> %x\n", *(uint8_t *) HHDM(rpage->paddr + 0x6500));
 
     for(;;) asm volatile("hlt");
     __builtin_unreachable();
