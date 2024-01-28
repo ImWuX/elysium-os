@@ -6,10 +6,9 @@
 /**
  * @brief Initializes the heap.
  * @param address_space
- * @param start start vaddr for the heap
- * @param end end vaddr for the heap
+ * @param size heap size
  */
-void heap_initialize(vmm_address_space_t *address_space, uintptr_t start, uintptr_t end);
+void heap_initialize(vmm_address_space_t *address_space, size_t size);
 
 /**
  * @brief Allocate a block of memory in the heap, without an alignment.

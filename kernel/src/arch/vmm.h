@@ -8,8 +8,9 @@
 
 /**
  * @brief Initialize the vmm & kernel address space.
+ * @returns Kernel address space
  */
-void arch_vmm_init();
+vmm_address_space_t *arch_vmm_init();
 
 /**
  * @brief Load a virtual address space.

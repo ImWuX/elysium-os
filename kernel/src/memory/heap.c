@@ -33,12 +33,12 @@ static uint64_t get_prot(heap_entry_t *entry) {
 }
 #endif
 
-void heap_initialize(vmm_address_space_t *address_space, uintptr_t start, uintptr_t end) {
-    void *addr = vmm_map(address_space, (void *) start, end - start, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_FIXED, &g_seg_anon, NULL);
+void heap_initialize(vmm_address_space_t *address_space, size_t size) {
+    void *addr = vmm_map(address_space, NULL, size, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, &g_seg_anon, NULL);
     ASSERT(addr != NULL);
 
-    heap_entry_t *entry = (heap_entry_t *) start;
-    entry->size = (end - start) - sizeof(heap_entry_t);
+    heap_entry_t *entry = (heap_entry_t *) addr;
+    entry->size = size - sizeof(heap_entry_t);
     entry->free = true;
 #if HEAP_PROTECTION
     update_prot(entry);
