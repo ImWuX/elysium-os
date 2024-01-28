@@ -225,8 +225,6 @@ void vmm_page_fault_handler(interrupt_frame_t *frame) {
     int flags = 0;
     if(!(frame->err_code & PAGEFAULT_FLAG_PRESENT)) flags |= VMM_FAULT_NONPRESENT;
 
-    // TODO: // CRITICAL: PASS TO INITAL ADDRESS SPACE IF WITHIN BOUNDS OR WHATEVER
-    // CRITICAL: MAYBE IMPLEMENT SOME TYPE OF PARENT OR SIBLING AS SYSTEM??
     uint64_t cr2;
     asm volatile("movq %%cr2, %0" : "=r" (cr2));
     if(!vmm_fault(arch_cpu_current()->address_space, cr2, flags)) exception_unhandled(frame);
