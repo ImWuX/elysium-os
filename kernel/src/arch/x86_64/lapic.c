@@ -12,11 +12,11 @@
 #define REG_ICR1 0x310
 
 static inline void lapic_write(uint32_t reg, uint32_t data) {
-    *(volatile uint32_t *) HHDM((x86_64_msr_read(MSR_APIC_BASE) & BASE_MASK) + reg) = data;
+    *(volatile uint32_t *) HHDM((x86_64_msr_read(X86_64_MSR_APIC_BASE) & BASE_MASK) + reg) = data;
 }
 
 static inline uint32_t lapic_read(uint32_t reg) {
-    return *(volatile uint32_t *) HHDM((x86_64_msr_read(MSR_APIC_BASE) & BASE_MASK) + reg);
+    return *(volatile uint32_t *) HHDM((x86_64_msr_read(X86_64_MSR_APIC_BASE) & BASE_MASK) + reg);
 }
 
 void x86_64_lapic_initialize() {

@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-#define LAPIC_IPI_ASSERT (1 << 14)
+#define X86_64_LAPIC_IPI_ASSERT (1 << 14)
 
 /**
  * @brief Initialize and enable the local apic for the current core.

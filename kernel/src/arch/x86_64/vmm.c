@@ -100,7 +100,7 @@ static void tlb_shootdown(vmm_address_space_t *address_space) {
         cpu->tlb_shootdown_cr3 = X86_64_AS(address_space)->cr3;
 
         asm volatile("" : : : "memory");
-        x86_64_lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | LAPIC_IPI_ASSERT);
+        x86_64_lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | X86_64_LAPIC_IPI_ASSERT);
 
         volatile int timeout = 0;
         do {
@@ -109,7 +109,7 @@ static void tlb_shootdown(vmm_address_space_t *address_space) {
                 continue;
             }
             if(timeout >= 3000) break;
-            x86_64_lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | LAPIC_IPI_ASSERT);
+            x86_64_lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | X86_64_LAPIC_IPI_ASSERT);
         } while(!spinlock_try_acquire(&cpu->tlb_shootdown_check));
 
         spinlock_release(&cpu->tlb_shootdown_check);
@@ -133,7 +133,7 @@ vmm_address_space_t *arch_vmm_init() {
     g_initial_address_space.cr3 = pmm_alloc_page(PMM_STANDARD | PMM_AF_ZERO)->paddr;
     g_initial_address_space.cr3_lock = SPINLOCK_INIT;
 
-    int vector = x86_64_interrupt_request(INTERRUPT_PRIORITY_IPC, tlb_shootdown_handler);
+    int vector = x86_64_interrupt_request(X86_64_INTERRUPT_PRIORITY_IPC, tlb_shootdown_handler);
     ASSERT(vector != -1);
     g_tlb_shootdown_vector = (uint8_t) vector;
 
