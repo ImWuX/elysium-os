@@ -5,4 +5,4 @@
  * @brief Handles page faults and passes them to the arch agnostic handler.
  * @param frame interrupt frame
  */
-void vmm_page_fault_handler(interrupt_frame_t *frame);
+void x86_64_vmm_page_fault_handler(x86_64_interrupt_frame_t *frame);

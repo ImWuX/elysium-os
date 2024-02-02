@@ -13,7 +13,7 @@ void arch_cpu_relax() {
 }
 
 cpu_t *arch_cpu_current() {
-    arch_cpu_t *cpu = NULL;
+    x86_64_cpu_t *cpu = NULL;
     asm volatile("mov %%gs:0, %0" : "=r" (cpu));
     return &cpu->common;
 }

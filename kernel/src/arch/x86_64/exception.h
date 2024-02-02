@@ -5,4 +5,4 @@
  * @brief Panic stub for exceptions.
  * @param frame interrupt frame
  */
-[[noreturn]] void exception_unhandled(interrupt_frame_t *frame);
+[[noreturn]] void x86_64_exception_unhandled(x86_64_interrupt_frame_t *frame);

@@ -11,7 +11,7 @@
 #include <arch/x86_64/interrupt.h>
 #include <arch/x86_64/exception.h>
 
-#define ARCH_AS(ADDRESS_SPACE) (CONTAINER_OF(ADDRESS_SPACE, arch_vmm_address_space_t, common))
+#define X86_64_AS(ADDRESS_SPACE) (CONTAINER_OF((ADDRESS_SPACE), x86_64_vmm_address_space_t, common))
 
 #define VADDR_TO_INDEX(VADDR, LEVEL) (((VADDR) >> ((LEVEL) * 9 + 3)) & 0x1FF)
 #define ADDRESS_MASK ((uint64_t) 0x000FFFFFFFFFF000)
@@ -48,10 +48,10 @@ typedef struct {
     spinlock_t cr3_lock;
     uintptr_t cr3;
     vmm_address_space_t common;
-} arch_vmm_address_space_t;
+} x86_64_vmm_address_space_t;
 
 static uint8_t g_tlb_shootdown_vector;
-static arch_vmm_address_space_t g_initial_address_space;
+static x86_64_vmm_address_space_t g_initial_address_space;
 
 static inline void pte_set_address(uint64_t *entry, uintptr_t address) {
     address &= ADDRESS_MASK;
@@ -84,23 +84,23 @@ static uint64_t flags_prot_to_x86_flags(vmm_prot_t prot, int flags) {
 }
 
 static void tlb_shootdown(vmm_address_space_t *address_space) {
-    if(g_cpus_initialized == 0) return;
+    if(g_x86_64_cpus_initialized == 0) return;
 
     arch_interrupt_ipl_t old_ipl = arch_interrupt_ipl(ARCH_INTERRUPT_IPL_CRITICAL);
-    for(size_t i = 0; i < g_cpus_initialized; i++) {
-        arch_cpu_t *cpu = &g_cpus[i];
+    for(size_t i = 0; i < g_x86_64_cpus_initialized; i++) {
+        x86_64_cpu_t *cpu = &g_x86_64_cpus[i];
 
-        if(cpu == ARCH_CPU(arch_cpu_current())) {
-            if(ARCH_AS(address_space) == &g_initial_address_space || read_cr3() == ARCH_AS(address_space)->cr3) write_cr3(read_cr3());
+        if(cpu == X86_64_CPU(arch_cpu_current())) {
+            if(X86_64_AS(address_space) == &g_initial_address_space || read_cr3() == X86_64_AS(address_space)->cr3) write_cr3(read_cr3());
             continue;
         }
 
         spinlock_acquire(&cpu->tlb_shootdown_lock);
         spinlock_acquire(&cpu->tlb_shootdown_check);
-        cpu->tlb_shootdown_cr3 = ARCH_AS(address_space)->cr3;
+        cpu->tlb_shootdown_cr3 = X86_64_AS(address_space)->cr3;
 
         asm volatile("" : : : "memory");
-        lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | LAPIC_IPI_ASSERT);
+        x86_64_lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | LAPIC_IPI_ASSERT);
 
         volatile int timeout = 0;
         do {
@@ -109,7 +109,7 @@ static void tlb_shootdown(vmm_address_space_t *address_space) {
                 continue;
             }
             if(timeout >= 3000) break;
-            lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | LAPIC_IPI_ASSERT);
+            x86_64_lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | LAPIC_IPI_ASSERT);
         } while(!spinlock_try_acquire(&cpu->tlb_shootdown_check));
 
         spinlock_release(&cpu->tlb_shootdown_check);
@@ -118,8 +118,8 @@ static void tlb_shootdown(vmm_address_space_t *address_space) {
     arch_interrupt_ipl(old_ipl);
 }
 
-static void tlb_shootdown_handler([[maybe_unused]] interrupt_frame_t *frame) {
-    arch_cpu_t *cpu = ARCH_CPU(arch_cpu_current());
+static void tlb_shootdown_handler([[maybe_unused]] x86_64_interrupt_frame_t *frame) {
+    x86_64_cpu_t *cpu = X86_64_CPU(arch_cpu_current());
     if(spinlock_try_acquire(&cpu->tlb_shootdown_check)) return spinlock_release(&cpu->tlb_shootdown_check);
     if(cpu->tlb_shootdown_cr3 == g_initial_address_space.cr3 || read_cr3() == cpu->tlb_shootdown_cr3) write_cr3(read_cr3());
     spinlock_release(&cpu->tlb_shootdown_check);
@@ -133,7 +133,7 @@ vmm_address_space_t *arch_vmm_init() {
     g_initial_address_space.cr3 = pmm_alloc_page(PMM_STANDARD | PMM_AF_ZERO)->paddr;
     g_initial_address_space.cr3_lock = SPINLOCK_INIT;
 
-    int vector = interrupt_request(INTERRUPT_PRIORITY_IPC, tlb_shootdown_handler);
+    int vector = x86_64_interrupt_request(INTERRUPT_PRIORITY_IPC, tlb_shootdown_handler);
     ASSERT(vector != -1);
     g_tlb_shootdown_vector = (uint8_t) vector;
 
@@ -153,13 +153,13 @@ vmm_address_space_t *arch_vmm_init() {
 }
 
 void arch_vmm_load_address_space(vmm_address_space_t *address_space) {
-    write_cr3(ARCH_AS(address_space)->cr3);
+    write_cr3(X86_64_AS(address_space)->cr3);
 }
 
 void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, vmm_prot_t prot, int flags) {
     uint64_t x86_flags = flags_prot_to_x86_flags(prot, flags);
-    spinlock_acquire(&ARCH_AS(address_space)->cr3_lock);
-    uint64_t *current_table = (uint64_t *) HHDM(ARCH_AS(address_space)->cr3);
+    spinlock_acquire(&X86_64_AS(address_space)->cr3_lock);
+    uint64_t *current_table = (uint64_t *) HHDM(X86_64_AS(address_space)->cr3);
     for(int i = 4; i > 1; i--) {
         int index = VADDR_TO_INDEX(vaddr, i);
         if(current_table[index] & PTE_FLAG_PRESENT) {
@@ -180,16 +180,16 @@ void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t
     pte_set_address(&current_table[index], paddr);
 
     tlb_shootdown(address_space);
-    spinlock_release(&ARCH_AS(address_space)->cr3_lock);
+    spinlock_release(&X86_64_AS(address_space)->cr3_lock);
 }
 
 void arch_vmm_unmap(vmm_address_space_t *address_space, uintptr_t vaddr) {
-    spinlock_acquire(&ARCH_AS(address_space)->cr3_lock);
-    uint64_t *current_table = (uint64_t *) HHDM(ARCH_AS(address_space)->cr3);
+    spinlock_acquire(&X86_64_AS(address_space)->cr3_lock);
+    uint64_t *current_table = (uint64_t *) HHDM(X86_64_AS(address_space)->cr3);
     for(int i = 4; i > 1; i--) {
         int index = VADDR_TO_INDEX(vaddr, i);
         if(!(current_table[index] & PTE_FLAG_PRESENT)) {
-            spinlock_release(&ARCH_AS(address_space)->cr3_lock);
+            spinlock_release(&X86_64_AS(address_space)->cr3_lock);
             goto cleanup;
         }
         current_table = (uint64_t *) HHDM(pte_get_address(current_table[index]));
@@ -200,32 +200,33 @@ void arch_vmm_unmap(vmm_address_space_t *address_space, uintptr_t vaddr) {
 
     cleanup:
     tlb_shootdown(address_space);
-    spinlock_release(&ARCH_AS(address_space)->cr3_lock);
+    spinlock_release(&X86_64_AS(address_space)->cr3_lock);
 }
 
 bool arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t *out) {
-    spinlock_acquire(&ARCH_AS(address_space)->cr3_lock);
-    uint64_t *current_table = (uint64_t *) HHDM(ARCH_AS(address_space)->cr3);
+    spinlock_acquire(&X86_64_AS(address_space)->cr3_lock);
+    uint64_t *current_table = (uint64_t *) HHDM(X86_64_AS(address_space)->cr3);
     for(int i = 4; i > 1; i--) {
         int index = VADDR_TO_INDEX(vaddr, i);
         if(!(current_table[index] & PTE_FLAG_PRESENT)) {
-            spinlock_release(&ARCH_AS(address_space)->cr3_lock);
+            spinlock_release(&X86_64_AS(address_space)->cr3_lock);
             return false;
         }
         current_table = (uint64_t *) HHDM(pte_get_address(current_table[index]));
     }
     uint64_t entry = current_table[VADDR_TO_INDEX(vaddr, 1)];
-    spinlock_release(&ARCH_AS(address_space)->cr3_lock);
+    spinlock_release(&X86_64_AS(address_space)->cr3_lock);
     if(!(entry & PTE_FLAG_PRESENT)) return false;
     *out = pte_get_address(entry);
     return true;
 }
 
-void vmm_page_fault_handler(interrupt_frame_t *frame) {
+void x86_64_vmm_page_fault_handler(x86_64_interrupt_frame_t *frame) {
     int flags = 0;
     if(!(frame->err_code & PAGEFAULT_FLAG_PRESENT)) flags |= VMM_FAULT_NONPRESENT;
 
     uint64_t cr2;
     asm volatile("movq %%cr2, %0" : "=r" (cr2));
-    if(!vmm_fault(arch_cpu_current()->address_space, cr2, flags)) exception_unhandled(frame);
+    if(vmm_fault(arch_cpu_current()->address_space, cr2, flags)) return;
+    x86_64_exception_unhandled(frame);
 }
