@@ -46,10 +46,10 @@ static void init_common() {
     cpu->tlb_shootdown_lock = SPINLOCK_INIT;
     cpu->common.address_space = g_vmm_kernel_address_space;
 
-    uint64_t pat = x86_64_msr_read(MSR_PAT);
+    uint64_t pat = x86_64_msr_read(X86_64_MSR_PAT);
     pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
     pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
-    x86_64_msr_write(MSR_PAT, pat);
+    x86_64_msr_write(X86_64_MSR_PAT, pat);
 
     uint64_t cr4;
     asm volatile("mov %%cr4, %0" : "=r" (cr4) : : "memory");
@@ -61,7 +61,7 @@ static void init_common() {
     x86_64_interrupt_load_idt();
 
     // TODO: this will be replace with thread once we have a scheduler
-    x86_64_msr_write(MSR_GS_BASE, (uint64_t) cpu);
+    x86_64_msr_write(X86_64_MSR_GS_BASE, (uint64_t) cpu);
 
     arch_interrupt_ipl(ARCH_INTERRUPT_IPL_NORMAL);
     __atomic_add_fetch(&g_x86_64_cpus_initialized, 1, __ATOMIC_SEQ_CST);
@@ -110,10 +110,10 @@ static void init_common() {
     for(int i = 0; i < 32; i++) {
         switch(i) {
             case 0xe:
-                x86_64_interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, x86_64_vmm_page_fault_handler);
+                x86_64_interrupt_set(i, X86_64_INTERRUPT_PRIORITY_EXCEPTION, x86_64_vmm_page_fault_handler);
                 break;
             default:
-                x86_64_interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, x86_64_exception_unhandled);
+                x86_64_interrupt_set(i, X86_64_INTERRUPT_PRIORITY_EXCEPTION, x86_64_exception_unhandled);
                 break;
         }
     }
