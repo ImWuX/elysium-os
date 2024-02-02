@@ -35,7 +35,7 @@ static char *g_exception_messages[] = {
     "Reserved"
 };
 
-[[noreturn]] void exception_unhandled(interrupt_frame_t *frame) {
+[[noreturn]] void x86_64_exception_unhandled(x86_64_interrupt_frame_t *frame) {
     stack_frame_t initial_stack_frame;
     initial_stack_frame.rbp = (stack_frame_t *) frame->rbp;
     initial_stack_frame.rip = frame->rip;

@@ -28,29 +28,29 @@ typedef struct {
     uint64_t rflags;
     uint64_t rsp;
     uint64_t ss;
-} interrupt_frame_t;
+} x86_64_interrupt_frame_t;
 
 typedef enum {
     INTERRUPT_PRIORITY_EXCEPTION = 0x0,
     INTERRUPT_PRIORITY_NORMAL = 0x5,
     INTERRUPT_PRIORITY_IPC = 0xE,
     INTERRUPT_PRIORITY_CRITICAL = 0xF
-} interrupt_priority_t;
+} x86_64_interrupt_priority_t;
 
-typedef void (* interrupt_handler_t)(interrupt_frame_t *frame);
-typedef void (* interrupt_irq_eoi_t)(uint8_t);
+typedef void (* x86_64_interrupt_handler_t)(x86_64_interrupt_frame_t *frame);
+typedef void (* x86_64_interrupt_irq_eoi_t)(uint8_t);
 
-extern interrupt_irq_eoi_t g_interrupt_irq_eoi;
+extern x86_64_interrupt_irq_eoi_t g_x86_64_interrupt_irq_eoi;
 
 /**
  * @brief Initialize the IDT and interrupt management.
  */
-void interrupt_init();
+void x86_64_interrupt_init();
 
 /**
  * @brief Loads the IDT.
  */
-void interrupt_load_idt();
+void x86_64_interrupt_load_idt();
 
 /**
  * @brief Set a handler onto an interrupt vector.
@@ -59,7 +59,7 @@ void interrupt_load_idt();
  * @param priority
  * @param handler
  */
-void interrupt_set(uint8_t vector, interrupt_priority_t priority, interrupt_handler_t handler);
+void x86_64_interrupt_set(uint8_t vector, x86_64_interrupt_priority_t priority, x86_64_interrupt_handler_t handler);
 
 /**
  * @brief Request a free interrupt vector.
@@ -67,4 +67,4 @@ void interrupt_set(uint8_t vector, interrupt_priority_t priority, interrupt_hand
  * @param handler
  * @return chosen interrupt vector, -1 on error
  */
-int interrupt_request(interrupt_priority_t priority, interrupt_handler_t handler);
+int x86_64_interrupt_request(x86_64_interrupt_priority_t priority, x86_64_interrupt_handler_t handler);

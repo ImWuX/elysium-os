@@ -12,14 +12,14 @@ typedef enum {
     MSR_FS_BASE         = 0xC0000100,
     MSR_GS_BASE         = 0xC0000101,
     MSR_KERNEL_GS_BASE  = 0xC0000102
-} msr_t;
+} x86_64_msr_t;
 
 /**
  * @brief Read from machine specific register.
  * @param msr
  * @returns value
  */
-static inline uint64_t msr_read(uint64_t msr) {
+static inline uint64_t x86_64_msr_read(uint64_t msr) {
     uint32_t low;
     uint32_t high;
     asm volatile("rdmsr" : "=a" (low), "=d" (high) : "c" (msr));
@@ -31,6 +31,6 @@ static inline uint64_t msr_read(uint64_t msr) {
  * @param msr
  * @param value
  */
-static inline void msr_write(uint64_t msr, uint64_t value) {
+static inline void x86_64_msr_write(uint64_t msr, uint64_t value) {
     asm volatile("wrmsr" : : "a" ((uint32_t) value), "d" ((uint32_t) (value >> 32)), "c" (msr));
 }

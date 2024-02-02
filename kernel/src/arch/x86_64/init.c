@@ -30,41 +30,41 @@ size_t g_hhdm_size;
 static vmm_segment_t g_hhdm_segment;
 static vmm_segment_t g_kernel_segment;
 
-arch_cpu_t g_cpus[256] = {};
-volatile size_t g_cpus_initialized = 0;
+x86_64_cpu_t g_x86_64_cpus[256] = {};
+volatile size_t g_x86_64_cpus_initialized = 0;
 
 static void pch(char ch) {
-    port_outb(0x3F8, ch);
+    x86_64_port_outb(0x3F8, ch);
 }
 
 static void init_common() {
-    arch_cpu_t *cpu = &g_cpus[g_cpus_initialized];
-    memset(cpu, 0, sizeof(arch_cpu_t));
+    x86_64_cpu_t *cpu = &g_x86_64_cpus[g_x86_64_cpus_initialized];
+    memset(cpu, 0, sizeof(x86_64_cpu_t));
     cpu->this = cpu;
-    cpu->lapic_id = lapic_id();
+    cpu->lapic_id = x86_64_lapic_id();
     cpu->tlb_shootdown_check = SPINLOCK_INIT;
     cpu->tlb_shootdown_lock = SPINLOCK_INIT;
     cpu->common.address_space = g_vmm_kernel_address_space;
 
-    uint64_t pat = msr_read(MSR_PAT);
+    uint64_t pat = x86_64_msr_read(MSR_PAT);
     pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
     pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
-    msr_write(MSR_PAT, pat);
+    x86_64_msr_write(MSR_PAT, pat);
 
     uint64_t cr4;
     asm volatile("mov %%cr4, %0" : "=r" (cr4) : : "memory");
     cr4 |= 1 << 7; /* CR4.PGE */
     asm volatile("mov %0, %%cr4" : : "r" (cr4) : "memory");
 
-    lapic_initialize();
-    gdt_load();
-    interrupt_load_idt();
+    x86_64_lapic_initialize();
+    x86_64_gdt_load();
+    x86_64_interrupt_load_idt();
 
     // TODO: this will be replace with thread once we have a scheduler
-    msr_write(MSR_GS_BASE, (uint64_t) cpu);
+    x86_64_msr_write(MSR_GS_BASE, (uint64_t) cpu);
 
     arch_interrupt_ipl(ARCH_INTERRUPT_IPL_NORMAL);
-    __atomic_add_fetch(&g_cpus_initialized, 1, __ATOMIC_SEQ_CST);
+    __atomic_add_fetch(&g_x86_64_cpus_initialized, 1, __ATOMIC_SEQ_CST);
 }
 
 [[noreturn]] __attribute__((naked)) void init_ap() {
@@ -103,17 +103,17 @@ static void init_common() {
     }
 
     // Setup interrupts & exceptions (not enabled yet)
-    pic8259_remap();
-    pic8259_disable();
-    g_interrupt_irq_eoi = lapic_eoi;
-    interrupt_init();
+    x86_64_pic8259_remap();
+    x86_64_pic8259_disable();
+    g_x86_64_interrupt_irq_eoi = x86_64_lapic_eoi;
+    x86_64_interrupt_init();
     for(int i = 0; i < 32; i++) {
         switch(i) {
             case 0xe:
-                interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, vmm_page_fault_handler);
+                x86_64_interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, x86_64_vmm_page_fault_handler);
                 break;
             default:
-                interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, exception_unhandled);
+                x86_64_interrupt_set(i, INTERRUPT_PRIORITY_EXCEPTION, x86_64_exception_unhandled);
                 break;
         }
     }
@@ -148,14 +148,14 @@ static void init_common() {
     heap_initialize(g_vmm_kernel_address_space, 0x100'0000'0000);
 
     // Wake AP's
-    size_t max_cpus = sizeof(g_cpus) / sizeof(arch_cpu_t);
+    size_t max_cpus = sizeof(g_x86_64_cpus) / sizeof(x86_64_cpu_t);
     if(boot_info->cpu_count > max_cpus) kprintf("WARNING: This system contains more than %lu cpus, only %lu will be initialized.", max_cpus, max_cpus);
     for(size_t i = 0; i < (boot_info->cpu_count > max_cpus ? max_cpus : boot_info->cpu_count); i++) {
         if(i == boot_info->bsp_index) continue;
 
-        size_t cur_init_count = g_cpus_initialized;
+        size_t cur_init_count = g_x86_64_cpus_initialized;
         *boot_info->cpus[i].wake_on_write = (uint64_t) init_ap;
-        while(cur_init_count >= g_cpus_initialized);
+        while(cur_init_count >= g_x86_64_cpus_initialized);
     }
 
     /**
@@ -180,6 +180,7 @@ static void init_common() {
     }
 
     void *random_addr = vmm_map(g_vmm_kernel_address_space, NULL, 0x5000, VMM_PROT_READ, VMM_FLAG_NONE, &g_seg_anon, NULL);
+    ASSERT(random_addr != NULL);
     kprintf("\nVMM randomly allocated address: %#lx\n", random_addr);
 
     for(;;) asm volatile("hlt");
