@@ -1,0 +1,102 @@
+[project]
+name = "ElysiumOS"
+
+[source.patches]
+type = "local"
+url = "patches"
+
+[source.support]
+type = "local"
+url = "support"
+
+
+
+
+[source.autoconf]
+type = "tar.gz"
+url = "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz"
+
+[source.automake]
+type = "tar.gz"
+url = "https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.gz"
+modifiers = [
+    { type = "patch", source = "patches", file = "automake.diff" }
+]
+
+[host.autoconf]
+dependencies = ["source:autoconf"]
+configure = ["$SOURCE:autoconf/configure --prefix=$PREFIX"]
+build = ["make -j$THREADS"]
+install = ["DESTDIR=$INSTALL make install"]
+
+[host.automake]
+runtime-dependencies = ["host:autoconf"]
+dependencies = ["source:automake"]
+configure = ["$SOURCE:automake/configure --prefix=$PREFIX"]
+build = ["make -j$THREADS"]
+install = ["DESTDIR=$INSTALL make install-strip"]
+
+
+
+
+[source.cross-binutils]
+type = "tar.gz"
+url = "https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.gz"
+
+[source.cross-gcc]
+type = "tar.gz"
+url = "https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.gz"
+modifiers = [
+    { type = "patch", source = "patches", file = "cross-gcc.diff" }
+]
+
+[host.cross-binutils]
+dependencies = ["source:cross-binutils"]
+configure = ["$SOURCE:cross-binutils/configure --target=x86_64-elf --prefix=$PREFIX --disable-nls --disable-werror --with-sysroot"]
+build = ["make -j$THREADS all"]
+install = ["DESTDIR=$INSTALL make install"]
+
+[host.cross-gcc]
+runtime-dependencies = ["host:cross-binutils"]
+dependencies = ["source:cross-gcc"]
+configure = ["$SOURCE:cross-gcc/configure --target=x86_64-elf --prefix=$PREFIX --disable-nls --enable-languages=c --without-headers"]
+build = ["make -j$THREADS all-gcc all-target-libgcc"]
+install = ["DESTDIR=$INSTALL make install-gcc install-target-libgcc"]
+
+
+
+
+[source.tartarus]
+type = "local"
+url = "../tartarus-bootloader"
+
+[target.tartarus]
+dependencies = ["source:tartarus", "source:support", "host:cross-gcc"]
+configure = ["cp -r $SOURCE:tartarus/* ."]
+build = [
+    "make -j$THREADS -C bios disk/mbr.bin ASMC=nasm",
+    """
+    make -j$THREADS -C core tartarus.sys TARGET=amd64-bios \
+        CC=x86_64-elf-gcc OBJCPY=x86_64-elf-objcopy LD=x86_64-elf-ld ASMC=nasm GIT=git \
+        IA32_LIBGCC=$SOURCE:support/libgcc-i686.a AMD64_LIBGCC=$SOURCE:support/libgcc-x86_64.a
+    """
+]
+install = [
+    "mkdir -p $INSTALL/usr/share/tartarus",
+    "cp bios/disk/mbr.bin core/tartarus.sys $INSTALL/usr/share/tartarus",
+    "mkdir -p $INSTALL/usr/include",
+    "cp tartarus.h $INSTALL/usr/include"
+]
+
+
+
+
+[source.kernel]
+type = "local"
+url = "kernel"
+
+[target.kernel]
+dependencies = ["source:kernel", "source:support", "host:cross-gcc", "tartarus"]
+configure = ["$SOURCE:kernel/conf.sh --target=x86_64 --prefix=$PREFIX --libgcc=$SOURCE:support/libgcc-x86_64.a"]
+build = ["make all SYSROOT=$ROOT"]
+install = ["DESTDIR=$INSTALL make install"]
