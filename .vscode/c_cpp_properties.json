@@ -9,6 +9,9 @@
             "defines": [
                 "__ARCH_X86_64",
                 "__MLIBC_ABI_ONLY",
+
+                /* Unsupported C23 features work-around */
+                /* https://github.com/microsoft/vscode-cpptools/issues/10696 */
                 "true=1",
                 "false=0",
                 "bool=_Bool",
