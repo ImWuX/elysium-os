@@ -9,7 +9,7 @@ static void pstr(char *str) {
 }
 
 [[noreturn]] void init(tartarus_boot_info_t *boot_info) {
-    pstr("Hello World!");
+    pstr("Hello World!\n");
 
     for(;;) asm volatile("hlt");
     __builtin_unreachable();
