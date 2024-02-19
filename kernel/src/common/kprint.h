@@ -7,13 +7,13 @@ typedef void (*kprint_putchar_t)(char ch);
 extern kprint_putchar_t g_kprint_putchar;
 
 /**
- * @brief Prints a formatted string. Takes varargs as values
- * @returns count written
+ * @brief Prints a formatted string
+ * @returns char count written
  */
 int kprintf(const char *fmt, ...);
 
 /**
- * @brief Prints a formatted string. Takes a vararg list as values
- * @returns count written
+ * @brief Prints a formatted string
+ * @returns char count written
  */
-int kprintv(const char *format, va_list list);
+int kprintv(const char *fmt, va_list list);
