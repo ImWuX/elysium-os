@@ -1,4 +1,4 @@
-#include "kprint.h"
+#include "format.h"
 #include <stddef.h>
 
 #define FLAG_LEFT (1 << 0)
@@ -10,8 +10,8 @@
 #define FLAG_LEADING_ZERO (1 << 6)
 #define FLAG_NO_PREFIX_ON_ZERO (1 << 7)
 
-#define HASH(c) ((c) - 'a')
-#define PUTCHAR(c, count) ({(count)++; if(g_kprint_putchar != NULL) g_kprint_putchar((c)); })
+#define HASH(C) ((C) - 'a')
+#define PUTCHAR(OUTFUNC, CH, COUNT) ({(COUNT)++; OUTFUNC((CH)); })
 
 enum {
     LNONE, Lh, Lhh, Ll, Lll, Lj, Lz, Lt, LL
@@ -81,21 +81,11 @@ typedef union {
     long double floatp;
     uintmax_t integer;
     void *pointer;
-} printf_arg_t;
-
-kprint_putchar_t g_kprint_putchar;
+} arg_t;
 
 static const char *prefixes = "\0000x\0000X\0+\0 ";
 
-int kprintf(const char *format, ...) {
-	va_list list;
-	va_start(list, format);
-	int ret = kprintv(format, list);
-	va_end(list);
-	return ret;
-}
-
-int kprintv(const char *format, va_list list) {
+int format(format_out_t out, const char *format, va_list list) {
     char *fmt = (char *) format;
     char *fallback;
 
@@ -108,7 +98,7 @@ int kprintv(const char *format, va_list list) {
 
     bool negative = false;
     unsigned int radix = 0;
-    printf_arg_t value = {0};
+    arg_t value = {0};
     int prefix_offset = 0;
 
     lbl_normal:
@@ -121,12 +111,12 @@ int kprintv(const char *format, va_list list) {
             fmt++;
             fallback = fmt;
             if(*fmt == '%') {
-                PUTCHAR(*fmt++, count);
+                PUTCHAR(out, *fmt++, count);
                 goto lbl_normal;
             }
             goto lbl_flags;
         }
-        PUTCHAR(*fmt++, count);
+        PUTCHAR(out, *fmt++, count);
     }
     goto lbl_done;
 
@@ -247,9 +237,9 @@ int kprintv(const char *format, va_list list) {
         switch(*fmt) {
             case 'c':
                 // TODO: Handle wchar_t (l modifier)
-                if(!(flags & FLAG_LEFT)) for(int i = 1; i < width; i++) PUTCHAR(' ', count);
-                PUTCHAR((unsigned char) value.integer, count);
-                if(flags & FLAG_LEFT) for(int i = 1; i < width; i++) PUTCHAR(' ', count);
+                if(!(flags & FLAG_LEFT)) for(int i = 1; i < width; i++) PUTCHAR(out, ' ', count);
+                PUTCHAR(out, (unsigned char) value.integer, count);
+                if(flags & FLAG_LEFT) for(int i = 1; i < width; i++) PUTCHAR(out, ' ', count);
                 fmt++;
                 goto lbl_normal;
             case 's':
@@ -258,9 +248,9 @@ int kprintv(const char *format, va_list list) {
                 int length = 0;
                 while(str[length]) ++length;
                 if(precision >= 0 && precision < length) length = precision;
-                if(!(flags & FLAG_LEFT)) for(int i = length; i < width; i++) PUTCHAR(' ', count);
-                for(int i = 0; i < length; i++) PUTCHAR(str[i], count);
-                if(flags & FLAG_LEFT) for(int i = length; i < width; i++) PUTCHAR(' ', count);
+                if(!(flags & FLAG_LEFT)) for(int i = length; i < width; i++) PUTCHAR(out, ' ', count);
+                for(int i = 0; i < length; i++) PUTCHAR(out, str[i], count);
+                if(flags & FLAG_LEFT) for(int i = length; i < width; i++) PUTCHAR(out, ' ', count);
                 fmt++;
                 goto lbl_normal;
             case 'X':
@@ -322,27 +312,27 @@ int kprintv(const char *format, va_list list) {
     if(negative) length++;
     else if(!(flags & FLAG_NO_PREFIX_ON_ZERO) || value.integer != 0) for(int i = prefix_offset; prefixes[i]; i++) length++;
 
-    if(!(flags & (FLAG_LEFT | FLAG_ZERO))) for(int i = length; i < width; i++) PUTCHAR(' ', count);
+    if(!(flags & (FLAG_LEFT | FLAG_ZERO))) for(int i = length; i < width; i++) PUTCHAR(out, ' ', count);
     if(!length) goto lbl_normal;
-    if(negative) PUTCHAR('-', count);
-    else if(!(flags & FLAG_NO_PREFIX_ON_ZERO) || value.integer != 0) while(prefixes[prefix_offset]) PUTCHAR(prefixes[prefix_offset++], count);
-    if((flags & (FLAG_ZERO | FLAG_LEFT)) == FLAG_ZERO) for(int i = length; i < width; i++) PUTCHAR('0', count);
-    for(int i = 0; i < precision_pad; i++) PUTCHAR('0', count);
+    if(negative) PUTCHAR(out, '-', count);
+    else if(!(flags & FLAG_NO_PREFIX_ON_ZERO) || value.integer != 0) while(prefixes[prefix_offset]) PUTCHAR(out, prefixes[prefix_offset++], count);
+    if((flags & (FLAG_ZERO | FLAG_LEFT)) == FLAG_ZERO) for(int i = length; i < width; i++) PUTCHAR(out, '0', count);
+    for(int i = 0; i < precision_pad; i++) PUTCHAR(out, '0', count);
     while(pw != 0 && (precision || value.integer)) {
         uint8_t c = value.integer / pw;
         if(c >= 10) {
-            PUTCHAR(c - 10 + ((flags & FLAG_UPPERCASE) ? 'A' : 'a'), count);
+            PUTCHAR(out, c - 10 + ((flags & FLAG_UPPERCASE) ? 'A' : 'a'), count);
         } else {
-            PUTCHAR(c + '0', count);
+            PUTCHAR(out, c + '0', count);
         }
         value.integer %= pw;
         pw /= radix;
     }
-    if(flags & FLAG_LEFT) for(int i = length; i < width; i++) PUTCHAR(' ', count);
+    if(flags & FLAG_LEFT) for(int i = length; i < width; i++) PUTCHAR(out, ' ', count);
     goto lbl_normal;
 
     lbl_invalid:
-        PUTCHAR('%', count);
+        PUTCHAR(out, '%', count);
         fmt = fallback;
         goto lbl_normal;
 
