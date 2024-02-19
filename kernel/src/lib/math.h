@@ -6,7 +6,7 @@
  * @param DIVISOR
  * @returns result
  */
-#define ROUND_DIV_UP(DIVIDEND, DIVISOR) (((DIVIDEND) + (DIVISOR) - 1) / (DIVISOR))
+#define MATH_DIV_CEIL(DIVIDEND, DIVISOR) (((DIVIDEND) + (DIVISOR) - 1) / (DIVISOR))
 
 /**
  * @brief Round up
@@ -14,7 +14,7 @@
  * @param PRECISION
  * @returns result
  */
-#define ROUND_UP(VALUE, PRECISION) (ROUND_DIV_UP((VALUE), (PRECISION)) * (PRECISION))
+#define MATH_CEIL(VALUE, PRECISION) (MATH_DIV_CEIL((VALUE), (PRECISION)) * (PRECISION))
 
 /**
  * @brief Round down
@@ -22,4 +22,4 @@
  * @param PRECISION
  * @returns result
  */
-#define ROUND_DOWN(VALUE, PRECISION) (((VALUE) / (PRECISION)) * (PRECISION))
+#define MATH_FLOOR(VALUE, PRECISION) (((VALUE) / (PRECISION)) * (PRECISION))
