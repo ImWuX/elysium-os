@@ -6,6 +6,7 @@
 
 #define PMM_MAX_ORDER 7
 
+/* @note is also the mask for extracting zone from flags*/
 #define PMM_ZONE_MAX 0b1
 #define PMM_ZONE_NORMAL 0
 #define PMM_ZONE_DMA 1
