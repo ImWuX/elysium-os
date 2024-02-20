@@ -7,9 +7,13 @@
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
 #include <arch/cpu.h>
+#include <arch/interrupt.h>
 #include <arch/x86_64/gdt.h>
 #include <arch/x86_64/port.h>
+#include <arch/x86_64/msr.h>
 #include <arch/x86_64/lapic.h>
+#include <arch/x86_64/interrupt.h>
+#include <arch/x86_64/exception.h>
 #include <arch/x86_64/dev/pic8259.h>
 
 uintptr_t g_hhdm_base;
@@ -66,6 +70,28 @@ int kprintf(const char *fmt, ...) {
     x86_64_pic8259_remap();
     x86_64_pic8259_disable();
     x86_64_lapic_initialize();
+    g_x86_64_interrupt_irq_eoi = x86_64_lapic_eoi;
+    x86_64_interrupt_init();
+    x86_64_interrupt_load_idt();
+    for(int i = 0; i < 32; i++) {
+        switch(i) {
+            default:
+                x86_64_interrupt_set(i, X86_64_INTERRUPT_PRIORITY_EXCEPTION, x86_64_exception_unhandled);
+                break;
+        }
+    }
+
+    uint64_t pat = x86_64_msr_read(X86_64_MSR_PAT);
+    pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
+    pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
+    x86_64_msr_write(X86_64_MSR_PAT, pat);
+
+    uint64_t cr4;
+    asm volatile("mov %%cr4, %0" : "=r" (cr4) : : "memory");
+    cr4 |= 1 << 7; /* CR4.PGE */
+    asm volatile("mov %0, %%cr4" : : "r" (cr4) : "memory");
+
+    arch_interrupt_set_ipl(IPL_NORMAL);
 
     arch_cpu_halt();
 }

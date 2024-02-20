@@ -59,12 +59,12 @@ void x86_64_gdt_load() {
     gdtr.base = (uint64_t) &g_gdt;
     asm volatile(
         "lgdt %0\n"
-        "push " XSTR(X86_64_GDT_CODE_RING0) "\n"
+        "push $" XSTR(X86_64_GDT_CODE_RING0) "\n"
         "lea 1f(%%rip), %%rax\n"
         "push %%rax\n"
         "lretq\n"
         "1:\n"
-        "mov " XSTR(X86_64_GDT_DATA_RING0) ", %%rax\n"
+        "mov $" XSTR(X86_64_GDT_DATA_RING0) ", %%rax\n"
         "mov %%rax, %%ds\n"
         "mov %%rax, %%ss\n"
         "mov %%rax, %%es\n"
