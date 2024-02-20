@@ -19,7 +19,7 @@
 
 uintptr_t g_hhdm_base;
 size_t g_hhdm_size;
-static x86_64_init_stage_t init_stage = X86_64_INIT_STAGE_ONE;
+static x86_64_init_stage_t init_stage = X86_64_INIT_STAGE_ENTRY;
 
 static void pch(char ch) {
 	x86_64_port_outb(0x3F8, ch);
@@ -37,12 +37,23 @@ int kprintf(const char *fmt, ...) {
 	return ret;
 }
 
+x86_64_init_stage_t x86_64_init_stage() {
+    return init_stage;
+}
+
+static void set_init_stage(x86_64_init_stage_t stage) {
+    init_stage = stage;
+}
+
 [[noreturn]] void init(tartarus_boot_info_t *boot_info) {
 	g_hhdm_base = boot_info->hhdm_base;
 	g_hhdm_size = boot_info->hhdm_size;
 
 	kprintf("Elysium Alpha\n");
     kprintf("HHDM: %#lx (%#lx)\n", g_hhdm_base, g_hhdm_size);
+
+    // GDT
+    x86_64_gdt_load();
 
 	// Initialize physical memory
     pmm_zone_register(PMM_ZONE_DMA, "DMA", 0, 0x100'0000);
@@ -52,6 +63,7 @@ int kprintf(const char *fmt, ...) {
         if(entry.type != TARTARUS_MEMAP_TYPE_USABLE) continue;
         pmm_region_add(entry.base, entry.length);
     }
+    set_init_stage(X86_64_INIT_STAGE_PHYS_MEMORY);
 
     kprintf("Physical Memory Map\n");
     for(int i = 0; i <= PMM_ZONE_MAX; i++) {
@@ -64,9 +76,6 @@ int kprintf(const char *fmt, ...) {
             kprintf("  - %#-12lx %lu/%lu pages\n", region->base, region->free_count, region->page_count);
         }
     }
-
-    // GDT
-    x86_64_gdt_load();
 
     // Prep interrupts
     x86_64_pic8259_remap();
@@ -82,6 +91,7 @@ int kprintf(const char *fmt, ...) {
                 break;
         }
     }
+    set_init_stage(X86_64_INIT_STAGE_INTERRUPTS);
 
     // CPU Control
     uint64_t pat = x86_64_msr_read(X86_64_MSR_PAT);
@@ -94,14 +104,13 @@ int kprintf(const char *fmt, ...) {
     cr4 |= 1 << 7; /* CR4.PGE */
     asm volatile("mov %0, %%cr4" : : "r" (cr4) : "memory");
 
+    // TODO: we havent got this far yet
+    set_init_stage(X86_64_INIT_STAGE_MEMORY);
+
     // Enable interrupts
     arch_interrupt_set_ipl(IPL_NORMAL);
     asm volatile("sti");
-    init_stage = X86_64_INIT_STAGE_DONE;
+    set_init_stage(X86_64_INIT_STAGE_FINAL);
 
     arch_cpu_halt();
-}
-
-x86_64_init_stage_t x86_64_init_stage() {
-    return init_stage;
 }
