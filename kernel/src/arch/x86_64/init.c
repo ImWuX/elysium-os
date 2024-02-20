@@ -7,6 +7,7 @@
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
 #include <arch/cpu.h>
+#include <arch/x86_64/gdt.h>
 #include <arch/x86_64/port.h>
 #include <arch/x86_64/lapic.h>
 #include <arch/x86_64/dev/pic8259.h>
@@ -57,6 +58,9 @@ int kprintf(const char *fmt, ...) {
             kprintf("  - %#-12lx %lu/%lu pages\n", region->base, region->free_count, region->page_count);
         }
     }
+
+    // GDT
+    x86_64_gdt_load();
 
     // Prep interrupts
     x86_64_pic8259_remap();
