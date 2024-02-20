@@ -7,12 +7,13 @@
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
 #include <arch/cpu.h>
+#include <arch/x86_64/port.h>
 
 uintptr_t g_hhdm_base;
 size_t g_hhdm_size;
 
 static void pch(char ch) {
-    asm volatile("outb %0, %1" : : "a" (ch), "Nd" (0x3F8));
+	x86_64_port_outb(0x3F8, ch);
 }
 
 int kprintv(const char *fmt, va_list list) {
