@@ -8,6 +8,8 @@
 #include <memory/pmm.h>
 #include <arch/cpu.h>
 #include <arch/x86_64/port.h>
+#include <arch/x86_64/lapic.h>
+#include <arch/x86_64/dev/pic8259.h>
 
 uintptr_t g_hhdm_base;
 size_t g_hhdm_size;
@@ -56,6 +58,10 @@ int kprintf(const char *fmt, ...) {
         }
     }
 
+    // Prep interrupts
+    x86_64_pic8259_remap();
+    x86_64_pic8259_disable();
+    x86_64_lapic_initialize();
 
     arch_cpu_halt();
 }
