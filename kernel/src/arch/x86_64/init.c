@@ -1,3 +1,4 @@
+#include "init.h"
 #include <stdint.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -18,6 +19,7 @@
 
 uintptr_t g_hhdm_base;
 size_t g_hhdm_size;
+static x86_64_init_stage_t init_stage = X86_64_INIT_STAGE_ONE;
 
 static void pch(char ch) {
 	x86_64_port_outb(0x3F8, ch);
@@ -81,6 +83,7 @@ int kprintf(const char *fmt, ...) {
         }
     }
 
+    // CPU Control
     uint64_t pat = x86_64_msr_read(X86_64_MSR_PAT);
     pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
     pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
@@ -91,8 +94,14 @@ int kprintf(const char *fmt, ...) {
     cr4 |= 1 << 7; /* CR4.PGE */
     asm volatile("mov %0, %%cr4" : : "r" (cr4) : "memory");
 
+    // Enable interrupts
     arch_interrupt_set_ipl(IPL_NORMAL);
     asm volatile("sti");
+    init_stage = X86_64_INIT_STAGE_DONE;
 
     arch_cpu_halt();
+}
+
+x86_64_init_stage_t x86_64_init_stage() {
+    return init_stage;
 }
