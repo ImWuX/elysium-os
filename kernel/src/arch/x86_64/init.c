@@ -92,6 +92,7 @@ int kprintf(const char *fmt, ...) {
     asm volatile("mov %0, %%cr4" : : "r" (cr4) : "memory");
 
     arch_interrupt_set_ipl(IPL_NORMAL);
+    asm volatile("sti");
 
     arch_cpu_halt();
 }
