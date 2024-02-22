@@ -11,6 +11,7 @@
 #include <arch/types.h>
 #include <arch/sched.h>
 #include <arch/vmm.h>
+#include <arch/x86_64/tss.h>
 #include <arch/x86_64/msr.h>
 #include <arch/x86_64/interrupt.h>
 #include <arch/x86_64/lapic.h>
@@ -85,7 +86,7 @@ static void sched_switch(x86_64_thread_t *this, x86_64_thread_t *next) {
     x86_64_msr_write(X86_64_MSR_GS_BASE, (uint64_t) next);
     this->common.cpu = 0;
 
-    // tss_set_rsp0(ARCH_CPU(next->common.cpu)->tss, next->kernel_stack.base);
+    x86_64_tss_set_rsp0(X86_64_CPU(next->common.cpu)->tss, next->kernel_stack.base);
 
     // if(this->fpu_area) g_fpu_save(this->fpu_area);
     // g_fpu_restore(next->fpu_area);
@@ -151,7 +152,7 @@ thread_t *arch_sched_thread_current() {
     return &thread->common;
 }
 
-void sched_next() {
+void x86_64_sched_next() {
     thread_t *current = arch_sched_thread_current();
     ASSERT(current != NULL);
 
@@ -169,7 +170,7 @@ void sched_next() {
 }
 
 static void sched_entry([[maybe_unused]] x86_64_interrupt_frame_t *frame) {
-    sched_next();
+    x86_64_sched_next();
 }
 
 [[noreturn]] void x86_64_sched_init_cpu(x86_64_cpu_t *cpu) {
