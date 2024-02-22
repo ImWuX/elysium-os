@@ -1,6 +1,7 @@
 #pragma once
 
 typedef enum {
+    IPL_SCHED,
     IPL_NORMAL,
     IPL_IPC,
     IPL_CRITICAL
