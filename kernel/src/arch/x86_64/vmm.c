@@ -93,6 +93,7 @@ static void tlb_shootdown(vmm_address_space_t *address_space) {
         return;
     }
 
+    // TODO: fix when smp is implemented
     // ipl_t old_ipl = ipl(IPL_CRITICAL);
     // for(size_t i = 0; i < g_x86_64_cpus_initialized; i++) {
     //     x86_64_cpu_t *cpu = &g_x86_64_cpus[i];
@@ -229,11 +230,16 @@ bool arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr, uint
 }
 
 void x86_64_vmm_page_fault_handler(x86_64_interrupt_frame_t *frame) {
-    // int flags = 0;
-    // if(!(frame->err_code & PAGEFAULT_FLAG_PRESENT)) flags |= VMM_FAULT_NONPRESENT;
+    int flags = 0;
+    if(!(frame->err_code & PAGEFAULT_FLAG_PRESENT)) flags |= VMM_FAULT_NONPRESENT;
 
-    // uint64_t cr2;
-    // asm volatile("movq %%cr2, %0" : "=r" (cr2));
-    // if(vmm_fault(cpu_current()->address_space, cr2, flags)) return;
+    vmm_address_space_t *as = g_vmm_kernel_address_space;
+    // TODO: PASS ADDRESS SPACE WHEN PROCESS EXISTS
+    ASSERT(x86_64_init_stage() < X86_64_INIT_STAGE_FINAL);
+    // if(x86_64_init_stage() >= X86_64_INIT_STAGE_FINAL) as = cpu_current()->address_space;
+
+    uint64_t cr2;
+    asm volatile("movq %%cr2, %0" : "=r" (cr2));
+    if(vmm_fault(as, cr2, flags)) return;
     x86_64_exception_unhandled(frame);
 }

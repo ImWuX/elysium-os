@@ -11,6 +11,7 @@
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
 #include <memory/vmm.h>
+#include <memory/heap.h>
 #include <arch/vmm.h>
 #include <arch/types.h>
 #include <arch/cpu.h>
@@ -135,14 +136,20 @@ static void set_init_stage(x86_64_init_stage_t stage) {
     ADJUST_STACK(g_hhdm_base);
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
+    x86_64_interrupt_set(0xE, X86_64_INTERRUPT_PRIORITY_EXCEPTION, x86_64_vmm_page_fault_handler);
+
     set_init_stage(X86_64_INIT_STAGE_MEMORY);
 
     void *random_addr = vmm_map(g_vmm_kernel_address_space, NULL, 0x5000, VMM_PROT_READ, VMM_FLAG_NONE, &g_seg_anon, NULL);
     ASSERT(random_addr != NULL);
     kprintf("\nVMM randomly allocated address: %#lx\n", random_addr);
 
-    // TODO: cpu_current() needs to work here V
-    // x86_64_interrupt_set(0xE, X86_64_INTERRUPT_PRIORITY_EXCEPTION, x86_64_vmm_page_fault_handler);
+    // Initialize heap
+    heap_initialize(g_vmm_kernel_address_space, 0x100'0000'0000);
+
+    void *p = heap_alloc(0x500);
+    ASSERT(p != NULL);
+    kprintf("\nHeap randomly allocated address: %#lx\n", p);
 
     // Enable interrupts
     arch_interrupt_set_ipl(IPL_NORMAL);
