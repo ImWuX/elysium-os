@@ -7,10 +7,10 @@
  * @brief Initialized the PIT
  * @param divisor PIT divisor
  */
-void pit_initialize(uint16_t divisor);
+void x86_64_pit_initialize(uint16_t divisor);
 
 /**
  * @brief Retrieve current PIT count
  * @return Current PIT count
  */
-uint16_t pit_count();
+uint16_t x86_64_pit_count();
