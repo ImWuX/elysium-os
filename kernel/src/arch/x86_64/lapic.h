@@ -23,3 +23,22 @@ void x86_64_lapic_eoi(uint8_t interrupt_vector);
  * @param vec interrupt vector & flags
  */
 void x86_64_lapic_ipi(uint32_t lapic_id, uint32_t vec);
+
+/**
+ * @brief Polls the local apic timer
+ * @warning This function blocks until polling is done
+ * @param ticks Ticks to poll
+ */
+void x86_64_lapic_timer_poll(uint32_t ticks);
+
+/**
+ * @brief Perform a oneshot event using the apic timer
+ * @param vector Interrupt vector
+ * @param us Time in microseconds
+ */
+void x86_64_lapic_timer_oneshot(uint8_t vector, uint64_t us);
+
+/**
+ * @brief Stop the local apic timer
+ */
+void x86_64_lapic_timer_stop();

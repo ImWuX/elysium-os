@@ -6,6 +6,7 @@
 
 typedef struct x86_64_cpu {
     uint32_t lapic_id;
+    uint64_t lapic_timer_frequency;
     uintptr_t tlb_shootdown_cr3;
     spinlock_t tlb_shootdown_check;
     spinlock_t tlb_shootdown_lock;

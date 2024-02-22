@@ -28,12 +28,14 @@ typedef struct {
 } interrupt_entry_t;
 
 static x86_64_interrupt_priority_t g_ipl_to_interrupt_map[] = {
+    [IPL_SCHED] = X86_64_INTERRUPT_PRIORITY_SCHED - 1,
     [IPL_NORMAL] = X86_64_INTERRUPT_PRIORITY_NORMAL - 1,
     [IPL_IPC] = X86_64_INTERRUPT_PRIORITY_IPC - 1,
     [IPL_CRITICAL] = X86_64_INTERRUPT_PRIORITY_CRITICAL - 1
 };
 
 static ipl_t g_interrupt_to_ipl_map[] = {
+    [X86_64_INTERRUPT_PRIORITY_SCHED - 1] = IPL_SCHED,
     [X86_64_INTERRUPT_PRIORITY_NORMAL - 1] = IPL_NORMAL,
     [X86_64_INTERRUPT_PRIORITY_IPC - 1] = IPL_IPC,
     [X86_64_INTERRUPT_PRIORITY_CRITICAL - 1] = IPL_CRITICAL

@@ -12,19 +12,25 @@
 #include <memory/pmm.h>
 #include <memory/vmm.h>
 #include <memory/heap.h>
+#include <sched/sched.h>
 #include <arch/vmm.h>
 #include <arch/types.h>
 #include <arch/cpu.h>
+#include <arch/sched.h>
 #include <arch/interrupt.h>
 #include <arch/x86_64/vmm.h>
 #include <arch/x86_64/gdt.h>
 #include <arch/x86_64/port.h>
 #include <arch/x86_64/msr.h>
+#include <arch/x86_64/cpu.h>
 #include <arch/x86_64/lapic.h>
 #include <arch/x86_64/interrupt.h>
 #include <arch/x86_64/exception.h>
+#include <arch/x86_64/sched.h>
+#include <arch/x86_64/dev/pit.h>
 #include <arch/x86_64/dev/pic8259.h>
 
+#define LAPIC_CALIBRATION_TICKS 0x10000
 #define ADJUST_STACK(OFFSET) asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp\nmov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (OFFSET) : "rax", "memory")
 
 uintptr_t g_hhdm_base;
@@ -151,10 +157,24 @@ static void set_init_stage(x86_64_init_stage_t stage) {
     ASSERT(p != NULL);
     kprintf("\nHeap randomly allocated address: %#lx\n", p);
 
+    // CPU Local
+    x86_64_pit_initialize(UINT16_MAX);
+    uint16_t start_count = x86_64_pit_count();
+    x86_64_lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
+    uint16_t end_count = x86_64_pit_count();
+
+    x86_64_cpu_t *cpu = heap_alloc(sizeof(x86_64_cpu_t));
+    cpu->lapic_id = x86_64_lapic_id();
+    cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
+
+    // Init sched
+    x86_64_sched_init();
+
     // Enable interrupts
-    arch_interrupt_set_ipl(IPL_NORMAL);
+    arch_interrupt_set_ipl(IPL_SCHED);
     asm volatile("sti");
     set_init_stage(X86_64_INIT_STAGE_FINAL);
 
-    arch_cpu_halt();
+    x86_64_sched_init_cpu(cpu);
+    __builtin_unreachable();
 }
