@@ -6,6 +6,7 @@
 #include <lib/format.h>
 #include <lib/math.h>
 #include <lib/list.h>
+#include <lib/mem.h>
 #include <common/kprint.h>
 #include <common/assert.h>
 #include <memory/hhdm.h>
@@ -19,10 +20,12 @@
 #include <arch/sched.h>
 #include <arch/interrupt.h>
 #include <arch/x86_64/vmm.h>
+#include <arch/x86_64/tss.h>
 #include <arch/x86_64/gdt.h>
 #include <arch/x86_64/port.h>
 #include <arch/x86_64/msr.h>
 #include <arch/x86_64/cpu.h>
+#include <arch/x86_64/cpuid.h>
 #include <arch/x86_64/lapic.h>
 #include <arch/x86_64/interrupt.h>
 #include <arch/x86_64/exception.h>
@@ -69,6 +72,8 @@ static void set_init_stage(x86_64_init_stage_t stage) {
 	kprintf("Elysium Alpha\n");
     kprintf("HHDM: %#lx (%#lx)\n", g_hhdm_base, g_hhdm_size);
 
+    ASSERT(x86_64_cpuid_feature(X86_64_CPUID_FEATURE_MSR));
+
     // GDT
     x86_64_gdt_load();
 
@@ -95,6 +100,7 @@ static void set_init_stage(x86_64_init_stage_t stage) {
     }
 
     // Prep interrupts
+    ASSERT(x86_64_cpuid_feature(X86_64_CPUID_FEATURE_APIC))
     x86_64_pic8259_remap();
     x86_64_pic8259_disable();
     x86_64_lapic_initialize();
@@ -158,6 +164,11 @@ static void set_init_stage(x86_64_init_stage_t stage) {
     kprintf("\nHeap randomly allocated address: %#lx\n", p);
 
     // CPU Local
+    x86_64_tss_t *tss = heap_alloc(sizeof(x86_64_tss_t));
+    memset(tss, 0, sizeof(x86_64_tss_t));
+    tss->iomap_base = sizeof(x86_64_tss_t);
+    x86_64_gdt_load_tss(tss);
+
     x86_64_pit_initialize(UINT16_MAX);
     uint16_t start_count = x86_64_pit_count();
     x86_64_lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
@@ -166,6 +177,7 @@ static void set_init_stage(x86_64_init_stage_t stage) {
     x86_64_cpu_t *cpu = heap_alloc(sizeof(x86_64_cpu_t));
     cpu->lapic_id = x86_64_lapic_id();
     cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
+    cpu->tss = tss;
 
     // Init sched
     x86_64_sched_init();
