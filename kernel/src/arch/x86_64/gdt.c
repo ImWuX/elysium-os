@@ -13,6 +13,14 @@ typedef struct {
 } __attribute__((packed)) gdt_entry_t;
 
 typedef struct {
+	gdt_entry_t entry;
+	uint32_t base_ext;
+	uint8_t rsv0;
+	uint8_t zero_rsv1;
+	uint16_t rsv2;
+} __attribute__((packed)) gdt_system_entry_t;
+
+typedef struct {
     uint16_t limit;
     uint64_t base;
 } __attribute__((packed)) gdt_descriptor_t;
@@ -50,7 +58,8 @@ static gdt_entry_t g_gdt[] = {
         .access = 0b11111010,
         .flags = 0b00100000,
         .base_high = 0
-    }
+    },
+    {}, {}
 };
 
 void x86_64_gdt_load() {
@@ -72,4 +81,18 @@ void x86_64_gdt_load() {
         "mov %%rax, %%gs\n"
         : : "m" (gdtr) : "rax", "memory"
     );
+}
+
+void x86_64_gdt_load_tss(x86_64_tss_t *tss) {
+    gdt_system_entry_t *entry = (gdt_system_entry_t *) ((uintptr_t) g_gdt + X86_64_GDT_TSS);
+    entry->entry.access = 0b10001001;
+    entry->entry.flags = (1 << 4) | (((uint8_t) (sizeof(x86_64_tss_t) << 16)) & 0b00001111);
+    entry->entry.limit = (uint16_t) sizeof(x86_64_tss_t);
+    entry->entry.base_low = (uint16_t) (uint64_t) tss;
+    entry->entry.base_mid = (uint8_t) ((uint64_t) tss >> 16);
+    entry->entry.base_high = (uint8_t) ((uint64_t) tss >> 24);
+    entry->base_ext = (uint32_t) ((uint64_t) tss >> 32);
+
+    uint16_t segment = X86_64_GDT_TSS;
+    asm volatile("ltr %0" : : "m" (segment));
 }
