@@ -1,6 +1,7 @@
 [project]
 name = "ElysiumOS"
 
+
 # # # # #
 # SOURCES
 [source.patches]
@@ -22,6 +23,56 @@ modifiers = [
     { type = "patch", source = "patches", file = "automake.diff" }
 ]
 
+[source.gnulib]
+type = "tar.gz"
+url = "https://git.savannah.gnu.org/cgit/gnulib.git/snapshot/gnulib-8c4d0fbf4c45df8e86acbb338b154930c5498dc3.tar.gz"
+
+[source.libtool]
+dependencies = ["host:autoconf", "host:automake"]
+type = "tar.gz"
+url = "https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.gz"
+modifiers = [
+    { type = "patch", source = "patches", file = "libtool.diff" },
+    { type = "exec", source = "gnulib", cmd = "./bootstrap --force --skip-git --skip-po --gnulib-srcdir=$SOURCE:gnulib" }
+]
+
+[source.pkgconf]
+type = "tar.gz"
+dependencies = ["host:libtool", "host:automake"]
+url = "https://github.com/pkgconf/pkgconf/archive/refs/tags/pkgconf-2.0.3.tar.gz"
+modifiers = [
+    { type = "patch", source = "patches", file = "pkgconf.diff" },
+    { type = "exec", cmd = "libtoolize -cfvi && autoreconf -fvi" }
+]
+
+[source.binutils]
+dependencies = ["host:libtool", "host:automake", "host:pkgconf"]
+type = "tar.gz"
+url = "https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.gz"
+modifiers = [
+    { type = "patch", source = "patches", file = "binutils.diff" },
+    { type = "exec", cmd = """
+        CFG=$(realpath ./config)
+        for f in $(find . -name configure.ac); do \
+            ( cd "$(dirname "$f")" && libtoolize -cfvi && autoreconf -fvi -I"$CFG" ); \
+        done
+    """ }
+]
+
+[source.gcc]
+dependencies = ["host:libtool", "host:automake", "host:pkgconf"]
+type = "tar.gz"
+url = "https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.gz"
+modifiers = [
+    { type = "patch", source = "patches", file = "gcc.diff" },
+    { type = "exec", cmd = """
+        CFG=$(realpath ./config)
+        for f in $(find . -name configure.ac); do \
+            ( cd "$(dirname "$f")" && libtoolize -cfvi && autoreconf -fvi -I"$CFG" ); \
+        done
+    """ }
+]
+
 [source.cross-binutils]
 type = "tar.gz"
 url = "https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.gz"
@@ -33,6 +84,18 @@ modifiers = [
     { type = "patch", source = "patches", file = "cross-gcc.diff" }
 ]
 
+[source.mlibc-sysdeps]
+type = "local"
+url = "mlibc-sysdeps"
+
+[source.mlibc]
+type = "tar.gz"
+url = "https://github.com/managarm/mlibc/archive/5ea203152ce7b4423dfbe6999e66434c0800ffbe.tar.gz"
+modifiers = [
+    { type = "patch", source = "patches", file = "mlibc.diff" },
+    { type = "merge", source = "mlibc-sysdeps" }
+]
+
 [source.tartarus]
 type = "local"
 url = "../tartarus-bootloader"
@@ -40,6 +103,7 @@ url = "../tartarus-bootloader"
 [source.kernel]
 type = "local"
 url = "kernel"
+
 
 # # # # # # # #
 # HOST TARGETS
@@ -56,6 +120,63 @@ configure = ["$SOURCE:automake/configure --prefix=$PREFIX"]
 build = ["make -j$THREADS"]
 install = ["DESTDIR=$INSTALL make install-strip"]
 
+[host.libtool]
+runtime-dependencies = ["host:autoconf"]
+dependencies = ["source:libtool", "host:autoconf", "host:automake"]
+configure = ["$SOURCE:libtool/configure --prefix=$PREFIX"]
+build = ["make -j$THREADS"]
+install = ["DESTDIR=$INSTALL make install-strip"]
+
+[host.pkgconf]
+dependencies = ["source:pkgconf"]
+configure = ["$SOURCE:pkgconf/configure --prefix=$PREFIX"]
+build = ["make -j$THREADS"]
+install = [
+    "DESTDIR=$INSTALL make install-strip",
+    "mkdir -p $INSTALL$PREFIX/share/pkgconfig/personality.d",
+    """
+    cat <<EOF >\"$INSTALL$PREFIX/share/pkgconfig/personality.d/x86_64-elysium.personality\"
+Triplet: x86_64-elysium
+SysrootDir: $ROOT
+DefaultSearchPaths: $ROOT/usr/lib/pkgconfig:$ROOT/usr/share/pkgconfig
+SystemIncludePaths: $ROOT/usr/include
+SystemLibraryPaths: $ROOT/usr/lib
+EOF
+    """,
+    "ln -s pkgconf $INSTALL$PREFIX/bin/x86_64-elysium-pkg-config"
+]
+
+[host.binutils]
+dependencies = ["source:binutils"]
+configure = ["$SOURCE:binutils/configure --with-sysroot=$ROOT --prefix=$PREFIX --target=x86_64-elysium --enable-targets=x86_64-elf,x86_64-pe --disable-nls --disable-werror --disable-dependency-tracking"]
+build = ["make -j$THREADS all"]
+install = ["DESTDIR=$INSTALL make install-strip"]
+
+[host.bootstrap-gcc]
+runtime-dependencies = ["host:binutils"]
+dependencies = ["source:gcc", "mlibc-headers"]
+configure = [
+    """
+    CFLAGS=\"-O2\" CXXFLAGS=\"-O2\" $SOURCE:gcc/configure \
+        --prefix=$PREFIX \
+        --target=x86_64-elysium \
+        --with-sysroot=$ROOT \
+        --enable-languages=c,c++ \
+        --disable-nls \
+        --disable-multilib \
+        --disable-shared \
+        --enable-initfini-array
+    """
+]
+build = [
+    "make -j$THREADS inhibit_libc=true all-gcc",
+    "make -j$THREADS inhibit_libc=true all-target-libgcc"
+]
+install = [
+    "DESTDIR=$INSTALL make install-gcc",
+    "DESTDIR=$INSTALL make install-target-libgcc"
+]
+
 [host.cross-binutils]
 dependencies = ["source:cross-binutils"]
 configure = ["$SOURCE:cross-binutils/configure --target=x86_64-elf --prefix=$PREFIX --disable-nls --disable-werror --with-sysroot"]
@@ -69,9 +190,73 @@ configure = ["$SOURCE:cross-gcc/configure --target=x86_64-elf --prefix=$PREFIX -
 build = ["make -j$THREADS all-gcc all-target-libgcc"]
 install = ["DESTDIR=$INSTALL make install-gcc install-target-libgcc"]
 
+[host.gcc]
+runtime-dependencies = ["host:binutils", "mlibc-headers", "mlibc"]
+dependencies = ["source:gcc"]
+configure = [
+    """
+    CFLAGS=\"-O2\" CXXFLAGS=\"-O2\" $SOURCE:gcc/configure \
+        --prefix=$PREFIX \
+        --target=x86_64-elysium \
+        --with-sysroot=$ROOT \
+        --enable-languages=c,c++ \
+        --disable-nls \
+        --disable-multilib \
+        --enable-initfini-array
+    """
+]
+build = [
+    "make -j$THREADS inhibit_libc=true all-gcc",
+    "make -j$THREADS inhibit_libc=true all-target-libgcc"
+]
+install = [
+    "DESTDIR=$INSTALL make install-gcc",
+    "DESTDIR=$INSTALL make install-target-libgcc"
+]
+
 
 # # # # # # #
 # STD TARGETS
+[target.mlibc-headers]
+dependencies = ["source:mlibc", "source:support"] # TODO: Might need pkg-config
+configure = [
+    """
+    meson setup \
+        --cross-file $SOURCE:support/elysium.cross-file \
+        --prefix=/usr \
+        -Dheaders_only=true \
+        -Ddisable_iconv_option=true \
+        -Ddisable_intl_option=true \
+        -Ddisable_crypt_option=true \
+        -Ddisable_linux_option=true \
+        --buildtype=release \
+        $SOURCE:mlibc
+    """
+]
+build = ["ninja"]
+install = ["DESTDIR=$INSTALL ninja install"]
+
+[target.mlibc]
+dependencies = ["source:mlibc", "source:support", "mlibc-headers", "host:bootstrap-gcc"] # TODO: Might need pkg-config
+configure = [
+    """
+    meson setup \
+        --cross-file $SOURCE:support/elysium.cross-file \
+        --prefix=/usr \
+        --libdir=lib \
+        -Dmlibc_no_headers=true \
+        -Ddisable_iconv_option=true \
+        -Ddisable_intl_option=true \
+        -Ddisable_crypt_option=true \
+        -Ddisable_linux_option=true \
+        --buildtype=debug \
+        -Ddefault_library=both \
+        $SOURCE:mlibc
+    """
+]
+build = ["ninja"]
+install = ["DESTDIR=$INSTALL ninja install"]
+
 [target.tartarus]
 dependencies = ["source:tartarus", "source:support", "host:cross-gcc"]
 configure = ["cp -r $SOURCE:tartarus/* ."]

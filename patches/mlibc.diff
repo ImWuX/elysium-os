@@ -1,0 +1,14 @@
+diff -Naru mlibc-4.0.0-rc1/meson.build mlibc-4.0.0-rc1-patched/meson.build
+--- mlibc-4.0.0-rc1/meson.build	2023-04-08 22:53:16.000000000 +0200
++++ mlibc-4.0.0-rc1-patched/meson.build	2023-11-22 14:06:25.212758990 +0100
+@@ -129,6 +129,10 @@
+ 	internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
+ 	internal_conf.set10('MLIBC_MAP_FILE_WINDOWS', true)
+ 	subdir('sysdeps/aero')
++elif host_machine.system() == 'elysium'
++	rtdl_include_dirs += include_directories('sysdeps/elysium/include')
++	libc_include_dirs += include_directories('sysdeps/elysium/include')
++	subdir('sysdeps/elysium')
+ elif host_machine.system() == 'managarm'
+ 	# TODO: Adopt the include_directories() commands from the managarm meson.build.
+ 	rtdl_include_dirs += include_directories('sysdeps/managarm/include')
