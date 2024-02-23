@@ -1,0 +1,155 @@
+diff -Naru binutils-2.41/bfd/config.bfd binutils-2.41-patched/bfd/config.bfd
+--- binutils-2.41/bfd/config.bfd	2023-07-03 01:00:00.000000000 +0200
++++ binutils-2.41-patched/bfd/config.bfd	2023-11-18 23:29:28.406660706 +0100
+@@ -734,7 +734,17 @@
+     targ_selvecs="i386_elf32_vec iamcu_elf32_vec x86_64_elf32_vec"
+     want64=true
+     ;;
++  x86_64-*-elysium*)
++    targ_defvec=x86_64_elf64_vec
++    targ_selvecs=i386_elf32_vec
++    want64=true
++    ;;
+ #endif
++  i[3-7]86-*-elysium*)
++    targ_defvec=i386_elf32_vec
++    targ_selvecs=
++    targ64_selvecs=x86_64_elf64_vec
++    ;;
+   i[3-7]86-*-lynxos*)
+     targ_defvec=i386_elf32_vec
+     targ_selvecs="iamcu_elf32_vec i386_coff_lynx_vec i386_aout_lynx_vec"
+diff -Naru binutils-2.41/bfd/Makefile.am binutils-2.41-patched/bfd/Makefile.am
+--- binutils-2.41/bfd/Makefile.am	2023-07-03 01:00:00.000000000 +0200
++++ binutils-2.41-patched/bfd/Makefile.am	2023-11-18 23:26:36.694166239 +0100
+@@ -778,7 +778,7 @@
+ libbfd_la_SOURCES = $(BFD32_LIBS_CFILES)
+ EXTRA_libbfd_la_SOURCES = $(CFILES)
+ libbfd_la_DEPENDENCIES = $(OFILES) ofiles ../libsframe/libsframe.la
+-libbfd_la_LIBADD = `cat ofiles` @SHARED_LIBADD@ $(LIBDL) $(ZLIB) $(ZSTD_LIBS) ../libsframe/libsframe.la
++libbfd_la_LIBADD = `cat ofiles` @SHARED_LIBADD@ $(LIBDL) $(ZLIB) $(ZSTD_LIBS) $(SFRAME_LIB_PATH) ../libsframe/libsframe.la
+ libbfd_la_LDFLAGS += -release `cat libtool-soversion` @SHARED_LDFLAGS@
+ 
+ # This file holds an array associating configuration triplets and
+diff -Naru binutils-2.41/config.sub binutils-2.41-patched/config.sub
+--- binutils-2.41/config.sub	2023-07-03 01:00:00.000000000 +0200
++++ binutils-2.41-patched/config.sub	2023-11-18 23:35:06.896678822 +0100
+@@ -1758,7 +1758,7 @@
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+-	     | fiwix* | mlibc* )
++	     | fiwix* | mlibc* | elysium* )
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+diff -Naru binutils-2.41/gas/configure.tgt binutils-2.41-patched/gas/configure.tgt
+--- binutils-2.41/gas/configure.tgt	2023-07-03 01:00:00.000000000 +0200
++++ binutils-2.41-patched/gas/configure.tgt	2023-11-18 23:30:40.569629314 +0100
+@@ -227,6 +227,7 @@
+   i386-*-beos*)				fmt=elf ;;
+   i386-*-elfiamcu)			fmt=elf arch=iamcu ;;
+   i386-*-elf*)				fmt=elf ;;
++  i386-*-elysium*)      fmt=elf em=gnu ;;
+   i386-*-fuchsia*)			fmt=elf ;;
+   i386-*-haiku*)			fmt=elf em=haiku ;;
+   i386-*-genode*)			fmt=elf ;;
+diff -Naru binutils-2.41/gprofng/libcollector/configure.ac binutils-2.41-patched/gprofng/libcollector/configure.ac
+--- binutils-2.41/gprofng/libcollector/configure.ac	2023-07-03 01:00:00.000000000 +0200
++++ binutils-2.41-patched/gprofng/libcollector/configure.ac	2023-11-18 23:31:19.717253499 +0100
+@@ -18,7 +18,7 @@
+ 
+ m4_include([../../bfd/version.m4])
+ AC_INIT([gprofng], BFD_VERSION)
+-AC_CONFIG_MACRO_DIRS([../../config ../..])
++#AC_CONFIG_MACRO_DIRS([../../config ../..])
+ AC_CONFIG_AUX_DIR(../..)
+ AC_CANONICAL_TARGET
+ AM_INIT_AUTOMAKE
+diff -Naru binutils-2.41/ld/configure.tgt binutils-2.41-patched/ld/configure.tgt
+--- binutils-2.41/ld/configure.tgt	2023-07-03 01:00:00.000000000 +0200
++++ binutils-2.41-patched/ld/configure.tgt	2023-11-18 23:33:08.673195161 +0100
+@@ -400,6 +400,10 @@
+ 			targ_emul=elf_i386
+ 			targ_extra_emuls=elf_iamcu
+ 			;;
++i[3-7]86-*-elysium*)
++			targ_emul=elf_i386
++			targ_extra_emuls=elf_x86_64
++			;;
+ i[3-7]86-*-dragonfly*)	targ_emul=elf_i386
+ 			targ_extra_emuls="elf_iamcu i386bsd"
+ 			;;
+@@ -1030,6 +1034,10 @@
+ 			targ_extra_libpath="elf_i386 elf_iamcu elf32_x86_64"
+ 			tdir_elf_i386=`echo ${targ_alias} | sed -e 's/x86_64/i386/'`
+ 			;;
++x86_64-*-elysium*)
++			targ_emul=elf_x86_64
++			targ_extra_emuls=elf_i386
++			;;
+ x86_64-*-dragonfly*)	targ_emul=elf_x86_64
+ 			targ_extra_emuls="elf_i386 elf_iamcu"
+ 			;;
+diff -Naru binutils-2.41/libiberty/configure.ac binutils-2.41-patched/libiberty/configure.ac
+--- binutils-2.41/libiberty/configure.ac	2023-07-03 01:00:00.000000000 +0200
++++ binutils-2.41-patched/libiberty/configure.ac	2023-11-18 23:33:48.063682996 +0100
+@@ -37,7 +37,7 @@
+   libiberty_topdir="${srcdir}/.."
+ fi
+ AC_SUBST(libiberty_topdir)
+-AC_CONFIG_AUX_DIR($libiberty_topdir)
++AC_CONFIG_AUX_DIR([.])
+ 
+ dnl Very limited version of automake's enable-maintainer-mode
+ 
+diff -Naru binutils-2.41/multilib.am binutils-2.41-patched/multilib.am
+--- binutils-2.41/multilib.am	1970-01-01 01:00:00.000000000 +0100
++++ binutils-2.41-patched/multilib.am	2023-11-18 23:36:14.156239938 +0100
+@@ -0,0 +1,45 @@
++## automake - create Makefile.in from Makefile.am
++
++## Copyright (C) 1994-2017 Free Software Foundation, Inc.
++## This Makefile.in is free software; the Free Software Foundation
++## gives unlimited permission to copy and/or distribute it,
++## with or without modifications, as long as this notice is preserved.
++
++## This program is distributed in the hope that it will be useful,
++## but WITHOUT ANY WARRANTY; without even the implied warranty of
++## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++## GNU General Public License for more details.
++
++MULTISRCTOP =
++MULTIBUILDTOP =
++MULTIDIRS =
++MULTISUBDIR =
++MULTIDO = true
++MULTICLEAN = true
++
++# GNU Make needs to see an explicit $(MAKE) variable in the command it
++# runs to enable its job server during parallel builds.  Hence the
++# comments below.
++all-multi:
++	$(MULTIDO) $(AM_MAKEFLAGS) DO=all multi-do # $(MAKE)
++install-multi:
++	$(MULTIDO) $(AM_MAKEFLAGS) DO=install multi-do # $(MAKE)
++mostlyclean-multi:
++	$(MULTICLEAN) $(AM_MAKEFLAGS) DO=mostlyclean multi-clean # $(MAKE)
++clean-multi:
++	$(MULTICLEAN) $(AM_MAKEFLAGS) DO=clean multi-clean # $(MAKE)
++distclean-multi:
++	$(MULTICLEAN) $(AM_MAKEFLAGS) DO=distclean multi-clean # $(MAKE)
++maintainer-clean-multi:
++	$(MULTICLEAN) $(AM_MAKEFLAGS) DO=maintainer-clean multi-clean # $(MAKE)
++
++.MAKE .PHONY: all-multi clean-multi distclean-multi install-am \
++	      install-multi maintainer-clean-multi mostlyclean-multi
++
++install-exec-local: install-multi
++
++all-local: all-multi
++mostlyclean-local: mostlyclean-multi
++clean-local: clean-multi
++distclean-local: distclean-multi
++maintainer-clean-local: maintainer-clean-multi
+\ No newline at end of file
