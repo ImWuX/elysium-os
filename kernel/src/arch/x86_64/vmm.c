@@ -6,6 +6,7 @@
 #include <sys/ipl.h>
 #include <sys/cpu.h>
 #include <arch/vmm.h>
+#include <arch/sched.h>
 #include <arch/cpu.h>
 #include <arch/types.h>
 #include <arch/interrupt.h>
@@ -133,6 +134,13 @@ static void tlb_shootdown_handler([[maybe_unused]] x86_64_interrupt_frame_t *fra
     spinlock_release(&cpu->tlb_shootdown_check);
 }
 
+void arch_vmm_address_space_init(vmm_address_space_t *address_space) {
+    address_space->lock = SPINLOCK_INIT;
+    address_space->segments = LIST_INIT;
+    address_space->start = USERSPACE_START;
+    address_space->end = USERSPACE_END;
+}
+
 vmm_address_space_t *x86_64_vmm_init() {
     g_initial_address_space.common.lock = SPINLOCK_INIT;
     g_initial_address_space.common.segments = LIST_INIT;
@@ -234,9 +242,10 @@ void x86_64_vmm_page_fault_handler(x86_64_interrupt_frame_t *frame) {
     if(!(frame->err_code & PAGEFAULT_FLAG_PRESENT)) flags |= VMM_FAULT_NONPRESENT;
 
     vmm_address_space_t *as = g_vmm_kernel_address_space;
-    // TODO: PASS ADDRESS SPACE WHEN PROCESS EXISTS
-    ASSERT(x86_64_init_stage() < X86_64_INIT_STAGE_FINAL);
-    // if(x86_64_init_stage() >= X86_64_INIT_STAGE_FINAL) as = cpu_current()->address_space;
+    if(x86_64_init_stage() >= X86_64_INIT_STAGE_FINAL) {
+        process_t *proc = arch_sched_thread_current()->proc;
+        if(proc) as = proc->address_space;
+    }
 
     uint64_t cr2;
     asm volatile("movq %%cr2, %0" : "=r" (cr2));
