@@ -4,7 +4,7 @@
             "name": "ElysiumOS",
             "includePath": [
                 "${workspaceFolder}/kernel/src",
-                "${workspaceFolder}/.chariot-cache/built/tartarus/usr/include"
+                "${workspaceFolder}/.chariot-cache/built/kernel-headers/usr/include"
             ],
             "defines": [
                 "__ARCH_X86_64",
