@@ -6,7 +6,7 @@ endif
 
 # Flags
 CFLAGS = -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -O2
-CFLAGS += -Wall -Wextra -Wno-unused-variable -Wvla -Wshadow
+CFLAGS += -Wall -Wextra -Wvla -Wshadow
 CFLAGS += -fno-stack-protector -fno-stack-check -fno-omit-frame-pointer -fno-strict-aliasing
 CFLAGS += -D__ARCH_$(shell echo $(ARCH) | tr a-z A-Z) -D__MLIBC_ABI_ONLY
 CFLAGS += -g

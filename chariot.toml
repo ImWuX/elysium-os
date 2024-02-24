@@ -275,8 +275,30 @@ install = [
     "cp tartarus.h $INSTALL/usr/include"
 ]
 
+[target.kernel-headers]
+dependencies = ["mlibc-headers", "tartarus"]
+configure = ["cp -r $ROOT/usr/include/* ."]
+install = [
+    "mkdir -p $INSTALL/usr/include",
+    "cp -r . $INSTALL/usr/include"
+]
+
 [target.kernel]
-dependencies = ["source:kernel", "source:support", "host:cross-gcc", "tartarus"]
+dependencies = ["source:kernel", "source:support", "host:gcc", "kernel-headers"]
 configure = ["$SOURCE:kernel/conf.sh --target=x86_64 --prefix=$PREFIX --libgcc=$SOURCE:support/libgcc-x86_64.a"]
 build = ["make all SYSROOT=$ROOT"]
 install = ["DESTDIR=$INSTALL make install"]
+
+# init
+[source.init]
+type = "local"
+url = "init"
+
+[target.init]
+dependencies = ["host:gcc", "source:init"]
+configure = ["cp -r $SOURCE:init/* ."]
+build = ["make init"]
+install = [
+    "mkdir -p $INSTALL/usr/bin",
+    "cp init $INSTALL/usr/bin"
+]
