@@ -7,6 +7,12 @@
 #define ARCH_VMM_FLAG_GLOBAL (1 << 1)
 
 /**
+ * @brief Populate a new address space struct
+ * @param address_space newly allocated address space
+ */
+void arch_vmm_address_space_init(vmm_address_space_t *address_space);
+
+/**
  * @brief Load a virtual address space
  */
 void arch_vmm_load_address_space(vmm_address_space_t *address_space);
