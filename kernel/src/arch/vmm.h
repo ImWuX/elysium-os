@@ -7,10 +7,10 @@
 #define ARCH_VMM_FLAG_GLOBAL (1 << 1)
 
 /**
- * @brief Populate a new address space struct
- * @param address_space newly allocated address space
+ * @brief Create a new address space
+ * @warning Depends on heap
  */
-void arch_vmm_address_space_init(vmm_address_space_t *address_space);
+vmm_address_space_t *arch_vmm_address_space_create();
 
 /**
  * @brief Load a virtual address space

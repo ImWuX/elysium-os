@@ -1,4 +1,5 @@
 #pragma once
+#include <lib/auxv.h>
 #include <sched/thread.h>
 
 /**
@@ -9,8 +10,20 @@
 void arch_sched_thread_destroy(thread_t *thread);
 
 /**
+ * @brief Sets up a stack according to SysV ABI
+ */
+uintptr_t arch_sched_stack_setup(process_t *proc, char **argv, char **envp, auxv_t *auxv);
+
+/**
+ * @brief Creates a new userspace thread
+ * @param ip essentially the entry point
+ * @param sp userspace stack pointer
+ */
+thread_t *arch_sched_thread_create_user(process_t *proc, uintptr_t ip, uintptr_t sp);
+
+/**
  * @brief Creates a new kernel thread
- * @param func Thread function
+ * @param func thread function
  */
 thread_t *arch_sched_thread_create_kernel(void (* func)());
 

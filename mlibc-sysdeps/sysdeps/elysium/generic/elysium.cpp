@@ -21,10 +21,10 @@ namespace mlibc {
         __builtin_unreachable();
     }
 
-    int sys_tcb_set(void *pointer [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_tcb_set called" << frg::endlog;
-        return -1;
+    int sys_tcb_set(void *pointer) {
+        syscall_return_t ret = syscall1(SYSCALL_FS_SET, (syscall_int_t) pointer);
+        if(ret.err != 0) return ret.err;
+        return 0;
     }
 
     int sys_futex_wait(int *pointer [[maybe_unused]], int expected [[maybe_unused]], const struct timespec *time [[maybe_unused]]) {
@@ -39,10 +39,11 @@ namespace mlibc {
         return -1;
     }
 
-    int sys_anon_allocate(size_t size [[maybe_unused]], void **pointer [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_anon_allocate called" << frg::endlog;
-        return -1;
+    int sys_anon_allocate(size_t size, void **pointer) {
+        syscall_return_t ret = syscall1(SYSCALL_ANON_ALLOCATE, size);
+        if(ret.err != 0) return ret.err;
+        *pointer = (void *) ret.value;
+        return 0;
     }
 
     int sys_anon_free(void *pointer [[maybe_unused]], size_t size [[maybe_unused]]) {
@@ -66,7 +67,7 @@ namespace mlibc {
     int sys_read(int fd [[maybe_unused]], void *buf [[maybe_unused]], size_t count [[maybe_unused]], ssize_t *bytes_read [[maybe_unused]]) {
         // TODO: Implement
         mlibc::infoLogger() << "unimplemented sys_read called" << frg::endlog;
-        return 0;
+        return -1;
     }
 
     int sys_write(int fd [[maybe_unused]], const void *buf [[maybe_unused]], size_t count [[maybe_unused]], ssize_t *bytes_written [[maybe_unused]]) {
@@ -123,10 +124,8 @@ namespace mlibc {
         return ENOTTY;
     }
 
-    int sys_uname(struct utsname *buf [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_uname called" << frg::endlog;
-        return -1;
+    int sys_uname(struct utsname *buf) {
+        return syscall1(SYSCALL_UNAME, (syscall_int_t) buf).err;
     }
 
 }

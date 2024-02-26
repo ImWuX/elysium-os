@@ -40,6 +40,27 @@
                 "-D__ARCH_X86_64",
                 "-D__MLIBC_ABI_ONLY"
             ]
+        },
+        {
+            "name": "Init",
+            "includePath": [
+                "${workspaceFolder}/.chariot-cache/built/mlibc-headers/usr/include"
+            ],
+            "defines": [
+                /* Unsupported C23 features work-around */
+                /* https://github.com/microsoft/vscode-cpptools/issues/10696 */
+                "true=1",
+                "false=0",
+                "bool=_Bool",
+                "static_assert=_Static_assert"
+            ],
+            "compilerPath": "${workspaceFolder}/.chariot-cache/host-built/gcc/usr/local/bin/x86_64-elysium-gcc",
+            "cStandard": "gnu23",
+            "intelliSenseMode": "gcc-x64",
+            "compilerArgs": [
+                "-std=gnu2x",
+                "-static"
+            ]
         }
     ],
     "version": 4
