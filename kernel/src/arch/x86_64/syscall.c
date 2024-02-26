@@ -62,7 +62,7 @@ syscall_return_t x86_64_syscall_uname(struct utsname *buf) {
     return ret;
 }
 
-void x86_64_syscall_init() {
+void x86_64_syscall_init_cpu() {
     x86_64_msr_write(X86_64_MSR_EFER, x86_64_msr_read(X86_64_MSR_EFER) | MSR_EFER_SCE);
     x86_64_msr_write(X86_64_MSR_STAR, ((uint64_t) X86_64_GDT_CODE_RING0 << 32) | ((uint64_t) (X86_64_GDT_CODE_RING3 - 16) << 48));
     x86_64_msr_write(X86_64_MSR_LSTAR, (uint64_t) x86_64_syscall_entry);
