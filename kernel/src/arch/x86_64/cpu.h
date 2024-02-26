@@ -1,4 +1,5 @@
 #pragma once
+#include <stddef.h>
 #include <lib/container.h>
 #include <sys/cpu.h>
 #include <arch/x86_64/tss.h>
@@ -17,3 +18,6 @@ typedef struct x86_64_cpu {
 
     cpu_t common;
 } x86_64_cpu_t;
+
+extern volatile size_t g_x86_64_cpu_count;
+extern x86_64_cpu_t *g_x86_64_cpus;

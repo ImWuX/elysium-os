@@ -96,37 +96,36 @@ static void tlb_shootdown(vmm_address_space_t *address_space) {
         return;
     }
 
-    // TODO: fix when smp is implemented
-    // ipl_t old_ipl = ipl(IPL_CRITICAL);
-    // for(size_t i = 0; i < g_x86_64_cpus_initialized; i++) {
-    //     x86_64_cpu_t *cpu = &g_x86_64_cpus[i];
+    ipl_t old_ipl = ipl(IPL_CRITICAL);
+    for(size_t i = 0; i < g_x86_64_cpu_count; i++) {
+        x86_64_cpu_t *cpu = &g_x86_64_cpus[i];
 
-    //     if(cpu == X86_64_CPU(cpu_current())) {
-    //         if(X86_64_AS(address_space) == &g_initial_address_space || read_cr3() == X86_64_AS(address_space)->cr3) write_cr3(read_cr3());
-    //         continue;
-    //     }
+        if(cpu == X86_64_CPU(cpu_current())) {
+            if(X86_64_AS(address_space) == &g_initial_address_space || read_cr3() == X86_64_AS(address_space)->cr3) write_cr3(read_cr3());
+            continue;
+        }
 
-    //     spinlock_acquire(&cpu->tlb_shootdown_lock);
-    //     spinlock_acquire(&cpu->tlb_shootdown_check);
-    //     cpu->tlb_shootdown_cr3 = X86_64_AS(address_space)->cr3;
+        spinlock_acquire(&cpu->tlb_shootdown_lock);
+        spinlock_acquire(&cpu->tlb_shootdown_check);
+        cpu->tlb_shootdown_cr3 = X86_64_AS(address_space)->cr3;
 
-    //     asm volatile("" : : : "memory");
-    //     x86_64_lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | X86_64_LAPIC_IPI_ASSERT);
+        asm volatile("" : : : "memory");
+        x86_64_lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | X86_64_LAPIC_IPI_ASSERT);
 
-    //     volatile int timeout = 0;
-    //     do {
-    //         if(timeout++ % 500 != 0) {
-    //             asm volatile("pause");
-    //             continue;
-    //         }
-    //         if(timeout >= 3000) break;
-    //         x86_64_lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | X86_64_LAPIC_IPI_ASSERT);
-    //     } while(!spinlock_try_acquire(&cpu->tlb_shootdown_check));
+        volatile int timeout = 0;
+        do {
+            if(timeout++ % 500 != 0) {
+                asm volatile("pause");
+                continue;
+            }
+            if(timeout >= 3000) break;
+            x86_64_lapic_ipi(cpu->lapic_id, g_tlb_shootdown_vector | X86_64_LAPIC_IPI_ASSERT);
+        } while(!spinlock_try_acquire(&cpu->tlb_shootdown_check));
 
-    //     spinlock_release(&cpu->tlb_shootdown_check);
-    //     spinlock_release(&cpu->tlb_shootdown_lock);
-    // }
-    // ipl(old_ipl);
+        spinlock_release(&cpu->tlb_shootdown_check);
+        spinlock_release(&cpu->tlb_shootdown_lock);
+    }
+    ipl(old_ipl);
 }
 
 static void tlb_shootdown_handler([[maybe_unused]] x86_64_interrupt_frame_t *frame) {

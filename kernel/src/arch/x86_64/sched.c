@@ -14,6 +14,7 @@
 #include <arch/types.h>
 #include <arch/sched.h>
 #include <arch/vmm.h>
+#include <arch/cpu.h>
 #include <arch/x86_64/init.h>
 #include <arch/x86_64/tss.h>
 #include <arch/x86_64/msr.h>
@@ -37,12 +38,15 @@ typedef struct x86_64_thread {
     uintptr_t rsp;
     uintptr_t syscall_rsp;
     stack_t kernel_stack;
-    void *fpu_area;
+    struct {
+        void *fpu_area;
+        uint64_t fs, gs;
+    } state;
     thread_t common;
 } x86_64_thread_t;
 
 typedef struct {
-    uint64_t r15, r14, r13, r12, rbp, rbx;
+    uint64_t r12, r13, r14, r15, rbp, rbx;
     void (* thread_init)(x86_64_thread_t *prev);
     void (* thread_init_kernel)();
     void (* entry)();
@@ -53,7 +57,7 @@ typedef struct {
 } __attribute__((packed)) init_stack_kernel_t;
 
 typedef struct {
-    uint64_t r15, r14, r13, r12, rbp, rbx;
+    uint64_t r12, r13, r14, r15, rbp, rbx;
     void (* thread_init)(x86_64_thread_t *prev);
     void (* thread_init_user)();
     void (* entry)();
@@ -106,8 +110,14 @@ static void sched_switch(x86_64_thread_t *this, x86_64_thread_t *next) {
 
     x86_64_tss_set_rsp0(X86_64_CPU(next->common.cpu)->tss, next->kernel_stack.base);
 
-    if(this->fpu_area) g_x86_64_fpu_save(this->fpu_area);
-    g_x86_64_fpu_restore(next->fpu_area);
+    this->state.gs = x86_64_msr_read(X86_64_MSR_KERNEL_GS_BASE);
+	this->state.fs = x86_64_msr_read(X86_64_MSR_FS_BASE);
+
+	x86_64_msr_write(X86_64_MSR_KERNEL_GS_BASE, next->state.gs);
+	x86_64_msr_write(X86_64_MSR_FS_BASE, next->state.fs);
+
+    if(this->state.fpu_area) g_x86_64_fpu_save(this->state.fpu_area);
+    g_x86_64_fpu_restore(next->state.fpu_area);
 
     x86_64_thread_t *prev = x86_64_sched_context_switch(this, next);
     sched_thread_drop(&prev->common);
@@ -141,8 +151,10 @@ static x86_64_thread_t *create_thread(process_t *proc, stack_t kernel_stack, uin
     thread->common.proc = proc;
     thread->rsp = rsp;
     thread->kernel_stack = kernel_stack;
-    thread->fpu_area = heap_alloc_align(g_x86_64_fpu_area_size, 64);
-    memset(thread->fpu_area, 0, g_x86_64_fpu_area_size);
+    thread->state.fs = 0;
+    thread->state.gs = 0;
+    thread->state.fpu_area = heap_alloc_align(g_x86_64_fpu_area_size, 64);
+    memset(thread->state.fpu_area, 0, g_x86_64_fpu_area_size);
 
     // TODO: follow sysv abi for how floating points registers should be initialized
     //          (either here, or in the userspace create thread, though I dont see why it would hurt to do this for kernel threads too)
@@ -273,7 +285,7 @@ static void sched_entry([[maybe_unused]] x86_64_interrupt_frame_t *frame) {
     x86_64_sched_next();
 }
 
-[[noreturn]] void x86_64_sched_init_cpu(x86_64_cpu_t *cpu) {
+[[noreturn]] void x86_64_sched_init_cpu(x86_64_cpu_t *cpu, bool release) {
     x86_64_thread_t *idle_thread = X86_64_THREAD(arch_sched_thread_create_kernel(sched_idle));
     idle_thread->common.id = 0;
     cpu->common.idle_thread = &idle_thread->common;
@@ -283,7 +295,13 @@ static void sched_entry([[maybe_unused]] x86_64_interrupt_frame_t *frame) {
     dummy_thread->this = dummy_thread;
     dummy_thread->common.state = THREAD_STATE_DESTROY;
     dummy_thread->common.cpu = &cpu->common;
-    x86_64_init_stage_set(X86_64_INIT_STAGE_SCHED);
+
+    if(release) {
+        x86_64_init_stage_set(X86_64_INIT_STAGE_SCHED);
+    } else {
+        while(x86_64_init_stage() != X86_64_INIT_STAGE_SCHED) arch_cpu_relax();
+    }
+
     sched_switch(dummy_thread, idle_thread);
     __builtin_unreachable();
 }

@@ -46,7 +46,7 @@ static char *g_exception_messages[] = {
         &initial_stack_frame,
         "UNHANDLED EXCEPTION\n%s\nr15: %#lx\nr14: %#lx\nr13: %#lx\nr12: %#lx\nr11: %#lx\nr10: %#lx\nr9: %#lx\nr8: %#lx\n"
         "rdi: %#lx\nrsi: %#lx\nrbp: %#lx\nrdx: %#lx\nrcx: %#lx\nrbx: %#lx\nrax: %#lx\nint_no: %#lx\nerr_code: %#lx\ncr2: %#lx\nrip: %#lx\ncs: %#lx\n"
-        "rflags: %#lx\nrsp: %#lx\nss: %#lx\n",
+        "rflags: %#lx\nrsp: %#lx\nss: %#lx",
         g_exception_messages[frame->int_no],
         frame->r15,
         frame->r14,

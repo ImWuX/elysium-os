@@ -46,8 +46,12 @@
 
 uintptr_t g_hhdm_base;
 size_t g_hhdm_size;
+
 static vmm_segment_t g_hhdm_segment, g_kernel_segment;
 static x86_64_init_stage_t init_stage = X86_64_INIT_STAGE_ENTRY;
+
+volatile size_t g_x86_64_cpu_count;
+x86_64_cpu_t *g_x86_64_cpus;
 
 static void log_raw_serial(char c) {
 	x86_64_port_outb(0x3F8, c);
@@ -80,6 +84,55 @@ static log_sink_t g_serial_sink = {
     .log = log_serial,
     .log_raw = log_raw_serial
 };
+
+// TODO: A decent amount of duplicate code here. Consider having some sort of shared init.
+[[noreturn]] __attribute__((naked)) static void init_ap() {
+    log(LOG_LEVEL_INFO, "INIT", "AP %i:%i Init", g_x86_64_cpu_count, x86_64_lapic_id());
+
+    x86_64_gdt_load();
+
+    // Virtual Memory
+    uint64_t pat = x86_64_msr_read(X86_64_MSR_PAT);
+    pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
+    pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
+    x86_64_msr_write(X86_64_MSR_PAT, pat);
+
+    ADJUST_STACK(g_hhdm_base);
+    arch_vmm_load_address_space(g_vmm_kernel_address_space);
+
+    // Interrupts
+    ASSERT(x86_64_cpuid_feature(X86_64_CPUID_FEATURE_APIC));
+    x86_64_lapic_initialize();
+    x86_64_interrupt_load_idt();
+
+    // CPU Local
+    x86_64_tss_t *tss = heap_alloc(sizeof(x86_64_tss_t));
+    memset(tss, 0, sizeof(x86_64_tss_t));
+    tss->iomap_base = sizeof(x86_64_tss_t);
+    x86_64_gdt_load_tss(tss);
+
+    x86_64_pit_initialize(UINT16_MAX);
+    uint16_t start_count = x86_64_pit_count();
+    x86_64_lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
+    uint16_t end_count = x86_64_pit_count();
+
+    x86_64_cpu_t *cpu = &g_x86_64_cpus[g_x86_64_cpu_count];
+    cpu->lapic_id = x86_64_lapic_id();
+    cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
+    cpu->tss = tss;
+
+    // Misc
+    x86_64_fpu_init_cpu();
+    x86_64_syscall_init_cpu();
+
+    log(LOG_LEVEL_DEBUG, "INIT", "AP %i:%i init exit", g_x86_64_cpu_count, x86_64_lapic_id());
+    __atomic_add_fetch(&g_x86_64_cpu_count, 1, __ATOMIC_SEQ_CST);
+
+    arch_interrupt_set_ipl(IPL_SCHED);
+    asm volatile("sti");
+    x86_64_sched_init_cpu(cpu, false);
+    __builtin_unreachable();
+}
 
 x86_64_init_stage_t x86_64_init_stage() {
     return init_stage;
@@ -197,29 +250,13 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     ASSERT(heap_random_address != NULL);
     log(LOG_LEVEL_DEBUG, "HEAP", "randomly allocated memory (0x500 bytes): %#lx", (uintptr_t) heap_random_address);
 
-    // Initialize CPU Local
-    x86_64_tss_t *tss = heap_alloc(sizeof(x86_64_tss_t));
-    memset(tss, 0, sizeof(x86_64_tss_t));
-    tss->iomap_base = sizeof(x86_64_tss_t);
-    x86_64_gdt_load_tss(tss);
-
-    x86_64_pit_initialize(UINT16_MAX);
-    uint16_t start_count = x86_64_pit_count();
-    x86_64_lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
-    uint16_t end_count = x86_64_pit_count();
-
-    x86_64_cpu_t *cpu = heap_alloc(sizeof(x86_64_cpu_t));
-    cpu->lapic_id = x86_64_lapic_id();
-    cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
-    cpu->tss = tss;
-
     // Initialize FPU
     x86_64_fpu_init();
     x86_64_fpu_init_cpu();
 
     // Initialize sched
     x86_64_sched_init();
-    x86_64_syscall_init();
+    x86_64_syscall_init_cpu();
 
     // Initialize VFS
     int r = vfs_mount(&g_tmpfs_ops, NULL, NULL);
@@ -288,11 +325,41 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         sched_thread_schedule(thread);
     }
 
+    // SMP init
+    g_x86_64_cpus = heap_alloc(sizeof(x86_64_cpu_t) * boot_info->cpu_count);
+
+    x86_64_tss_t *tss = heap_alloc(sizeof(x86_64_tss_t));
+    memset(tss, 0, sizeof(x86_64_tss_t));
+    tss->iomap_base = sizeof(x86_64_tss_t);
+    x86_64_gdt_load_tss(tss);
+
+    x86_64_pit_initialize(UINT16_MAX);
+    uint16_t start_count = x86_64_pit_count();
+    x86_64_lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
+    uint16_t end_count = x86_64_pit_count();
+
+    x86_64_cpu_t *cpu = &g_x86_64_cpus[boot_info->bsp_index];
+    cpu->lapic_id = x86_64_lapic_id();
+    cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
+    cpu->tss = tss;
+
+    g_x86_64_cpu_count = 0;
+    for(size_t i = 0; i < boot_info->cpu_count; i++) {
+        if(i == boot_info->bsp_index) {
+            g_x86_64_cpu_count++;
+            continue;
+        }
+        *boot_info->cpus[i].wake_on_write = (uint64_t) init_ap;
+        while(i >= g_x86_64_cpu_count);
+    }
+    log(LOG_LEVEL_DEBUG, "INIT", "BSP init exit (%i/%i cpus initialized)", g_x86_64_cpu_count, boot_info->cpu_count);
+    x86_64_init_stage_set(X86_64_INIT_STAGE_SMP);
+
     // Enable interrupts & handoff to sched
     arch_interrupt_set_ipl(IPL_SCHED);
     asm volatile("sti");
     x86_64_init_stage_set(X86_64_INIT_STAGE_PRE_SCHED);
 
-    x86_64_sched_init_cpu(cpu);
+    x86_64_sched_init_cpu(cpu, true);
     __builtin_unreachable();
 }
