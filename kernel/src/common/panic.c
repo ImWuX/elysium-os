@@ -1,5 +1,5 @@
 #include "panic.h"
-#include <common/kprint.h>
+#include <common/log.h>
 #include <arch/cpu.h>
 
 #ifdef __ARCH_X86_64
@@ -8,7 +8,7 @@ size_t g_panic_symbols_length;
 
 static void stack_trace(stack_frame_t *stack_frame) {
     if(!g_panic_symbols) return;
-    kprintf("Stack Trace:\n");
+    log(LOG_LEVEL_ERROR, "PANIC", "Stack Trace:");
     for(int i = 0; stack_frame && stack_frame->rip && i < 30; i++) {
         uint64_t offset = 0;
         uint64_t address = 0;
@@ -35,24 +35,22 @@ static void stack_trace(stack_frame_t *stack_frame) {
             offset = j + 3;
         }
 
-        kprintf("\t");
         if(offset >= g_panic_symbols_length) {
-            kprintf("[UNKNOWN]");
+            log(LOG_LEVEL_ERROR, "PANIC", "    [UNKNOWN] <%#lx>", stack_frame->rip);
         } else {
             int len = 0;
             while(g_panic_symbols[offset + len] != '\n') len++;
-            kprintf("%.*s+%lu", len, &g_panic_symbols[offset], address - stack_frame->rip);
+            log(LOG_LEVEL_ERROR, "PANIC", "    %.*s+%lu <%#lx>", len, &g_panic_symbols[offset], address - stack_frame->rip, stack_frame->rip);
         }
-        kprintf(" <%#lx>\n", stack_frame->rip);
         stack_frame = stack_frame->rbp;
     }
 }
 
 [[noreturn]] void panic_stack_trace(stack_frame_t *frame, const char *fmt, ...) {
-    kprintf("Kernel Panic\n");
+    log(LOG_LEVEL_ERROR, "PANIC", "Kernel Panic");
     va_list list;
 	va_start(list, format);
-    kprintv(fmt, list);
+    log_list(LOG_LEVEL_ERROR, "PANIC", fmt, list);
     stack_trace(frame);
 	va_end(list);
     arch_cpu_halt();
@@ -61,10 +59,10 @@ static void stack_trace(stack_frame_t *stack_frame) {
 #endif
 
 [[noreturn]] void panic(const char *fmt, ...) {
-    kprintf("Kernel Panic\n");
+    log(LOG_LEVEL_ERROR, "PANIC", "Kernel Panic");
     va_list list;
 	va_start(list, format);
-    kprintv(fmt, list);
+    log_list(LOG_LEVEL_ERROR, "PANIC", fmt, list);
 #ifdef __ARCH_X86_64
     stack_frame_t *stack_frame;
     asm volatile("movq %%rbp, %0" : "=r" (stack_frame));
