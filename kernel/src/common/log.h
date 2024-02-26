@@ -1,6 +1,7 @@
 #pragma once
 #include <stdarg.h>
 #include <lib/list.h>
+#include <common/spinlock.h>
 
 typedef enum {
     LOG_LEVEL_DEBUG,
@@ -12,6 +13,7 @@ typedef enum {
 typedef struct {
     char *name;
     log_level_t level;
+    spinlock_t lock;
     list_element_t list;
 
     /**
