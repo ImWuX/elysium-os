@@ -17,7 +17,7 @@ static int debug_print(const char *fmt, ...) {
 }
 
 int main(int argc, char **vargs) {
-    debug_print("[ INIT ]\n");
+    debug_print("%s\n", vargs[0]);
 
     struct utsname name;
     int r = uname(&name);

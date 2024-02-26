@@ -9,8 +9,8 @@
 #include <lib/list.h>
 #include <lib/mem.h>
 #include <lib/str.h>
+#include <common/log.h>
 #include <common/elf.h>
-#include <common/kprint.h>
 #include <common/assert.h>
 #include <common/panic.h>
 #include <memory/hhdm.h>
@@ -49,21 +49,37 @@ size_t g_hhdm_size;
 static vmm_segment_t g_hhdm_segment, g_kernel_segment;
 static x86_64_init_stage_t init_stage = X86_64_INIT_STAGE_ENTRY;
 
-static void pch(char ch) {
-	x86_64_port_outb(0x3F8, ch);
+static void log_raw_serial(char c) {
+	x86_64_port_outb(0x3F8, c);
 }
 
-int kprintv(const char *fmt, va_list list) {
-	return format(pch, fmt, list);
-}
-
-int kprintf(const char *fmt, ...) {
+static void format_lrs(char *fmt, ...) {
     va_list list;
 	va_start(list, fmt);
-	int ret = kprintv(fmt, list);
+    format(log_raw_serial, fmt, list);
 	va_end(list);
-	return ret;
 }
+
+static void log_serial(log_level_t level, const char *tag, const char *fmt, va_list args) {
+    char *color;
+    switch(level) {
+        case LOG_LEVEL_DEBUG: color = "\e[36m"; break;
+        case LOG_LEVEL_INFO: color = "\e[33m"; break;
+        case LOG_LEVEL_WARN: color = "\e[91m"; break;
+        case LOG_LEVEL_ERROR: color = "\e[31m"; break;
+        default: color = "\e[0m"; break;
+    }
+    format_lrs("%s[%s::%s]%s ", color, log_level_tostring(level), tag, "\e[0m");
+    format(log_raw_serial, fmt, args);
+    log_raw_serial('\n');
+}
+
+static log_sink_t g_serial_sink = {
+    .name = "SERIAL",
+    .level = LOG_LEVEL_DEBUG,
+    .log = log_serial,
+    .log_raw = log_raw_serial
+};
 
 x86_64_init_stage_t x86_64_init_stage() {
     return init_stage;
@@ -77,6 +93,10 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 	g_hhdm_base = boot_info->hhdm_base;
 	g_hhdm_size = boot_info->hhdm_size;
 
+    log_sink_add(&g_serial_sink);
+    log_raw('\n');
+    log(LOG_LEVEL_INFO, "INIT", "Elysium Alpha");
+
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
         if(memcmp(module->name, "KERNSYMBTXT", 11) != 0) continue;
@@ -84,8 +104,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         g_panic_symbols_length = module->size;
     }
 
-	kprintf("Elysium Alpha\n");
-    kprintf("HHDM: %#lx (%#lx)\n", g_hhdm_base, g_hhdm_size);
+    log(LOG_LEVEL_DEBUG, "HHDM", "Base: %#lx, Size: %#lx", g_hhdm_base, g_hhdm_size);
 
     ASSERT(x86_64_cpuid_feature(X86_64_CPUID_FEATURE_MSR));
 
@@ -102,15 +121,15 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     }
     x86_64_init_stage_set(X86_64_INIT_STAGE_PHYS_MEMORY);
 
-    kprintf("Physical Memory Map\n");
+    log(LOG_LEVEL_DEBUG, "PMEM", "Physical Memory Map");
     for(int i = 0; i <= PMM_ZONE_MAX; i++) {
         pmm_zone_t *zone = &g_pmm_zones[i];
         if(!zone->present) continue;
 
-        kprintf("- %s\n", zone->name);
+        log(LOG_LEVEL_DEBUG, "PMEM", "- %s", zone->name);
         LIST_FOREACH(&zone->regions, elem) {
             pmm_region_t *region = LIST_CONTAINER_GET(elem, pmm_region_t, list_elem);
-            kprintf("  - %#-12lx %lu/%lu pages\n", region->base, region->free_count, region->page_count);
+            log(LOG_LEVEL_DEBUG, "PMEM", "  - %#-12lx %lu/%lu pages", region->base, region->free_count, region->page_count);
         }
     }
 
@@ -167,16 +186,16 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 
     x86_64_init_stage_set(X86_64_INIT_STAGE_MEMORY);
 
-    void *random_addr = vmm_map(g_vmm_kernel_address_space, NULL, 0x5000, VMM_PROT_READ, VMM_FLAG_NONE, &g_seg_anon, NULL);
-    ASSERT(random_addr != NULL);
-    kprintf("VMM randomly allocated address: %#lx\n", random_addr);
+    void *vmm_random_addr = vmm_map(g_vmm_kernel_address_space, NULL, 0x5000, VMM_PROT_READ, VMM_FLAG_NONE, &g_seg_anon, NULL);
+    ASSERT(vmm_random_addr != NULL);
+    log(LOG_LEVEL_DEBUG, "VMM", "randomly allocated & mapped address: %#lx", (uintptr_t) vmm_random_addr);
 
     // Initialize heap
     heap_initialize(g_vmm_kernel_address_space, 0x100'0000'0000);
 
-    void *p = heap_alloc(0x500);
-    ASSERT(p != NULL);
-    kprintf("Heap randomly allocated address: %#lx\n", p);
+    void *heap_random_address = heap_alloc(0x500);
+    ASSERT(heap_random_address != NULL);
+    log(LOG_LEVEL_DEBUG, "HEAP", "randomly allocated memory (0x500 bytes): %#lx", (uintptr_t) heap_random_address);
 
     // Initialize CPU Local
     x86_64_tss_t *tss = heap_alloc(sizeof(x86_64_tss_t));
@@ -219,7 +238,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         if(r < 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)\n", module->name);
     }
 
-    kprintf("Root Directory\n");
+    log(LOG_LEVEL_DEBUG, "FS", "Root Directory");
     vfs_node_t *root;
     r = vfs_lookup("/", &root, NULL);
     ASSERT(r == 0);
@@ -228,7 +247,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         r = root->ops->readdir(root, &i, &filename);
         ASSERT(r == 0);
         if(filename == NULL) break;
-        kprintf(" - %s\n", filename);
+        log(LOG_LEVEL_DEBUG, "FS", " - %s", filename);
     }
 
     // Load init
@@ -248,7 +267,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 
         auxv_t interp_auxv = {};
         if(interpreter) {
-            kprintf("Found interpreter: %s\n", interpreter);
+            log(LOG_LEVEL_DEBUG, "INIT", "Found init interpreter: %s", interpreter);
             vfs_node_t *interp_exec;
             r = vfs_lookup(interpreter, &interp_exec, 0);
             if(r < 0) panic("Could not lookup the interpreter for startup (%i)\n", r);
@@ -257,7 +276,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
             if(elf_r) panic("Could not load the interpreter for startup\n");
         }
 
-        kprintf("entry: %#lx; phdr: %#lx; phent: %#lx; phnum: %#lx;\n", auxv.entry, auxv.phdr, auxv.phent, auxv.phnum);
+        log(LOG_LEVEL_DEBUG, "INIT", "entry: %#lx; phdr: %#lx; phent: %#lx; phnum: %#lx;", auxv.entry, auxv.phdr, auxv.phent, auxv.phnum);
 
         char *argv[] = { "/INIT", NULL };
         char *envp[] = { NULL };
@@ -265,7 +284,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         process_t *proc = sched_process_create(as);
         uintptr_t thread_stack = arch_sched_stack_setup(proc, argv, envp, &auxv);
         thread_t *thread = arch_sched_thread_create_user(proc, interpreter ? interp_auxv.entry : auxv.entry, thread_stack);
-        kprintf("init thread >> entry: %#lx, stack: %#lx\n", interpreter ? interp_auxv.entry : auxv.entry, thread_stack);
+        log(LOG_LEVEL_DEBUG, "INIT", "init thread >> entry: %#lx, stack: %#lx", interpreter ? interp_auxv.entry : auxv.entry, thread_stack);
         sched_thread_schedule(thread);
     }
 

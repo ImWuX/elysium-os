@@ -1,7 +1,6 @@
 #include <memory/vmm.h>
 #include <memory/pmm.h>
 #include <lib/math.h>
-#include <common/kprint.h>
 #include <arch/vmm.h>
 #include <arch/types.h>
 

@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <sys/utsname.h>
 #include <lib/str.h>
-#include <common/kprint.h>
+#include <common/log.h>
 #include <sched/thread.h>
 #include <arch/types.h>
 #include <arch/sched.h>
@@ -20,7 +20,7 @@ typedef struct {
 extern void x86_64_syscall_entry();
 
 void x86_64_syscall_exit(int code) {
-    kprintf("syscall :: exit(code: %i, tid: %li) -> exit\n", code, arch_sched_thread_current()->id);
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "exit(code: %i, tid: %li) -> exit", code, arch_sched_thread_current()->id);
     arch_sched_thread_current()->state = THREAD_STATE_DESTROY;
     x86_64_sched_next();
     __builtin_unreachable();
@@ -28,7 +28,7 @@ void x86_64_syscall_exit(int code) {
 
 syscall_return_t x86_64_syscall_debug(char c) {
     syscall_return_t ret = {};
-    kprintf("%c", c);
+    log_raw(c);
     return ret;
 }
 
@@ -40,14 +40,14 @@ syscall_return_t x86_64_syscall_anon_allocate(uintptr_t size) {
     }
     void *p = vmm_map(arch_sched_thread_current()->proc->address_space, NULL, size, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, &g_seg_anon, NULL);
     ret.value = (uintptr_t) p;
-    kprintf("syscall :: alloc_anon(size: %#lx) -> %#lx\n", size, ret.value);
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "alloc_anon(size: %#lx) -> %#lx", size, ret.value);
     return ret;
 }
 
 syscall_return_t x86_64_syscall_fs_set(void *ptr) {
     syscall_return_t ret = {};
     x86_64_msr_write(X86_64_MSR_FS_BASE, (uint64_t) ptr);
-    kprintf("syscall :: fs_set(ptr: %#lx) -> void\n", (uint64_t) ptr);
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "fs_set(ptr: %#lx) -> void", (uint64_t) ptr);
     return ret;
 }
 

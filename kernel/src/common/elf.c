@@ -1,6 +1,6 @@
 #include "elf.h"
 #include <lib/mem.h>
-#include <common/kprint.h>
+#include <common/log.h>
 #include <common/assert.h>
 #include <memory/pmm.h>
 #include <memory/vmm.h>
@@ -88,7 +88,7 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, aux
     // TODO: ENOEXEC is probably the errno we want to return
 
     #define FAIL_GOTO fail_free_none
-    #define FAIL(MSG) { kprintf("ELF: WARNING: %s. Aborting.\n", MSG); goto FAIL_GOTO; }
+    #define FAIL(MSG) { log(LOG_LEVEL_WARN, "ELF", "WARNING: %s. Aborting.", MSG); goto FAIL_GOTO; }
 
     if(interpreter) *interpreter = 0;
 
@@ -163,7 +163,7 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, aux
                 auxv->phdr = phdr->vaddr;
                 break;
             default:
-                kprintf("WARNING: Ignoring program header %lu\n", phdr->type);
+                log(LOG_LEVEL_WARN, "ELF", "Ignoring program header %lu", phdr->type);
                 break;
         }
     }
