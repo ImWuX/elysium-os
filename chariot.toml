@@ -295,7 +295,7 @@ type = "local"
 url = "init"
 
 [target.init]
-dependencies = ["host:gcc", "source:init"]
+dependencies = ["host:gcc", "mlibc-headers", "source:init"]
 configure = ["cp -r $SOURCE:init/* ."]
 build = ["make init"]
 install = [

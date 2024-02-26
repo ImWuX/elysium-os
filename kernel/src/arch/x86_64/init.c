@@ -2,17 +2,23 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <errno.h>
 #include <tartarus.h>
 #include <lib/format.h>
 #include <lib/math.h>
 #include <lib/list.h>
 #include <lib/mem.h>
+#include <lib/str.h>
+#include <common/elf.h>
 #include <common/kprint.h>
 #include <common/assert.h>
+#include <common/panic.h>
 #include <memory/hhdm.h>
 #include <memory/pmm.h>
 #include <memory/vmm.h>
 #include <memory/heap.h>
+#include <fs/vfs.h>
+#include <fs/tmpfs.h>
 #include <sched/sched.h>
 #include <arch/vmm.h>
 #include <arch/types.h>
@@ -23,6 +29,7 @@
 #include <arch/x86_64/tss.h>
 #include <arch/x86_64/gdt.h>
 #include <arch/x86_64/port.h>
+#include <arch/x86_64/fpu.h>
 #include <arch/x86_64/msr.h>
 #include <arch/x86_64/cpu.h>
 #include <arch/x86_64/cpuid.h>
@@ -30,6 +37,7 @@
 #include <arch/x86_64/interrupt.h>
 #include <arch/x86_64/exception.h>
 #include <arch/x86_64/sched.h>
+#include <arch/x86_64/syscall.h>
 #include <arch/x86_64/dev/pit.h>
 #include <arch/x86_64/dev/pic8259.h>
 
@@ -61,13 +69,20 @@ x86_64_init_stage_t x86_64_init_stage() {
     return init_stage;
 }
 
-static void set_init_stage(x86_64_init_stage_t stage) {
+void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     init_stage = stage;
 }
 
 [[noreturn]] void init(tartarus_boot_info_t *boot_info) {
 	g_hhdm_base = boot_info->hhdm_base;
 	g_hhdm_size = boot_info->hhdm_size;
+
+    for(uint16_t i = 0; i < boot_info->module_count; i++) {
+        tartarus_module_t *module = &boot_info->modules[i];
+        if(memcmp(module->name, "KERNSYMBTXT", 11) != 0) continue;
+        g_panic_symbols = (char *) HHDM(module->paddr);
+        g_panic_symbols_length = module->size;
+    }
 
 	kprintf("Elysium Alpha\n");
     kprintf("HHDM: %#lx (%#lx)\n", g_hhdm_base, g_hhdm_size);
@@ -85,7 +100,7 @@ static void set_init_stage(x86_64_init_stage_t stage) {
         if(entry.type != TARTARUS_MEMAP_TYPE_USABLE) continue;
         pmm_region_add(entry.base, entry.length);
     }
-    set_init_stage(X86_64_INIT_STAGE_PHYS_MEMORY);
+    x86_64_init_stage_set(X86_64_INIT_STAGE_PHYS_MEMORY);
 
     kprintf("Physical Memory Map\n");
     for(int i = 0; i <= PMM_ZONE_MAX; i++) {
@@ -99,7 +114,7 @@ static void set_init_stage(x86_64_init_stage_t stage) {
         }
     }
 
-    // Prep interrupts
+    // Initialize interrupts
     ASSERT(x86_64_cpuid_feature(X86_64_CPUID_FEATURE_APIC))
     x86_64_pic8259_remap();
     x86_64_pic8259_disable();
@@ -114,9 +129,9 @@ static void set_init_stage(x86_64_init_stage_t stage) {
                 break;
         }
     }
-    set_init_stage(X86_64_INIT_STAGE_INTERRUPTS);
+    x86_64_init_stage_set(X86_64_INIT_STAGE_INTERRUPTS);
 
-    // Virtual Memory
+    // Initialize Virtual Memory
     uint64_t pat = x86_64_msr_read(X86_64_MSR_PAT);
     pat &= ~(((uint64_t) 0b111 << 48) | ((uint64_t) 0b111 << 40));
     pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
@@ -150,20 +165,20 @@ static void set_init_stage(x86_64_init_stage_t stage) {
 
     x86_64_interrupt_set(0xE, X86_64_INTERRUPT_PRIORITY_EXCEPTION, x86_64_vmm_page_fault_handler);
 
-    set_init_stage(X86_64_INIT_STAGE_MEMORY);
+    x86_64_init_stage_set(X86_64_INIT_STAGE_MEMORY);
 
     void *random_addr = vmm_map(g_vmm_kernel_address_space, NULL, 0x5000, VMM_PROT_READ, VMM_FLAG_NONE, &g_seg_anon, NULL);
     ASSERT(random_addr != NULL);
-    kprintf("\nVMM randomly allocated address: %#lx\n", random_addr);
+    kprintf("VMM randomly allocated address: %#lx\n", random_addr);
 
     // Initialize heap
     heap_initialize(g_vmm_kernel_address_space, 0x100'0000'0000);
 
     void *p = heap_alloc(0x500);
     ASSERT(p != NULL);
-    kprintf("\nHeap randomly allocated address: %#lx\n", p);
+    kprintf("Heap randomly allocated address: %#lx\n", p);
 
-    // CPU Local
+    // Initialize CPU Local
     x86_64_tss_t *tss = heap_alloc(sizeof(x86_64_tss_t));
     memset(tss, 0, sizeof(x86_64_tss_t));
     tss->iomap_base = sizeof(x86_64_tss_t);
@@ -179,13 +194,85 @@ static void set_init_stage(x86_64_init_stage_t stage) {
     cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
     cpu->tss = tss;
 
-    // Init sched
-    x86_64_sched_init();
+    // Initialize FPU
+    x86_64_fpu_init();
+    x86_64_fpu_init_cpu();
 
-    // Enable interrupts
+    // Initialize sched
+    x86_64_sched_init();
+    x86_64_syscall_init();
+
+    // Initialize VFS
+    int r = vfs_mount(&g_tmpfs_ops, NULL, NULL);
+    if(r < 0) panic("Failed to mount RDSK (%i)\n", r);
+
+    for(uint16_t i = 0; i < boot_info->module_count; i++) {
+        tartarus_module_t *module = &boot_info->modules[i];
+
+        vfs_node_t *file;
+        r = vfs_create("/", module->name, &file, NULL);
+        if(r < 0) continue;
+
+        vfs_rw_t rw = { .rw = VFS_RW_WRITE, .size = module->size, .buffer = (void *) HHDM(module->paddr) };
+        size_t write_count;
+        r = file->ops->rw(file, &rw, &write_count);
+        if(r < 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)\n", module->name);
+    }
+
+    kprintf("Root Directory\n");
+    vfs_node_t *root;
+    r = vfs_lookup("/", &root, NULL);
+    ASSERT(r == 0);
+    for(int i = 0;;) {
+        char *filename;
+        r = root->ops->readdir(root, &i, &filename);
+        ASSERT(r == 0);
+        if(filename == NULL) break;
+        kprintf(" - %s\n", filename);
+    }
+
+    // Load init
+    {
+        bool elf_r;
+
+        vmm_address_space_t *as = arch_vmm_address_space_create();
+
+        vfs_node_t *startup_exec;
+        r = vfs_lookup("/INIT", &startup_exec, 0);
+        if(r < 0) panic("Could not lookup test executable (%i)\n", r);
+
+        auxv_t auxv = {};
+        char *interpreter = 0;
+        elf_r = elf_load(startup_exec, as, &interpreter, &auxv);
+        if(elf_r) panic("Could not load test executable\n");
+
+        auxv_t interp_auxv = {};
+        if(interpreter) {
+            kprintf("Found interpreter: %s\n", interpreter);
+            vfs_node_t *interp_exec;
+            r = vfs_lookup(interpreter, &interp_exec, 0);
+            if(r < 0) panic("Could not lookup the interpreter for startup (%i)\n", r);
+
+            elf_r = elf_load(interp_exec, as, 0, &interp_auxv);
+            if(elf_r) panic("Could not load the interpreter for startup\n");
+        }
+
+        kprintf("entry: %#lx; phdr: %#lx; phent: %#lx; phnum: %#lx;\n", auxv.entry, auxv.phdr, auxv.phent, auxv.phnum);
+
+        char *argv[] = { "/INIT", NULL };
+        char *envp[] = { NULL };
+
+        process_t *proc = sched_process_create(as);
+        uintptr_t thread_stack = arch_sched_stack_setup(proc, argv, envp, &auxv);
+        thread_t *thread = arch_sched_thread_create_user(proc, interpreter ? interp_auxv.entry : auxv.entry, thread_stack);
+        kprintf("init thread >> entry: %#lx, stack: %#lx\n", interpreter ? interp_auxv.entry : auxv.entry, thread_stack);
+        sched_thread_schedule(thread);
+    }
+
+    // Enable interrupts & handoff to sched
     arch_interrupt_set_ipl(IPL_SCHED);
     asm volatile("sti");
-    set_init_stage(X86_64_INIT_STAGE_FINAL);
+    x86_64_init_stage_set(X86_64_INIT_STAGE_PRE_SCHED);
 
     x86_64_sched_init_cpu(cpu);
     __builtin_unreachable();

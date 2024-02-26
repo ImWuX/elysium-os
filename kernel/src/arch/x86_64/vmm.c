@@ -1,8 +1,10 @@
 #include <lib/container.h>
+#include <lib/mem.h>
 #include <common/assert.h>
 #include <common/panic.h>
 #include <memory/pmm.h>
 #include <memory/hhdm.h>
+#include <memory/heap.h>
 #include <sys/ipl.h>
 #include <sys/cpu.h>
 #include <arch/vmm.h>
@@ -80,7 +82,7 @@ static inline uint64_t read_cr3() {
 
 static uint64_t flags_prot_to_x86_flags(vmm_protection_t prot, int flags) {
     uint64_t x86_flags = 0;
-    if(!(prot & VMM_PROT_READ)) panic("VMM_PROT_READ not supported\n");
+    if(!(prot & VMM_PROT_READ)) panic("!VMM_PROT_READ not supported\n");
     if(prot & VMM_PROT_WRITE) x86_flags |= PTE_FLAG_RW;
     if(!(prot & VMM_PROT_EXEC)) x86_flags |= PTE_FLAG_NX;
     if(flags & ARCH_VMM_FLAG_USER) x86_flags |= PTE_FLAG_USER;
@@ -89,7 +91,7 @@ static uint64_t flags_prot_to_x86_flags(vmm_protection_t prot, int flags) {
 }
 
 static void tlb_shootdown(vmm_address_space_t *address_space) {
-    if(x86_64_init_stage() < X86_64_INIT_STAGE_FINAL) {
+    if(x86_64_init_stage() < X86_64_INIT_STAGE_SCHED) {
         if(X86_64_AS(address_space) == &g_initial_address_space || read_cr3() == X86_64_AS(address_space)->cr3) write_cr3(read_cr3());
         return;
     }
@@ -134,11 +136,17 @@ static void tlb_shootdown_handler([[maybe_unused]] x86_64_interrupt_frame_t *fra
     spinlock_release(&cpu->tlb_shootdown_check);
 }
 
-void arch_vmm_address_space_init(vmm_address_space_t *address_space) {
-    address_space->lock = SPINLOCK_INIT;
-    address_space->segments = LIST_INIT;
-    address_space->start = USERSPACE_START;
-    address_space->end = USERSPACE_END;
+vmm_address_space_t *arch_vmm_address_space_create() {
+    x86_64_vmm_address_space_t *address_space = heap_alloc(sizeof(x86_64_vmm_address_space_t));
+    address_space->cr3 = pmm_alloc_page(PMM_STANDARD | PMM_FLAG_ZERO)->paddr;
+    memcpy((void *) HHDM(address_space->cr3 + 256 * sizeof(uint64_t)), (void *) HHDM(X86_64_AS(g_vmm_kernel_address_space)->cr3 + 256 * sizeof(uint64_t)), 256 * sizeof(uint64_t));
+
+    address_space->cr3_lock = SPINLOCK_INIT;
+    address_space->common.lock = SPINLOCK_INIT;
+    address_space->common.segments = LIST_INIT;
+    address_space->common.start = USERSPACE_START;
+    address_space->common.end = USERSPACE_END;
+    return &address_space->common;
 }
 
 vmm_address_space_t *x86_64_vmm_init() {
@@ -161,7 +169,7 @@ vmm_address_space_t *x86_64_vmm_init() {
             continue;
         }
         pmm_page_t *page = pmm_alloc_page(PMM_STANDARD | PMM_FLAG_ZERO);
-        pml4[i] = PTE_FLAG_PRESENT | PTE_FLAG_NX;
+        pml4[i] = PTE_FLAG_PRESENT | PTE_FLAG_RW; // Needs to be completely unrestricted as these are not synced across address spaces
         pte_set_address(&pml4[i], page->paddr);
     }
 
@@ -242,7 +250,7 @@ void x86_64_vmm_page_fault_handler(x86_64_interrupt_frame_t *frame) {
     if(!(frame->err_code & PAGEFAULT_FLAG_PRESENT)) flags |= VMM_FAULT_NONPRESENT;
 
     vmm_address_space_t *as = g_vmm_kernel_address_space;
-    if(x86_64_init_stage() >= X86_64_INIT_STAGE_FINAL) {
+    if(x86_64_init_stage() >= X86_64_INIT_STAGE_SCHED) {
         process_t *proc = arch_sched_thread_current()->proc;
         if(proc) as = proc->address_space;
     }

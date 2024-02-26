@@ -18,7 +18,7 @@ static bool seg_fault(vmm_segment_t *segment, uintptr_t address, int flags) {
 
     seg_fixed_data_t *data = (seg_fixed_data_t *) segment->driver_data;
     uintptr_t paddr = data->phys + MATH_FLOOR(address - (uintptr_t) data->base, ARCH_PAGE_SIZE);
-    arch_vmm_map(segment->address_space, MATH_FLOOR(address, ARCH_PAGE_SIZE), paddr, segment->protection, ARCH_VMM_FLAG_NONE);
+    arch_vmm_map(segment->address_space, MATH_FLOOR(address, ARCH_PAGE_SIZE), paddr, segment->protection, segment->address_space == g_vmm_kernel_address_space ? ARCH_VMM_FLAG_NONE : ARCH_VMM_FLAG_USER);
 
     return true;
 }
