@@ -19,6 +19,7 @@
 #include <memory/heap.h>
 #include <fs/vfs.h>
 #include <fs/tmpfs.h>
+#include <fs/rdsk.h>
 #include <sched/sched.h>
 #include <arch/vmm.h>
 #include <arch/types.h>
@@ -152,7 +153,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
-        if(memcmp(module->name, "KERNSYMBTXT", 11) != 0) continue;
+        if(strcmp("KERNSYMBTXT", module->name) != 0) continue;
         g_panic_symbols = (char *) HHDM(module->paddr);
         g_panic_symbols_length = module->size;
     }
@@ -259,32 +260,49 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     x86_64_syscall_init_cpu();
 
     // Initialize VFS
-    int r = vfs_mount(&g_tmpfs_ops, NULL, NULL);
-    if(r < 0) panic("Failed to mount RDSK (%i)\n", r);
+    for(uint16_t i = 0; i < boot_info->module_count; i++) log(LOG_LEVEL_DEBUG, "MODULES", "%s :: paddr: %#lx, size: %#lx", boot_info->modules[i].name, boot_info->modules[i].paddr, boot_info->modules[i].size);
+
+    tartarus_module_t *sysroot_module = NULL;
+    for(uint16_t i = 0; i < boot_info->module_count; i++) {
+        tartarus_module_t *module = &boot_info->modules[i];
+        if(strcmp("ROOT    RDK", module->name) != 0) continue;
+        sysroot_module = module;
+        break;
+    }
+    ASSERT(sysroot_module != NULL);
+
+    int r = vfs_mount(&g_rdsk_ops, NULL, (void *) HHDM(sysroot_module->paddr));
+    if(r < 0) panic("Failed to mount RDSK (%i)", r);
+
+    vfs_t *root_vfs = LIST_CONTAINER_GET(LIST_NEXT(&g_vfs_all), vfs_t, list);
+    vfs_node_t *root_node;
+    ASSERT(root_vfs->ops->root(root_vfs, &root_node) == 0);
+    log(LOG_LEVEL_DEBUG, "FS", "Root Directory");
+    for(int i = 0;;) {
+        char *filename;
+        r = root_node->ops->readdir(root_node, &i, &filename);
+        ASSERT(r == 0);
+        if(filename == NULL) break;
+        log(LOG_LEVEL_DEBUG, "FS", " - %s", filename);
+    }
+
+    r = vfs_mount(&g_tmpfs_ops, "/modules", NULL);
+    if(r < 0) panic("Failed to mount /modules (%i)", r);
+    r = vfs_mount(&g_tmpfs_ops, "/tmp", NULL);
+    if(r < 0) panic("Failed to mount /tmp (%i)", r);
 
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
+        if(strcmp("ROOT    RDK", module->name) == 0) continue;
 
         vfs_node_t *file;
-        r = vfs_create("/", module->name, &file, NULL);
+        r = vfs_create("/modules", module->name, &file, NULL);
         if(r < 0) continue;
 
         vfs_rw_t rw = { .rw = VFS_RW_WRITE, .size = module->size, .buffer = (void *) HHDM(module->paddr) };
         size_t write_count;
         r = file->ops->rw(file, &rw, &write_count);
-        if(r < 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)\n", module->name);
-    }
-
-    log(LOG_LEVEL_DEBUG, "FS", "Root Directory");
-    vfs_node_t *root;
-    r = vfs_lookup("/", &root, NULL);
-    ASSERT(r == 0);
-    for(int i = 0;;) {
-        char *filename;
-        r = root->ops->readdir(root, &i, &filename);
-        ASSERT(r == 0);
-        if(filename == NULL) break;
-        log(LOG_LEVEL_DEBUG, "FS", " - %s", filename);
+        if(r < 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)", module->name);
     }
 
     // Load init
@@ -294,28 +312,28 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         vmm_address_space_t *as = arch_vmm_address_space_create();
 
         vfs_node_t *startup_exec;
-        r = vfs_lookup("/INIT", &startup_exec, 0);
-        if(r < 0) panic("Could not lookup test executable (%i)\n", r);
+        r = vfs_lookup("/usr/bin/init", &startup_exec, 0);
+        if(r < 0) panic("Could not lookup test executable (%i)", r);
 
         auxv_t auxv = {};
         char *interpreter = 0;
         elf_r = elf_load(startup_exec, as, &interpreter, &auxv);
-        if(elf_r) panic("Could not load test executable\n");
+        if(elf_r) panic("Could not load test executable");
 
         auxv_t interp_auxv = {};
         if(interpreter) {
             log(LOG_LEVEL_DEBUG, "INIT", "Found init interpreter: %s", interpreter);
             vfs_node_t *interp_exec;
             r = vfs_lookup(interpreter, &interp_exec, 0);
-            if(r < 0) panic("Could not lookup the interpreter for startup (%i)\n", r);
+            if(r < 0) panic("Could not lookup the interpreter for startup (%i)", r);
 
             elf_r = elf_load(interp_exec, as, 0, &interp_auxv);
-            if(elf_r) panic("Could not load the interpreter for startup\n");
+            if(elf_r) panic("Could not load the interpreter for startup");
         }
 
         log(LOG_LEVEL_DEBUG, "INIT", "entry: %#lx; phdr: %#lx; phent: %#lx; phnum: %#lx;", auxv.entry, auxv.phdr, auxv.phent, auxv.phnum);
 
-        char *argv[] = { "/INIT", NULL };
+        char *argv[] = { "/usr/bin/init", NULL };
         char *envp[] = { NULL };
 
         process_t *proc = sched_process_create(as);

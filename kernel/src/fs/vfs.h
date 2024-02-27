@@ -7,7 +7,7 @@ typedef struct vfs {
     struct vfs_node *mount_node;
     struct vfs_ops *ops;
     void *data;
-    list_t list;
+    list_element_t list;
 } vfs_t;
 
 typedef enum {
