@@ -104,6 +104,14 @@ url = "../tartarus-bootloader"
 type = "local"
 url = "kernel"
 
+[source.rdsk]
+type = "local"
+url = "rdsk"
+
+[source.init]
+type = "local"
+url = "init"
+
 
 # # # # # # # #
 # HOST TARGETS
@@ -214,6 +222,15 @@ install = [
     "DESTDIR=$INSTALL make install-target-libgcc"
 ]
 
+[host.rdsk] # TODO: Possibly implement a configure esque build system for rdsk.. if not autotools
+dependencies = ["source:rdsk"]
+configure = [
+    "cp -r $SOURCE:rdsk/src .",
+    "cp $SOURCE:rdsk/Makefile .",
+]
+build = ["make -j$THREADS all"]
+install = ["DESTDIR=$INSTALL PREFIX=$PREFIX make install"]
+
 
 # # # # # # #
 # STD TARGETS
@@ -289,11 +306,6 @@ configure = ["$SOURCE:kernel/conf.sh --target=x86_64 --prefix=$PREFIX --libgcc=$
 build = ["make all SYSROOT=$ROOT"]
 install = ["DESTDIR=$INSTALL make install"]
 
-# init
-[source.init]
-type = "local"
-url = "init"
-
 [target.init]
 dependencies = ["host:gcc", "mlibc-headers", "source:init"]
 configure = ["cp -r $SOURCE:init/* ."]
@@ -302,3 +314,9 @@ install = [
     "mkdir -p $INSTALL/usr/bin",
     "cp init $INSTALL/usr/bin"
 ]
+
+[target.root]
+dependencies = ["host:rdsk", "mlibc", "init"]
+configure = ["mkdir ./rootdir", "cp -r $ROOT/* ./rootdir", "mkdir ./rootdir/modules", "mkdir ./rootdir/tmp"]
+build = ["rdsk -c ./rootdir -o root.rdk"]
+install = ["cp root.rdk $INSTALL/root.rdk"]
