@@ -1,5 +1,5 @@
 #pragma once
-#include <arch/x86_64/cpu.h>
+#include <arch/x86_64/sys/cpu.h>
 
 /**
  * @brief Initializes the scheduler
