@@ -1,6 +1,6 @@
 #pragma once
 #include <stdint.h>
-#include <arch/x86_64/tss.h>
+#include <arch/x86_64/sys/tss.h>
 
 #define X86_64_GDT_CODE_RING0 0x8
 #define X86_64_GDT_DATA_RING0 0x10

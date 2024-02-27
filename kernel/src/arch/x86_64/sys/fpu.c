@@ -1,6 +1,6 @@
 #include "fpu.h"
 #include <common/assert.h>
-#include <arch/x86_64/cpuid.h>
+#include <arch/x86_64/sys/cpuid.h>
 
 uint32_t g_x86_64_fpu_area_size = 0;
 void (* g_x86_64_fpu_save)(void *area) = 0;

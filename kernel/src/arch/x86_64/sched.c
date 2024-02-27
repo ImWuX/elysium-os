@@ -16,11 +16,11 @@
 #include <arch/vmm.h>
 #include <arch/cpu.h>
 #include <arch/x86_64/init.h>
-#include <arch/x86_64/tss.h>
-#include <arch/x86_64/msr.h>
-#include <arch/x86_64/fpu.h>
 #include <arch/x86_64/interrupt.h>
-#include <arch/x86_64/lapic.h>
+#include <arch/x86_64/sys/tss.h>
+#include <arch/x86_64/sys/msr.h>
+#include <arch/x86_64/sys/fpu.h>
+#include <arch/x86_64/sys/lapic.h>
 
 #define INTERVAL 100'000
 #define KERNEL_STACK_SIZE_PG 16

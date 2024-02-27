@@ -13,10 +13,10 @@
 #include <arch/types.h>
 #include <arch/interrupt.h>
 #include <arch/x86_64/init.h>
-#include <arch/x86_64/cpu.h>
-#include <arch/x86_64/lapic.h>
 #include <arch/x86_64/interrupt.h>
 #include <arch/x86_64/exception.h>
+#include <arch/x86_64/sys/lapic.h>
+#include <arch/x86_64/sys/cpu.h>
 
 #define X86_64_AS(ADDRESS_SPACE) (CONTAINER_OF((ADDRESS_SPACE), x86_64_vmm_address_space_t, common))
 

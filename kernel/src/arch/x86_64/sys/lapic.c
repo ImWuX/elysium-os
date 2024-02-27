@@ -1,8 +1,8 @@
 #include "lapic.h"
 #include <memory/hhdm.h>
 #include <sys/cpu.h>
-#include <arch/x86_64/cpu.h>
-#include <arch/x86_64/msr.h>
+#include <arch/x86_64/sys/cpu.h>
+#include <arch/x86_64/sys/msr.h>
 
 #define BASE_MASK 0xFFFFFFFFFF000
 

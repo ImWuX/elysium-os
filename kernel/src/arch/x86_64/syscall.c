@@ -7,8 +7,8 @@
 #include <arch/types.h>
 #include <arch/sched.h>
 #include <arch/x86_64/sched.h>
-#include <arch/x86_64/msr.h>
-#include <arch/x86_64/gdt.h>
+#include <arch/x86_64/sys/msr.h>
+#include <arch/x86_64/sys/gdt.h>
 
 #define MSR_EFER_SCE 1
 
