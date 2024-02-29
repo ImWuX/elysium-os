@@ -34,13 +34,28 @@ syscall_return_t x86_64_syscall_debug(char c) {
 
 syscall_return_t x86_64_syscall_anon_allocate(uintptr_t size) {
     syscall_return_t ret = {};
-    if(size == 0 || size % ARCH_PAGE_SIZE) {
+    if(size == 0 || size % ARCH_PAGE_SIZE != 0) {
         ret.errno = EINVAL;
         return ret;
     }
     void *p = vmm_map(arch_sched_thread_current()->proc->address_space, NULL, size, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, &g_seg_anon, NULL);
     ret.value = (uintptr_t) p;
-    log(LOG_LEVEL_DEBUG, "SYSCALL", "alloc_anon(size: %#lx) -> %#lx", size, ret.value);
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "anon_alloc(size: %#lx) -> %#lx", size, ret.value);
+    return ret;
+}
+
+syscall_return_t x86_64_syscall_anon_free(void *pointer, size_t size) {
+    syscall_return_t ret = {};
+    if(
+        size == 0 || size % ARCH_PAGE_SIZE != 0 ||
+        pointer == NULL || ((uintptr_t) pointer) % ARCH_PAGE_SIZE != 0
+    ) {
+        ret.errno = EINVAL;
+        return ret;
+    }
+    // CRITICAL: ensure this is safe for userspace to just do (currently throws a kern panic...)
+    vmm_unmap(arch_sched_thread_current()->proc->address_space, pointer, size);
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "anon_free(ptr: %#lx, size: %#lx) -> void", (uint64_t) pointer, size);
     return ret;
 }
 
@@ -61,6 +76,8 @@ syscall_return_t x86_64_syscall_uname(struct utsname *buf) {
 
     return ret;
 }
+
+// syscall_return_t x86_64_syscall_
 
 void x86_64_syscall_init_cpu() {
     x86_64_msr_write(X86_64_MSR_EFER, x86_64_msr_read(X86_64_MSR_EFER) | MSR_EFER_SCE);
