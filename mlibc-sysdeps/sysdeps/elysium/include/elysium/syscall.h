@@ -6,8 +6,9 @@
 #define SYSCALL_EXIT 0
 #define SYSCALL_DEBUG 1
 #define SYSCALL_ANON_ALLOCATE 2
-#define SYSCALL_FS_SET 3
-#define SYSCALL_UNAME 4
+#define SYSCALL_ANON_FREE 3
+#define SYSCALL_FS_SET 4
+#define SYSCALL_UNAME 5
 
 #define DEFINE_SYSCALL(...)                     \
     syscall_return_t ret;                       \

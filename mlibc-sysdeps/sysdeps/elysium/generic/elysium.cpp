@@ -46,10 +46,9 @@ namespace mlibc {
         return 0;
     }
 
-    int sys_anon_free(void *pointer [[maybe_unused]], size_t size [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_anon_free called" << frg::endlog;
-        return -1;
+    int sys_anon_free(void *pointer, size_t size) {
+        syscall_return_t ret = syscall2(SYSCALL_ANON_FREE, (syscall_int_t) pointer, size);
+        return ret.err;
     }
 
     int sys_openat(int dirfd [[maybe_unused]], const char *path [[maybe_unused]], int flags [[maybe_unused]], mode_t mode [[maybe_unused]], int *fd [[maybe_unused]]) {

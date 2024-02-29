@@ -4,6 +4,7 @@ KERNEL_STACK_BASE_OFFSET equ 24
 extern x86_64_syscall_exit
 extern x86_64_syscall_debug
 extern x86_64_syscall_anon_allocate
+extern x86_64_syscall_anon_free
 extern x86_64_syscall_fs_set
 extern x86_64_syscall_uname
 
@@ -12,8 +13,9 @@ syscall_table:
     dq x86_64_syscall_exit          ; 0
     dq x86_64_syscall_debug         ; 1
     dq x86_64_syscall_anon_allocate ; 2
-    dq x86_64_syscall_fs_set        ; 3
-    dq x86_64_syscall_uname         ; 4
+    dq x86_64_syscall_anon_free     ; 3
+    dq x86_64_syscall_fs_set        ; 4
+    dq x86_64_syscall_uname         ; 5
 .length: dq ($ - syscall_table) / 8
 
 section .text

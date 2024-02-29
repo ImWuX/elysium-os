@@ -1,7 +1,7 @@
-#include <bits/ensure.h>
-#include <mlibc/elf/startup.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <bits/ensure.h>
+#include <mlibc/elf/startup.h>
 
 // defined by the POSIX library
 void __mlibc_initLocale();
