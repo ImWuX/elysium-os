@@ -1,5 +1,6 @@
 #include "elf.h"
 #include <lib/mem.h>
+#include <lib/math.h>
 #include <common/log.h>
 #include <common/assert.h>
 #include <memory/pmm.h>
@@ -81,14 +82,13 @@ typedef struct {
 } __attribute__((packed)) elf_phdr_t;
 
 bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, auxv_t *auxv) {
-    vfs_rw_t rw;
     size_t read_count;
     int r;
 
     // TODO: ENOEXEC is probably the errno we want to return
 
     #define FAIL_GOTO fail_free_none
-    #define FAIL(MSG) { log(LOG_LEVEL_WARN, "ELF", "WARNING: %s. Aborting.", MSG); goto FAIL_GOTO; }
+    #define FAIL(MSG) { log(LOG_LEVEL_WARN, "ELF", "%s. Aborting.", (MSG)); goto FAIL_GOTO; }
 
     if(interpreter) *interpreter = 0;
 
@@ -101,8 +101,7 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, aux
     elf_header_t *header = heap_alloc(sizeof(elf_header_t));
     #undef FAIL_GOTO
     #define FAIL_GOTO fail_free_header
-    rw = (vfs_rw_t) { .rw = VFS_RW_READ, .size = sizeof(elf_header_t), .buffer = (void *) header };
-    r = node->ops->rw(node, &rw, &read_count);
+    r = node->ops->rw(node, &(vfs_rw_t) { .rw = VFS_RW_READ, .size = sizeof(elf_header_t), .buffer = (void *) header }, &read_count);
     if(r < 0 || read_count != sizeof(elf_header_t)) FAIL("Failed to read ELF header");
 
     if(header->ident.magic[0] != ID0 || header->ident.magic[1] != ID1 ||header->ident.magic[2] != ID2 || header->ident.magic[3] != ID3) FAIL("Invalid header identification");
@@ -118,8 +117,7 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, aux
     #undef FAIL_GOTO
     #define FAIL_GOTO fail_free_all
     for(int i = 0; i < header->phnum; i++) {
-        rw = (vfs_rw_t) { .rw = VFS_RW_READ, .size = header->phentsize, .offset = header->phoff + (i * header->phentsize), .buffer = (void *) phdr };
-        r = node->ops->rw(node, &rw, &read_count);
+        r = node->ops->rw(node, &(vfs_rw_t) { .rw = VFS_RW_READ, .size = header->phentsize, .offset = header->phoff + (i * header->phentsize), .buffer = (void *) phdr }, &read_count);
         if(r < 0 || read_count != header->phentsize) FAIL("Failed to read program header");
 
         switch(phdr->type) {
@@ -131,24 +129,19 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, aux
                 if(phdr->flags & PF_W) prot |= VMM_PROT_WRITE;
                 if(phdr->flags & PF_X) prot |= VMM_PROT_EXEC;
 
-                for(uintptr_t count = 0; count < phdr->memsz;) {
-                    uintptr_t alignment_offset = (phdr->vaddr + count) & (ARCH_PAGE_SIZE - 1);
-                    pmm_page_t *page = pmm_alloc_page(PMM_STANDARD | PMM_FLAG_ZERO);
+                uintptr_t aligned_vaddr = MATH_FLOOR(phdr->vaddr, ARCH_PAGE_SIZE);
+                size_t alignment_offset = phdr->vaddr - aligned_vaddr;
+                size_t length = MATH_CEIL(phdr->memsz + alignment_offset, ARCH_PAGE_SIZE);
 
-                    if(phdr->filesz > count) {
-                        size_t read_sz = phdr->filesz - count;
-                        if(read_sz > ARCH_PAGE_SIZE - alignment_offset) read_sz = ARCH_PAGE_SIZE - alignment_offset;
-                        rw = (vfs_rw_t) { .rw = VFS_RW_READ, .size = read_sz, .offset = phdr->offset + count, .buffer = (void *) HHDM(page->paddr + alignment_offset) };
-                        r = node->ops->rw(node, &rw, &read_count);
-                        if(r < 0 || read_count != read_sz) FAIL("Failed to load program header");
-                    }
+                pmm_page_t *page = pmm_alloc_pages(length / ARCH_PAGE_SIZE, PMM_STANDARD | PMM_FLAG_ZERO);
 
-                    // TODO: This is very hacky code. fix later :)
-                    seg_fixed_data_t *fixed_data = heap_alloc(sizeof(seg_fixed_data_t));
-                    fixed_data->base = (void *) (phdr->vaddr + count - alignment_offset);
-                    fixed_data->phys = page->paddr;
-                    ASSERT(vmm_map(as, (void *) (phdr->vaddr + count - alignment_offset), ARCH_PAGE_SIZE, prot, VMM_FLAG_FIXED, &g_seg_fixed, (void *) fixed_data) != NULL);
-                    count += ARCH_PAGE_SIZE - alignment_offset;
+                seg_fixed_data_t *fixed_data = heap_alloc(sizeof(seg_fixed_data_t));
+                fixed_data->phys = page->paddr;
+                ASSERT(vmm_map(as, (void *) aligned_vaddr, length, prot, VMM_FLAG_FIXED, &g_seg_fixed, fixed_data) != NULL);
+
+                if(phdr->filesz > 0) {
+                    r = node->ops->rw(node, &(vfs_rw_t) { .rw = VFS_RW_READ, .size = phdr->filesz, .offset = phdr->offset, .buffer = (void *) HHDM(page->paddr + alignment_offset) }, &read_count);
+                    if(r != 0 || read_count != phdr->filesz) FAIL("Failed to load program header");
                 }
                 break;
             case PT_INTERP:
@@ -163,7 +156,7 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, aux
                 auxv->phdr = phdr->vaddr;
                 break;
             default:
-                log(LOG_LEVEL_WARN, "ELF", "Ignoring program header %lu", phdr->type);
+                log(LOG_LEVEL_WARN, "ELF", "Ignoring program header %#lx", phdr->type);
                 break;
         }
     }
