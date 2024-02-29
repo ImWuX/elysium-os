@@ -1,4 +1,5 @@
 #include "vmm.h"
+#include <common/log.h>
 #include <common/assert.h>
 #include <memory/pmm.h>
 #include <arch/vmm.h>
@@ -83,6 +84,15 @@ static vmm_segment_t *addr_to_segment(vmm_address_space_t *address_space, uintpt
 }
 
 void *vmm_map(vmm_address_space_t *address_space, void *address, size_t length, vmm_protection_t prot, vmm_flags_t flags, seg_driver_t *driver, void *driver_data) {
+    log(LOG_LEVEL_DEBUG, "VMM", "map(address: %#lx, length: %#lx, prot: %c%c%c, flags: %lu, driver: %s)",
+        (uintptr_t) address,
+        length,
+        prot & VMM_PROT_READ ? 'R' : '-',
+        prot & VMM_PROT_WRITE ? 'W' : '-',
+        prot & VMM_PROT_EXEC ? 'E' : '-',
+        flags,
+        driver->name
+    );
     uintptr_t caddr = (uintptr_t) address;
     if(length == 0 || length % ARCH_PAGE_SIZE != 0) return NULL;
     if(caddr % ARCH_PAGE_SIZE != 0) {
@@ -116,6 +126,7 @@ void *vmm_map(vmm_address_space_t *address_space, void *address, size_t length, 
 }
 
 void vmm_unmap(vmm_address_space_t *address_space, void *address, size_t length) {
+    log(LOG_LEVEL_DEBUG, "VMM", "unmap(address: %#lx, length: %#lx)", (uintptr_t) address, length);
     if(length == 0) return;
     ASSERT((uintptr_t) address % ARCH_PAGE_SIZE == 0 && length % ARCH_PAGE_SIZE == 0);
     ASSERT(SEGMENT_IN_BOUNDS(address_space, (uintptr_t) address, length));

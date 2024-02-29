@@ -98,6 +98,11 @@ static log_sink_t g_serial_sink = {
     pat |= ((uint64_t) 0x1 << 48) | ((uint64_t) 0x5 << 40);
     x86_64_msr_write(X86_64_MSR_PAT, pat);
 
+    uint64_t cr4;
+    asm volatile("mov %%cr4, %0" : "=r" (cr4) : : "memory");
+    cr4 |= 1 << 7; /* CR4.PGE */
+    asm volatile("mov %0, %%cr4" : : "r" (cr4) : "memory");
+
     ADJUST_STACK(g_hhdm_base);
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
@@ -299,9 +304,8 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         r = vfs_create("/modules", module->name, &file, NULL);
         if(r < 0) continue;
 
-        vfs_rw_t rw = { .rw = VFS_RW_WRITE, .size = module->size, .buffer = (void *) HHDM(module->paddr) };
         size_t write_count;
-        r = file->ops->rw(file, &rw, &write_count);
+        r = file->ops->rw(file, &(vfs_rw_t) { .rw = VFS_RW_WRITE, .size = module->size, .buffer = (void *) HHDM(module->paddr) }, &write_count);
         if(r < 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)", module->name);
     }
 
