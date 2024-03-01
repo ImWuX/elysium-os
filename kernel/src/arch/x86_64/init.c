@@ -360,8 +360,8 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 
         process_t *proc = sched_process_create(as);
         resource_create_at(&proc->resource_table, stdin, 0, true);
-        resource_create_at(&proc->resource_table, stdout, 0, true);
-        resource_create_at(&proc->resource_table, stderr, 0, true);
+        resource_create_at(&proc->resource_table, stdout, 1, true);
+        resource_create_at(&proc->resource_table, stderr, 2, true);
 
         uintptr_t thread_stack = arch_sched_stack_setup(proc, argv, envp, &auxv);
         thread_t *thread = arch_sched_thread_create_user(proc, interpreter ? interp_auxv.entry : auxv.entry, thread_stack);

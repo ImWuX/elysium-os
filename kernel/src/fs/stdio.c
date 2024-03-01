@@ -29,7 +29,7 @@ static int stdio_stdin_node_rw(vfs_node_t *file [[maybe_unused]], vfs_rw_t *pack
 static int stdio_stdout_node_rw(vfs_node_t *file [[maybe_unused]], vfs_rw_t *packet, size_t *rw_count) {
     if(packet->rw == VFS_RW_READ) return -EPERM;
     char *c = (char *) packet->buffer;
-    for(; *c != 0; c++) log_raw(*c);
+    for(size_t i = 0; i < packet->size && c[i] != 0; i++) log_raw(c[i]);
     *rw_count = packet->size;
     return 0;
 }
@@ -37,7 +37,7 @@ static int stdio_stdout_node_rw(vfs_node_t *file [[maybe_unused]], vfs_rw_t *pac
 static int stdio_stderr_node_rw(vfs_node_t *file [[maybe_unused]], vfs_rw_t *packet, size_t *rw_count) {
     if(packet->rw == VFS_RW_READ) return -EPERM;
     char *c = (char *) packet->buffer;
-    for(; *c != 0; c++) log_raw(*c);
+    for(size_t i = 0; i < packet->size && c[i] != 0; i++) log_raw(c[i]);
     *rw_count = packet->size;
     return 0;
 }

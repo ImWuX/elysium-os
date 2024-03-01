@@ -245,7 +245,6 @@ configure = [
         -Ddisable_iconv_option=true \
         -Ddisable_intl_option=true \
         -Ddisable_crypt_option=true \
-        -Ddisable_linux_option=true \
         --buildtype=release \
         $SOURCE:mlibc
     """

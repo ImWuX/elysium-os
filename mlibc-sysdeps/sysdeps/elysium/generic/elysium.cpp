@@ -69,16 +69,18 @@ namespace mlibc {
         return -1;
     }
 
-    int sys_write(int fd [[maybe_unused]], const void *buf [[maybe_unused]], size_t count [[maybe_unused]], ssize_t *bytes_written [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_write called" << frg::endlog;
-        return -1;
+    int sys_write(int fd, const void *buf, size_t count, ssize_t *bytes_written) {
+        syscall_return_t ret = syscall3(SYSCALL_WRITE, fd, (syscall_int_t) buf, count);
+        *bytes_written = (ssize_t) ret.value;
+        if(ret.err != 0) return ret.err;
+        return 0;
     }
 
-    int sys_seek(int fd [[maybe_unused]], off_t offset [[maybe_unused]], int whence [[maybe_unused]], off_t *new_offset [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_seek called" << frg::endlog;
-        return -1;
+    int sys_seek(int fd, off_t offset, int whence, off_t *new_offset) {
+        syscall_return_t ret = syscall3(SYSCALL_SEEK, fd, (syscall_int_t) offset, (syscall_int_t) whence);
+        if(ret.err != 0) return ret.err;
+        *new_offset = (off_t) ret.value;
+        return 0;
     }
 
     int sys_close(int fd [[maybe_unused]]) {
