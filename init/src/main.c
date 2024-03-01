@@ -17,7 +17,27 @@ int main(int argc, char **vargs) {
 
     printf("%s (%s %s)\n", name.sysname, name.nodename, name.version);
 
-    printf("----\n");
+    FILE *kernel_symbols = fopen("/modules/KERNSYMBTXT", "r");
+    if(kernel_symbols == NULL) {
+        printf("Failed to open kernsymb.txt (%s)\n", strerror(errno));
+        return 1;
+    }
+
+    int read_count = 32;
+    char *data = malloc(read_count);
+    size_t rc = fread(data, 1, read_count, kernel_symbols);
+    if(rc != (size_t) read_count) {
+        printf("Failed to read from kernsymb.txt (%s)\n", strerror(errno));
+        return 1;
+    }
+    r = fclose(kernel_symbols);
+    if(r != 0) {
+        printf("Failed to close file (%s)\n", strerror(errno));
+        return 1;
+    }
+
+    printf("some data from kernsymb.txt: %.*s\n", read_count, data);
+    free(data);
 
     return 0;
 }

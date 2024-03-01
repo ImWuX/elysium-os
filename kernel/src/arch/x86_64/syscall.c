@@ -1,5 +1,8 @@
 #include <stdint.h>
 #include <unistd.h>
+#include <limits.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <sys/utsname.h>
 #include <lib/str.h>
@@ -23,7 +26,7 @@ typedef struct {
 extern void x86_64_syscall_entry();
 
 void x86_64_syscall_exit(int code) {
-    log(LOG_LEVEL_DEBUG, "SYSCALL", "exit(code: %i, tid: %li) -> exit", code, arch_sched_thread_current()->id);
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "exit(code: %i, tid: %li)", code, arch_sched_thread_current()->id);
     arch_sched_thread_current()->state = THREAD_STATE_DESTROY;
     x86_64_sched_next();
     __builtin_unreachable();
@@ -79,6 +82,86 @@ syscall_return_t x86_64_syscall_uname(struct utsname *buf) {
     strncpy(buf->release, "pre-alpha", sizeof(buf->release));
     strncpy(buf->version, "pre-alpha (" __DATE__ " " __TIME__ ")", sizeof(buf->version));
 
+    return ret;
+}
+
+syscall_return_t x86_64_syscall_open(int dir_resource_id, const char *path, int flags, mode_t mode) {
+    syscall_return_t ret = {};
+
+    // TODO: Should standardize copying to/from userspace
+    char *safe_path = heap_alloc(PATH_MAX + 1);
+    strncpy(safe_path, path, PATH_MAX);
+    safe_path[PATH_MAX] = 0;
+
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "open(dir_resource_id: %i, path: %s, flags: %#i, mode: %u)", dir_resource_id, safe_path, flags, mode);
+
+    process_t *proc = arch_sched_thread_current()->proc;
+
+    vfs_context_t context;
+    if(dir_resource_id == AT_FDCWD) {
+        // TODO: need to setup CWD (vfs context)
+        vfs_node_t *parent_node;
+        int r = vfs_lookup("/", &parent_node, NULL);
+        if(r != 0) {
+            ret.errno = -r;
+            return ret;
+        }
+        context = (vfs_context_t) { .cwd = parent_node };
+    } else {
+        resource_t *parent = resource_get(&proc->resource_table, dir_resource_id);
+        if(parent == NULL) {
+            ret.errno = EBADF;
+            return ret;
+        }
+        context = (vfs_context_t) { .cwd = parent->node };
+    }
+
+    vfs_node_t *node;
+    int r = vfs_lookup(safe_path, &node, &context);
+    if(r != 0) {
+        ret.errno = -r;
+        return ret;
+    }
+
+    ret.value = (size_t) resource_create(&proc->resource_table, node);
+    return ret;
+}
+
+syscall_return_t x86_64_syscall_close(int resource_id) {
+    syscall_return_t ret = {};
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "close(resource_id: %i)", resource_id);
+
+    process_t *proc = arch_sched_thread_current()->proc;
+    int r = resource_remove(&proc->resource_table, resource_id);
+    if(r != 0) ret.errno = -r;
+    return ret;
+}
+
+syscall_return_t x86_64_syscall_read(int resource_id, void *buf, size_t count) {
+    syscall_return_t ret = {};
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "read(resource_id: %i, buf: %#lx, count: %#lx)", resource_id, (uint64_t) buf, count);
+
+    process_t *proc = arch_sched_thread_current()->proc;
+    resource_t *resource = resource_get(&proc->resource_table, resource_id);
+    if(resource == NULL) {
+        ret.errno = EBADF;
+        return ret;
+    }
+
+    // TODO: Should standardize copying to/from userspace
+    void *safe_buf = heap_alloc(count);
+    size_t read_count = 0;
+    int r = resource->node->ops->rw(resource->node, &(vfs_rw_t) {
+        .rw = VFS_RW_READ,
+        .buffer = safe_buf,
+        .size = count,
+        .offset = resource->offset
+    }, &read_count);
+    memcpy(buf, safe_buf, read_count);
+    heap_free(safe_buf);
+    resource->offset += read_count;
+    ret.value = read_count;
+    if(r != 0) ret.errno = -r;
     return ret;
 }
 

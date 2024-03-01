@@ -2,6 +2,7 @@
 #include <mlibc/all-sysdeps.hpp>
 #include <elysium/syscall.h>
 #include <errno.h>
+#include <fcntl.h>
 
 namespace mlibc {
 
@@ -51,22 +52,22 @@ namespace mlibc {
         return ret.err;
     }
 
-    int sys_openat(int dirfd [[maybe_unused]], const char *path [[maybe_unused]], int flags [[maybe_unused]], mode_t mode [[maybe_unused]], int *fd [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_openat called" << frg::endlog;
-        return -1;
+    int sys_openat(int dirfd, const char *path, int flags, mode_t mode, int *fd) {
+        syscall_return_t ret = syscall4(SYSCALL_OPEN, (syscall_int_t) dirfd, (syscall_int_t) path, (syscall_int_t) flags, (syscall_int_t) mode);
+        if(ret.err) return ret.err;
+        *fd = (int) ret.value;
+        return 0;
     }
 
-    int sys_open(const char *path [[maybe_unused]], int flags [[maybe_unused]], mode_t mode [[maybe_unused]], int *fd [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_open called" << frg::endlog;
-        return -1;
+    int sys_open(const char *path, int flags, mode_t mode, int *fd) {
+        return sys_openat(AT_FDCWD, path, flags, mode, fd);
     }
 
-    int sys_read(int fd [[maybe_unused]], void *buf [[maybe_unused]], size_t count [[maybe_unused]], ssize_t *bytes_read [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_read called" << frg::endlog;
-        return -1;
+    int sys_read(int fd, void *buf, size_t count, ssize_t *bytes_read) {
+        syscall_return_t ret = syscall3(SYSCALL_READ, fd, (syscall_int_t) buf, count);
+        *bytes_read = (ssize_t) ret.value;
+        if(ret.err != 0) return ret.err;
+        return 0;
     }
 
     int sys_write(int fd, const void *buf, size_t count, ssize_t *bytes_written) {
@@ -83,10 +84,9 @@ namespace mlibc {
         return 0;
     }
 
-    int sys_close(int fd [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_close called" << frg::endlog;
-        return -1;
+    int sys_close(int fd) {
+        syscall_return_t ret = syscall1(SYSCALL_CLOSE, (syscall_int_t) fd);
+        return ret.err;
     }
 
     int sys_stat(fsfd_target fsfdt [[maybe_unused]], int fd [[maybe_unused]], const char *path [[maybe_unused]], int flags [[maybe_unused]], struct stat *statbuf [[maybe_unused]]) {

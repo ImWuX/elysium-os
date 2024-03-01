@@ -7,7 +7,10 @@ extern x86_64_syscall_anon_allocate
 extern x86_64_syscall_anon_free
 extern x86_64_syscall_fs_set
 extern x86_64_syscall_uname
+extern x86_64_syscall_open
+extern x86_64_syscall_close
 extern x86_64_syscall_write
+extern x86_64_syscall_read
 extern x86_64_syscall_seek
 
 section .data
@@ -18,8 +21,11 @@ syscall_table:
     dq x86_64_syscall_anon_free ; 3
     dq x86_64_syscall_fs_set ; 4
     dq x86_64_syscall_uname ; 5
-    dq x86_64_syscall_write ; 6
-    dq x86_64_syscall_seek ; 7
+    dq x86_64_syscall_open ; 6
+    dq x86_64_syscall_close ; 7
+    dq x86_64_syscall_write ; 8
+    dq x86_64_syscall_read ; 9
+    dq x86_64_syscall_seek ; 10
 .length: dq ($ - syscall_table) / 8
 
 section .text

@@ -4,7 +4,6 @@
 #include <common/spinlock.h>
 
 typedef struct resource {
-    unsigned int refs;
     vfs_node_t *node;
     size_t offset;
 } resource_t;
@@ -27,6 +26,13 @@ int resource_create(resource_table_t *table, vfs_node_t *node);
  * @param lock acquire process lock
  */
 resource_t *resource_create_at(resource_table_t *table, vfs_node_t *node, int id, bool lock);
+
+/**
+ * @brief Removes a resource from the table
+ * @param id resource id
+ * @returns -errno on failure, 0 on success
+ */
+int resource_remove(resource_table_t *table, int id);
 
 /**
  * @brief Retrieve a resource from a process
