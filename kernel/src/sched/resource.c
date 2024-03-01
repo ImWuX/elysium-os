@@ -35,7 +35,10 @@ int resource_create(resource_table_t *table, vfs_node_t *node) {
 
 int resource_remove(resource_table_t *table, int id) {
     spinlock_acquire(&table->lock);
-    if(table->resources[id] == NULL) return -EBADF;
+    if(table->resources[id] == NULL) {
+        spinlock_release(&table->lock);
+        return -EBADF;
+    }
     heap_free(table->resources[id]);
     table->resources[id] = NULL;
     spinlock_release(&table->lock);

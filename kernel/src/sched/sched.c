@@ -36,8 +36,8 @@ process_t *sched_process_create(vmm_address_space_t *address_space) {
 }
 
 void sched_process_destroy(process_t *proc) {
-    spinlock_acquire(&proc->resource_table.lock);
     for(int i = 0; i < proc->resource_table.count; i++) resource_remove(&proc->resource_table, i);
+    spinlock_acquire(&proc->resource_table.lock);
     heap_free(proc->resource_table.resources);
     heap_free(proc);
 }
