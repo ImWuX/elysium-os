@@ -20,7 +20,9 @@
 #include <fs/vfs.h>
 #include <fs/tmpfs.h>
 #include <fs/rdsk.h>
+#include <fs/stdio.h>
 #include <sched/sched.h>
+#include <sched/resource.h>
 #include <arch/vmm.h>
 #include <arch/types.h>
 #include <arch/cpu.h>
@@ -53,6 +55,8 @@ static x86_64_init_stage_t init_stage = X86_64_INIT_STAGE_ENTRY;
 
 volatile size_t g_x86_64_cpu_count;
 x86_64_cpu_t *g_x86_64_cpus;
+
+[[noreturn]] static void test_thread();
 
 static void log_raw_serial(char c) {
 	x86_64_port_outb(0x3F8, c);
@@ -292,9 +296,23 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     }
 
     r = vfs_mount(&g_tmpfs_ops, "/modules", NULL);
-    if(r < 0) panic("Failed to mount /modules (%i)", r);
+    if(r != 0) panic("Failed to mount /modules (%i)", r);
     r = vfs_mount(&g_tmpfs_ops, "/tmp", NULL);
-    if(r < 0) panic("Failed to mount /tmp (%i)", r);
+    if(r != 0) panic("Failed to mount /tmp (%i)", r);
+
+    vfs_node_t *stdio_dir;
+    r = vfs_mkdir("/tmp", "stdio", &stdio_dir, NULL);
+    if(r != 0) panic("Failed to mkdir /tmp/stdio (%i)", r);
+    r = vfs_mount(&g_stdio_ops, "/tmp/stdio", NULL);
+    if(r != 0) panic("Failed to mount /tmp/stdio (%i)", r);
+
+    vfs_node_t *stdin, *stdout, *stderr;
+    r = vfs_lookup("/tmp/stdio/stdin", &stdin, NULL);
+    if(r != 0) panic("Failed to lookup /tmp/stdio/stdin (%i)", r);
+    r = vfs_lookup("/tmp/stdio/stdout", &stdout, NULL);
+    if(r != 0) panic("Failed to lookup /tmp/stdio/stdout (%i)", r);
+    r = vfs_lookup("/tmp/stdio/stderr", &stderr, NULL);
+    if(r != 0) panic("Failed to lookup /tmp/stdio/stderr (%i)", r);
 
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
@@ -302,11 +320,11 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 
         vfs_node_t *file;
         r = vfs_create("/modules", module->name, &file, NULL);
-        if(r < 0) continue;
+        if(r != 0) continue;
 
         size_t write_count;
         r = file->ops->rw(file, &(vfs_rw_t) { .rw = VFS_RW_WRITE, .size = module->size, .buffer = (void *) HHDM(module->paddr) }, &write_count);
-        if(r < 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)", module->name);
+        if(r != 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)", module->name);
     }
 
     // Load init
@@ -341,11 +359,17 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         char *envp[] = { NULL };
 
         process_t *proc = sched_process_create(as);
+        resource_create_at(&proc->resource_table, stdin, 0, true);
+        resource_create_at(&proc->resource_table, stdout, 0, true);
+        resource_create_at(&proc->resource_table, stderr, 0, true);
+
         uintptr_t thread_stack = arch_sched_stack_setup(proc, argv, envp, &auxv);
         thread_t *thread = arch_sched_thread_create_user(proc, interpreter ? interp_auxv.entry : auxv.entry, thread_stack);
         log(LOG_LEVEL_DEBUG, "INIT", "init thread >> entry: %#lx, stack: %#lx", interpreter ? interp_auxv.entry : auxv.entry, thread_stack);
         sched_thread_schedule(thread);
     }
+
+    sched_thread_schedule(arch_sched_thread_create_kernel(test_thread));
 
     // SMP init
     g_x86_64_cpus = heap_alloc(sizeof(x86_64_cpu_t) * boot_info->cpu_count);
@@ -384,4 +408,20 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 
     x86_64_sched_init_cpu(cpu, true);
     __builtin_unreachable();
+}
+
+[[noreturn]] static void test_thread() {
+    log(LOG_LEVEL_DEBUG, "TEST_THREAD", "Init");
+
+    vfs_node_t *node;
+    int r = vfs_lookup("/tmp/stdio/stdout", &node, NULL);
+    if(r == 0) {
+        size_t count;
+        r = node->ops->rw(node, &(vfs_rw_t) { .rw = VFS_RW_WRITE, .buffer = "HELLO FROM STDOUT\n", .size = 18 }, &count);
+        if(r != 0 || count != 18) log(LOG_LEVEL_WARN, "TEST_THREAD", "Failed to write to stdout (%i, %lu)", r, count);
+    } else {
+        log(LOG_LEVEL_WARN, "TEST_THREAD", "Failed to lookup stdout node (%i)", r);
+    }
+
+    for(;;) arch_cpu_relax();
 }
