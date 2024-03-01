@@ -220,7 +220,7 @@ static int rdsk_node_create(vfs_node_t *parent [[maybe_unused]], const char *nam
     return -EROFS;
 }
 
-int rdsk_mount(vfs_t *vfs, void *data) {
+static int rdsk_mount(vfs_t *vfs, void *data) {
     rdsk_header_t *header = (rdsk_header_t *) data;
     if(header->revision > SUPPORTED_REVISION) return -EINVAL;
     info_t *info = heap_alloc(sizeof(info_t));
@@ -235,21 +235,21 @@ int rdsk_mount(vfs_t *vfs, void *data) {
     return 0;
 }
 
-int rdsk_root(vfs_t *vfs, vfs_node_t **out) {
+static int rdsk_root(vfs_t *vfs, vfs_node_t **out) {
     *out = get_dir_vfs_node(vfs, ((info_t *) vfs->data)->header->root_index);
     return 0;
 }
 
 static vfs_node_ops_t node_ops = {
-    .attr = &rdsk_node_attr,
-    .lookup = &rdsk_node_lookup,
-    .rw = &rdsk_node_rw,
-    .mkdir = &rdsk_node_mkdir,
-    .readdir = &rdsk_node_readdir,
-    .create = &rdsk_node_create
+    .attr = rdsk_node_attr,
+    .lookup = rdsk_node_lookup,
+    .rw = rdsk_node_rw,
+    .mkdir = rdsk_node_mkdir,
+    .readdir = rdsk_node_readdir,
+    .create = rdsk_node_create
 };
 
 vfs_ops_t g_rdsk_ops = {
-    .mount = &rdsk_mount,
-    .root = &rdsk_root
+    .mount = rdsk_mount,
+    .root = rdsk_root
 };

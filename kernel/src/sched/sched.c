@@ -1,10 +1,13 @@
 #include "sched.h"
 #include <lib/list.h>
+#include <lib/mem.h>
 #include <common/spinlock.h>
 #include <memory/heap.h>
 #include <sched/thread.h>
 #include <sys/cpu.h>
 #include <arch/sched.h>
+
+#define DEFAULT_RESOURCE_COUNT 256
 
 static long g_next_pid = 1;
 
@@ -20,6 +23,11 @@ process_t *sched_process_create(vmm_address_space_t *address_space) {
     proc->lock = SPINLOCK_INIT;
     proc->threads = LIST_INIT;
     proc->address_space = address_space;
+    proc->resource_table.count = DEFAULT_RESOURCE_COUNT;
+    proc->resource_table.lock = SPINLOCK_INIT;
+    resource_t **resources = heap_alloc(sizeof(resource_t *) * proc->resource_table.count);
+    memset(resources, 0, sizeof(resource_t *) * proc->resource_table.count);
+    proc->resource_table.resources = resources;
 
     spinlock_acquire(&g_sched_processes_lock);
     list_append(&g_sched_processes, &proc->list_sched);

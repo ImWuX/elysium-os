@@ -152,29 +152,29 @@ static int tmpfs_node_create(vfs_node_t *parent, const char *name, vfs_node_t **
     return 0;
 }
 
-int tmpfs_mount(vfs_t *vfs, [[maybe_unused]] void *data) {
+static int tmpfs_mount(vfs_t *vfs, [[maybe_unused]] void *data) {
     tmpfs_info_t *info = heap_alloc(sizeof(tmpfs_info_t));
     info->root_dir = create_tnode(0, vfs, true, "tmpfs_root");
     vfs->data = (void *) info;
     return 0;
 }
 
-int tmpfs_root(vfs_t *vfs, vfs_node_t **out) {
+static int tmpfs_root(vfs_t *vfs, vfs_node_t **out) {
     tmpfs_info_t *info = (tmpfs_info_t *) vfs->data;
     *out = info->root_dir->node;
     return 0;
 }
 
 static vfs_node_ops_t node_ops = {
-    .attr = &tmpfs_node_attr,
-    .lookup = &tmpfs_node_lookup,
-    .rw = &tmpfs_node_rw,
-    .mkdir = &tmpfs_node_mkdir,
-    .readdir = &tmpfs_node_readdir,
-    .create = &tmpfs_node_create
+    .attr = tmpfs_node_attr,
+    .lookup = tmpfs_node_lookup,
+    .rw = tmpfs_node_rw,
+    .mkdir = tmpfs_node_mkdir,
+    .readdir = tmpfs_node_readdir,
+    .create = tmpfs_node_create
 };
 
 vfs_ops_t g_tmpfs_ops = {
-    .mount = &tmpfs_mount,
-    .root = &tmpfs_root
+    .mount = tmpfs_mount,
+    .root = tmpfs_root
 };
