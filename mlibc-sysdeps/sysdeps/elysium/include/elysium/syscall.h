@@ -9,6 +9,8 @@
 #define SYSCALL_ANON_FREE 3
 #define SYSCALL_FS_SET 4
 #define SYSCALL_UNAME 5
+#define SYSCALL_WRITE 6
+#define SYSCALL_SEEK 7
 
 #define DEFINE_SYSCALL(...)                     \
     syscall_return_t ret;                       \
