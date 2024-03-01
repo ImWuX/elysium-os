@@ -11,6 +11,12 @@
 process_t *sched_process_create(vmm_address_space_t *address_space);
 
 /**
+ * @brief Destroy a process
+ * @warning Assumes you have acquired the process lock & process is not on the scheduler queue
+ */
+void sched_process_destroy(process_t *proc);
+
+/**
  * @brief Schedule a thread
  * @param thread
  */

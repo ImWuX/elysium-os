@@ -327,6 +327,17 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         if(r != 0 || write_count != module->size) panic("Failed to write module to tmpfs file (%s)", module->name);
     }
 
+    vfs_node_t *modules_node;
+    ASSERT(vfs_lookup("/modules", &modules_node, NULL) == 0);
+    log(LOG_LEVEL_DEBUG, "FS", "Modules Directory");
+    for(int i = 0;;) {
+        char *filename;
+        r = modules_node->ops->readdir(modules_node, &i, &filename);
+        ASSERT(r == 0);
+        if(filename == NULL) break;
+        log(LOG_LEVEL_DEBUG, "FS", " - %s", filename);
+    }
+
     // Load init
     {
         bool elf_r;

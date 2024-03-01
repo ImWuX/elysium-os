@@ -123,18 +123,13 @@ static void sched_switch(x86_64_thread_t *this, x86_64_thread_t *next) {
     sched_thread_drop(&prev->common);
 }
 
-/** @warning Assumes you have already acquired the lock */
-static void destroy_process(process_t *proc) {
-    heap_free(proc);
-}
-
 /** @warning Thread should not be on the scheduler queue when this is called */
 void arch_sched_thread_destroy(thread_t *thread) {
     if(thread->proc) {
         spinlock_acquire(&thread->proc->lock);
         list_delete(&thread->list_proc);
         if(list_is_empty(&thread->proc->threads)) {
-            destroy_process(thread->proc);
+            sched_process_destroy(thread->proc);
         } else {
             spinlock_release(&thread->proc->lock);
         }
