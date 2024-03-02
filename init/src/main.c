@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/utsname.h>
+#include <sys/stat.h>
 
 int main(int argc, char **vargs) {
     printf("%s\n", vargs[0]);
@@ -38,6 +39,14 @@ int main(int argc, char **vargs) {
 
     printf("some data from kernsymb.txt: %.*s\n", read_count, data);
     free(data);
+
+    struct stat stat_data;
+    r = stat("/modules/KERNSYMBTXT", &stat_data);
+    if(r != 0) {
+        printf("Failed to stat file (%s)\n", strerror(errno));
+        return 1;
+    }
+    printf("kernsymb.txt size: %li\n", stat_data.st_size);
 
     return 0;
 }

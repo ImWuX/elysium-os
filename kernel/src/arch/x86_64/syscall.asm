@@ -12,6 +12,7 @@ extern x86_64_syscall_close
 extern x86_64_syscall_write
 extern x86_64_syscall_read
 extern x86_64_syscall_seek
+extern x86_64_syscall_attr
 
 section .data
 syscall_table:
@@ -26,6 +27,7 @@ syscall_table:
     dq x86_64_syscall_write ; 8
     dq x86_64_syscall_read ; 9
     dq x86_64_syscall_seek ; 10
+    dq x86_64_syscall_attr ; 11
 .length: dq ($ - syscall_table) / 8
 
 section .text

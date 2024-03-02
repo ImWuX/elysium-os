@@ -36,7 +36,7 @@ int vfs_mount(vfs_ops_t *vfs_ops, char *path, void *data) {
     return 0;
 }
 
-int vfs_lookup(char *path, vfs_node_t **out, vfs_context_t *context) {
+int vfs_lookup(char *path, vfs_node_t **out, vfs_node_t *cwd) {
     ASSERT(g_vfs_all.next);
     vfs_t *vfs = LIST_CONTAINER_GET(g_vfs_all.next, vfs_t, list);
 
@@ -47,8 +47,8 @@ int vfs_lookup(char *path, vfs_node_t **out, vfs_context_t *context) {
         if(r < 0) return r;
         comp_end++, comp_start++;
     } else {
-        if(context)
-            current_node = context->cwd;
+        if(cwd)
+            current_node = cwd;
         else
             return -ENOENT;
     }
@@ -79,23 +79,23 @@ int vfs_lookup(char *path, vfs_node_t **out, vfs_context_t *context) {
     return 0;
 }
 
-int vfs_rw(char *path, vfs_rw_t *packet, size_t *rw_count, vfs_context_t *context) {
+int vfs_rw(char *path, vfs_rw_t *packet, size_t *rw_count, vfs_node_t *cwd) {
     vfs_node_t *file;
-    int r = vfs_lookup(path, &file, context);
+    int r = vfs_lookup(path, &file, cwd);
     if(r < 0) return r;
     return file->ops->rw(file, packet, rw_count);
 }
 
-int vfs_mkdir(char *path, const char *name, vfs_node_t **out, vfs_context_t *context) {
+int vfs_mkdir(char *path, const char *name, vfs_node_t **out, vfs_node_t *cwd) {
     vfs_node_t *parent;
-    int r = vfs_lookup(path, &parent, context);
+    int r = vfs_lookup(path, &parent, cwd);
     if(r < 0) return r;
     return parent->ops->mkdir(parent, name, out);
 }
 
-int vfs_create(char *path, const char *name, vfs_node_t **out, vfs_context_t *context) {
+int vfs_create(char *path, const char *name, vfs_node_t **out, vfs_node_t *cwd) {
     vfs_node_t *parent;
-    int r = vfs_lookup(path, &parent, context);
+    int r = vfs_lookup(path, &parent, cwd);
     if(r < 0) return r;
     return parent->ops->create(parent, name, out);
 }

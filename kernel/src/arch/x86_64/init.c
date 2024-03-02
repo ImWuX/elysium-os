@@ -358,7 +358,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
             log(LOG_LEVEL_DEBUG, "INIT", "Found init interpreter: %s", interpreter);
             vfs_node_t *interp_exec;
             r = vfs_lookup(interpreter, &interp_exec, 0);
-            if(r < 0) panic("Could not lookup the interpreter for startup (%i)", r);
+            if(r != 0) panic("Could not lookup the interpreter for startup (%i)", r);
 
             elf_r = elf_load(interp_exec, as, 0, &interp_auxv);
             if(elf_r) panic("Could not load the interpreter for startup");

@@ -14,6 +14,7 @@
 #define SYSCALL_WRITE 8
 #define SYSCALL_READ 9
 #define SYSCALL_SEEK 10
+#define SYSCALL_ATTR 11
 
 #define DEFINE_SYSCALL(...)                     \
     syscall_return_t ret;                       \

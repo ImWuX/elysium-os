@@ -28,6 +28,7 @@ process_t *sched_process_create(vmm_address_space_t *address_space) {
     resource_t **resources = heap_alloc(sizeof(resource_t *) * proc->resource_table.count);
     memset(resources, 0, sizeof(resource_t *) * proc->resource_table.count);
     proc->resource_table.resources = resources;
+    proc->cwd = NULL;
 
     spinlock_acquire(&g_sched_processes_lock);
     list_append(&g_sched_processes, &proc->list_sched);
