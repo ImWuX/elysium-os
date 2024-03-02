@@ -3,31 +3,31 @@ KERNEL_STACK_BASE_OFFSET equ 24
 
 extern x86_64_syscall_exit
 extern x86_64_syscall_debug
-extern x86_64_syscall_anon_allocate
-extern x86_64_syscall_anon_free
+extern syscall_mem_anon_allocate
+extern syscall_mem_anon_free
 extern x86_64_syscall_fs_set
-extern x86_64_syscall_uname
-extern x86_64_syscall_open
-extern x86_64_syscall_close
-extern x86_64_syscall_write
-extern x86_64_syscall_read
-extern x86_64_syscall_seek
-extern x86_64_syscall_attr
+extern syscall_uname
+extern syscall_fs_open
+extern syscall_fs_close
+extern syscall_fs_write
+extern syscall_fs_read
+extern syscall_fs_seek
+extern syscall_fs_attr
 
 section .data
 syscall_table:
     dq x86_64_syscall_exit ; 0
     dq x86_64_syscall_debug ; 1
-    dq x86_64_syscall_anon_allocate ; 2
-    dq x86_64_syscall_anon_free ; 3
+    dq syscall_mem_anon_allocate ; 2
+    dq syscall_mem_anon_free ; 3
     dq x86_64_syscall_fs_set ; 4
-    dq x86_64_syscall_uname ; 5
-    dq x86_64_syscall_open ; 6
-    dq x86_64_syscall_close ; 7
-    dq x86_64_syscall_write ; 8
-    dq x86_64_syscall_read ; 9
-    dq x86_64_syscall_seek ; 10
-    dq x86_64_syscall_attr ; 11
+    dq syscall_uname ; 5
+    dq syscall_fs_open ; 6
+    dq syscall_fs_close ; 7
+    dq syscall_fs_write ; 8
+    dq syscall_fs_read ; 9
+    dq syscall_fs_seek ; 10
+    dq syscall_fs_attr ; 11
 .length: dq ($ - syscall_table) / 8
 
 section .text
