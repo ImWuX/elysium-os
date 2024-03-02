@@ -1,3 +1,4 @@
+#include <bits/ensure.h>
 #include <mlibc/debug.hpp>
 #include <mlibc/all-sysdeps.hpp>
 #include <elysium/syscall.h>
@@ -64,21 +65,21 @@ namespace mlibc {
     }
 
     int sys_read(int fd, void *buf, size_t count, ssize_t *bytes_read) {
-        syscall_return_t ret = syscall3(SYSCALL_READ, fd, (syscall_int_t) buf, count);
+        syscall_return_t ret = syscall3(SYSCALL_READ, (syscall_int_t) fd, (syscall_int_t) buf, count);
         *bytes_read = (ssize_t) ret.value;
         if(ret.err != 0) return ret.err;
         return 0;
     }
 
     int sys_write(int fd, const void *buf, size_t count, ssize_t *bytes_written) {
-        syscall_return_t ret = syscall3(SYSCALL_WRITE, fd, (syscall_int_t) buf, count);
+        syscall_return_t ret = syscall3(SYSCALL_WRITE, (syscall_int_t) fd, (syscall_int_t) buf, count);
         *bytes_written = (ssize_t) ret.value;
         if(ret.err != 0) return ret.err;
         return 0;
     }
 
     int sys_seek(int fd, off_t offset, int whence, off_t *new_offset) {
-        syscall_return_t ret = syscall3(SYSCALL_SEEK, fd, (syscall_int_t) offset, (syscall_int_t) whence);
+        syscall_return_t ret = syscall3(SYSCALL_SEEK, (syscall_int_t) fd, (syscall_int_t) offset, (syscall_int_t) whence);
         if(ret.err != 0) return ret.err;
         *new_offset = (off_t) ret.value;
         return 0;
@@ -89,10 +90,23 @@ namespace mlibc {
         return ret.err;
     }
 
-    int sys_stat(fsfd_target fsfdt [[maybe_unused]], int fd [[maybe_unused]], const char *path [[maybe_unused]], int flags [[maybe_unused]], struct stat *statbuf [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_stat called" << frg::endlog;
-        return -1;
+    int sys_stat(fsfd_target fsfdt, int fd, const char *path, int flags, struct stat *statbuf) {
+        syscall_return_t ret;
+        switch(fsfdt) {
+            case fsfd_target::fd:
+                ret = syscall4(SYSCALL_ATTR, (syscall_int_t) fd, (syscall_int_t) "", (syscall_int_t) flags | AT_EMPTY_PATH, (syscall_int_t) statbuf);
+                break;
+            case fsfd_target::path:
+                ret = syscall4(SYSCALL_ATTR, (syscall_int_t) AT_FDCWD, (syscall_int_t) path, (syscall_int_t) flags, (syscall_int_t) statbuf);
+                break;
+            case fsfd_target::fd_path:
+                ret = syscall4(SYSCALL_ATTR, (syscall_int_t) fd, (syscall_int_t) path, (syscall_int_t) flags, (syscall_int_t) statbuf);
+                break;
+            default:
+                __ensure(!"sys_stat: Invalid fsfdt");
+                __builtin_unreachable();
+        }
+        return ret.err;
     }
 
     // mlibc assumes that anonymous memory returned by sys_vm_map() is zeroed by the kernel / whatever is behind the sysdeps

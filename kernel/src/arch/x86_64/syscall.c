@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/utsname.h>
@@ -97,27 +98,20 @@ syscall_return_t x86_64_syscall_open(int dir_resource_id, const char *path, int 
 
     process_t *proc = arch_sched_thread_current()->proc;
 
-    vfs_context_t context;
+    vfs_node_t *cwd = NULL;
     if(dir_resource_id == AT_FDCWD) {
-        // TODO: need to setup CWD (vfs context)
-        vfs_node_t *parent_node;
-        int r = vfs_lookup("/", &parent_node, NULL);
-        if(r != 0) {
-            ret.errno = -r;
-            return ret;
-        }
-        context = (vfs_context_t) { .cwd = parent_node };
+        cwd = proc->cwd;
     } else {
         resource_t *parent = resource_get(&proc->resource_table, dir_resource_id);
         if(parent == NULL) {
             ret.errno = EBADF;
             return ret;
         }
-        context = (vfs_context_t) { .cwd = parent->node };
+        cwd = parent->node;
     }
 
     vfs_node_t *node;
-    int r = vfs_lookup(safe_path, &node, &context);
+    int r = vfs_lookup(safe_path, &node, cwd);
     if(r != 0) {
         ret.errno = -r;
         return ret;
@@ -237,6 +231,86 @@ syscall_return_t x86_64_syscall_seek(int resource_id, off_t offset, int whence) 
 
     resource->offset = (size_t) new_offset;
     ret.value = (size_t) new_offset;
+    return ret;
+}
+
+syscall_return_t x86_64_syscall_attr(int resource_id, const char *path, int flags, struct stat *statbuf) {
+    syscall_return_t ret = {};
+
+    // TODO: Should standardize copying to/from userspace
+    char *safe_path = heap_alloc(PATH_MAX + 1);
+    strncpy(safe_path, path, PATH_MAX);
+    safe_path[PATH_MAX] = 0;
+
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "attr(resource_id: %i, path: %s, flags: %i, statbuf: %#lx)", resource_id, safe_path, flags, (uintptr_t) statbuf);
+
+    if(statbuf == NULL) {
+        heap_free(safe_path);
+        ret.errno = EINVAL;
+        return ret;
+    }
+
+    process_t *proc = arch_sched_thread_current()->proc;
+
+    vfs_node_t *parent;
+    if(resource_id == AT_FDCWD) {
+        parent = proc->cwd;
+    } else {
+        resource_t *resource = resource_get(&proc->resource_table, resource_id);
+        if(resource == NULL) {
+            heap_free(safe_path);
+            ret.errno = EBADF;
+            return ret;
+        }
+        parent = resource->node;
+    }
+
+    vfs_node_t *node;
+    if(strlen(safe_path) == 0) {
+        if((flags & AT_EMPTY_PATH) == 0) {
+            heap_free(safe_path);
+            ret.errno = ENOENT;
+            return ret;
+        }
+        node = parent;
+    } else {
+        // TODO: (flags & AT_SYMLINK_NOFOLLOW) should be passed here
+        int r = vfs_lookup(safe_path, &node, parent);
+        if(r != 0) {
+            ret.errno = -r;
+            return ret;
+        }
+    }
+
+    vfs_node_attr_t attr;
+    int r = node->ops->attr(node, &attr);
+    if(r != 0) {
+        heap_free(safe_path);
+        ret.errno = -r;
+        return ret;
+    }
+
+    struct stat *safe_stat = heap_alloc(sizeof(struct stat));
+    safe_stat->st_dev = 0; // TODO: set st_dev
+	safe_stat->st_ino = 0; // TODO: set st_ino
+	safe_stat->st_mode = 0; // TODO: set st_mode
+	safe_stat->st_nlink = 0; // TODO: set st_nlink
+	safe_stat->st_uid = 0; // TODO: set st_uid
+	safe_stat->st_gid = 0; // TODO: set st_gid
+	safe_stat->st_rdev = 0; // TODO: set st_rdev
+	safe_stat->st_size = attr.file_size;
+	safe_stat->st_blksize = 0; // TODO: set st_blksize
+	safe_stat->st_blocks = 0; // TODO: set st_blocks
+	safe_stat->st_atim.tv_sec = 0; // TODO: set st_atim
+	safe_stat->st_atim.tv_nsec = 0;
+	safe_stat->st_mtim.tv_sec = 0; // TODO: set st_mtim
+	safe_stat->st_mtim.tv_nsec = 0;
+	safe_stat->st_ctim.tv_sec = 0; // TODO: set st_ctim
+	safe_stat->st_ctim.tv_nsec = 0;
+
+    // TODO: Should standardize copying to/from userspace
+    memcpy(statbuf, safe_stat, sizeof(struct stat));
+    heap_free(safe_stat);
     return ret;
 }
 
