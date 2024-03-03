@@ -5,8 +5,12 @@
 #include <common/assert.h>
 #include <memory/heap.h>
 
+#define INFO(VFS) ((tmpfs_info_t *) (VFS)->data)
+#define TNODE(NODE) ((tmpfs_node_t *) (NODE)->data)
+
 typedef struct {
     struct tmpfs_node *root_dir;
+    uint64_t id_counter;
 } tmpfs_info_t;
 
 typedef struct {
@@ -15,9 +19,9 @@ typedef struct {
 } tmpfs_file_t;
 
 typedef struct tmpfs_node {
+    uint64_t id;
     const char *name;
     vfs_node_t *node;
-    bool is_dir;
     struct tmpfs_node *parent;
     struct tmpfs_node *sibling_next;
     union {
@@ -42,9 +46,9 @@ static tmpfs_node_t *dir_find(tmpfs_node_t *dir, const char *name) {
 static tmpfs_node_t *create_tnode(tmpfs_node_t *parent, vfs_t *vfs, bool is_dir, const char *name) {
     tmpfs_node_t *tnode = heap_alloc(sizeof(tmpfs_node_t));
     memset(tnode, 0, sizeof(tmpfs_node_t));
+    tnode->id = INFO(vfs)->id_counter++;
     tnode->parent = parent;
     tnode->name = name;
-    tnode->is_dir = is_dir;
     if(parent) tnode->sibling_next = parent->dir.children;
     if(parent) parent->dir.children = tnode;
     if(is_dir) tnode->dir.children = 0;
@@ -66,10 +70,12 @@ static tmpfs_node_t *create_tnode(tmpfs_node_t *parent, vfs_t *vfs, bool is_dir,
 }
 
 static int tmpfs_node_attr(vfs_node_t *node, vfs_node_attr_t *attr) {
-    if(node->type == VFS_NODE_TYPE_FILE)
-        attr->file_size = ((tmpfs_node_t *) node->data)->file->size;
-    else
-        attr->file_size = 0;
+    attr->device_id = 0; // TODO: set real device id
+    attr->inode = TNODE(node)->id;
+    attr->size = 0;
+    if(node->type == VFS_NODE_TYPE_FILE) attr->size = TNODE(node)->file->size;
+    attr->block_size = 1; // TODO: ensure this is not a terrible way of doing this
+    attr->block_count = attr->size;
     return 0;
 }
 
@@ -80,7 +86,7 @@ static int tmpfs_node_lookup(vfs_node_t *dir, char *name, vfs_node_t **out) {
         return 0;
     }
     if(strcmp(name, "..") == 0) {
-        tmpfs_node_t *parent = ((tmpfs_node_t *) dir->data)->parent;
+        tmpfs_node_t *parent = TNODE(dir)->parent;
         if(parent)
             *out = parent->node;
         else
@@ -96,7 +102,7 @@ static int tmpfs_node_lookup(vfs_node_t *dir, char *name, vfs_node_t **out) {
 static int tmpfs_node_rw(vfs_node_t *file, vfs_rw_t *packet, size_t *rw_count) {
     ASSERT(packet->buffer);
     if(file->type != VFS_NODE_TYPE_FILE) return -EISDIR; // TODO: This errno for this assertion is not strictly correct
-    tmpfs_file_t *tfile = (tmpfs_file_t *) ((tmpfs_node_t *) file->data)->file;
+    tmpfs_file_t *tfile = (tmpfs_file_t *) TNODE(file)->file;
 
     *rw_count = 0;
     switch(packet->rw) {
@@ -126,17 +132,17 @@ static int tmpfs_node_rw(vfs_node_t *file, vfs_rw_t *packet, size_t *rw_count) {
 
 static int tmpfs_node_readdir(vfs_node_t *dir, int *offset, char **out) {
     if(dir->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
-    tmpfs_node_t *tnode = ((tmpfs_node_t *) dir->data)->dir.children;
+    tmpfs_node_t *tnode = TNODE(dir)->dir.children;
     for(int i = 0; i < *offset && tnode; i++) tnode = tnode->sibling_next;
     if(tnode) *out = (char *) tnode->name;
-    else *out = 0;
+    else *out = NULL;
     (*offset)++;
     return 0;
 }
 
 static int tmpfs_node_mkdir(vfs_node_t *parent, const char *name, vfs_node_t **out) {
     if(parent->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
-    tmpfs_node_t *tparent = (tmpfs_node_t *) parent->data;
+    tmpfs_node_t *tparent = TNODE(parent);
     if(dir_find(tparent, name)) return -EEXIST;
     tmpfs_node_t *dir = create_tnode(tparent, parent->vfs, true, name);
     *out = dir->node;
@@ -145,7 +151,7 @@ static int tmpfs_node_mkdir(vfs_node_t *parent, const char *name, vfs_node_t **o
 
 static int tmpfs_node_create(vfs_node_t *parent, const char *name, vfs_node_t **out) {
     if(parent->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
-    tmpfs_node_t *tparent = (tmpfs_node_t *) parent->data;
+    tmpfs_node_t *tparent = TNODE(parent);
     if(dir_find(tparent, name)) return -EEXIST;
     tmpfs_node_t *file = create_tnode(tparent, parent->vfs, false, name);
     *out = file->node;
@@ -154,14 +160,14 @@ static int tmpfs_node_create(vfs_node_t *parent, const char *name, vfs_node_t **
 
 static int tmpfs_mount(vfs_t *vfs, [[maybe_unused]] void *data) {
     tmpfs_info_t *info = heap_alloc(sizeof(tmpfs_info_t));
-    info->root_dir = create_tnode(0, vfs, true, "tmpfs_root");
+    info->id_counter = 1;
     vfs->data = (void *) info;
+    info->root_dir = create_tnode(NULL, vfs, true, "tmpfs_root");
     return 0;
 }
 
 static int tmpfs_root(vfs_t *vfs, vfs_node_t **out) {
-    tmpfs_info_t *info = (tmpfs_info_t *) vfs->data;
-    *out = info->root_dir->node;
+    *out = INFO(vfs)->root_dir->node;
     return 0;
 }
 

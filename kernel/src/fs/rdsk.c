@@ -128,11 +128,12 @@ static rdsk_file_t *find_file(vfs_t *vfs, rdsk_dir_t *dir, char *name) {
 }
 
 static int rdsk_node_attr(vfs_node_t *node, vfs_node_attr_t *attr) {
-    if(node->type == VFS_NODE_TYPE_FILE) {
-        attr->file_size = ((rdsk_file_t *) node->data)->size;
-    } else {
-        attr->file_size = 0;
-    }
+    attr->device_id = 0; // TODO: set real device id
+    attr->inode = (uintptr_t) node->data;
+    attr->size = 0;
+    if(node->type == VFS_NODE_TYPE_FILE) attr->size = ((rdsk_file_t *) node->data)->size;
+    attr->block_size = 1; // TODO: ensure this is not a terrible way of doing this
+    attr->block_count = attr->size;
     return 0;
 }
 

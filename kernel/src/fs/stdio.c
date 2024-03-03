@@ -15,7 +15,7 @@ typedef struct {
 } stdio_nodes_t;
 
 static int stdio_shared_node_attr(vfs_node_t *node [[maybe_unused]], vfs_node_attr_t *attr) {
-    (*attr).file_size = 0;
+    (*attr).size = 0;
     return 0;
 }
 
@@ -86,7 +86,12 @@ static vfs_node_ops_t stderr_ops = {
 };
 
 static int stdio_root_node_attr(vfs_node_t *node [[maybe_unused]], vfs_node_attr_t *attr) {
-    (*attr).file_size = 0;
+    // TODO: these values are not correct
+    attr->device_id = 0;
+    attr->inode = 0;
+    attr->size = 0;
+    attr->block_count = 0;
+    attr->block_size = 0;
     return 0;
 }
 

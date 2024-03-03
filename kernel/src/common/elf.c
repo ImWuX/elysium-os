@@ -96,7 +96,7 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, aux
     vfs_node_attr_t attributes;
     r = node->ops->attr(node, &attributes);
     if(r < 0) FAIL("Unable to retrieve file attributes");
-    if(attributes.file_size < sizeof(elf_header_t)) FAIL("File does not contain an ELF header");
+    if(attributes.size < sizeof(elf_header_t)) FAIL("File does not contain an ELF header");
 
     elf_header_t *header = heap_alloc(sizeof(elf_header_t));
     #undef FAIL_GOTO
