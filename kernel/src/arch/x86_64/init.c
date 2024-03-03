@@ -56,8 +56,6 @@ static x86_64_init_stage_t init_stage = X86_64_INIT_STAGE_ENTRY;
 volatile size_t g_x86_64_cpu_count;
 x86_64_cpu_t *g_x86_64_cpus;
 
-[[noreturn]] static void test_thread();
-
 static void log_raw_serial(char c) {
 	x86_64_port_outb(0x3F8, c);
 }
@@ -380,8 +378,6 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         sched_thread_schedule(thread);
     }
 
-    sched_thread_schedule(arch_sched_thread_create_kernel(test_thread));
-
     // SMP init
     g_x86_64_cpus = heap_alloc(sizeof(x86_64_cpu_t) * boot_info->cpu_count);
 
@@ -419,20 +415,4 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 
     x86_64_sched_init_cpu(cpu, true);
     __builtin_unreachable();
-}
-
-[[noreturn]] static void test_thread() {
-    log(LOG_LEVEL_DEBUG, "TEST_THREAD", "Init");
-
-    vfs_node_t *node;
-    int r = vfs_lookup("/tmp/stdio/stdout", &node, NULL);
-    if(r == 0) {
-        size_t count;
-        r = node->ops->rw(node, &(vfs_rw_t) { .rw = VFS_RW_WRITE, .buffer = "HELLO FROM STDOUT\n", .size = 18 }, &count);
-        if(r != 0 || count != 18) log(LOG_LEVEL_WARN, "TEST_THREAD", "Failed to write to stdout (%i, %lu)", r, count);
-    } else {
-        log(LOG_LEVEL_WARN, "TEST_THREAD", "Failed to lookup stdout node (%i)", r);
-    }
-
-    for(;;) arch_cpu_relax();
 }
