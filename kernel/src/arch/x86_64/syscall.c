@@ -19,12 +19,6 @@ void x86_64_syscall_exit(int code) {
     __builtin_unreachable();
 }
 
-syscall_return_t x86_64_syscall_debug(char c) {
-    syscall_return_t ret = {};
-    log_raw(c);
-    return ret;
-}
-
 syscall_return_t x86_64_syscall_fs_set(void *ptr) {
     syscall_return_t ret = {};
     x86_64_msr_write(X86_64_MSR_FS_BASE, (uint64_t) ptr);

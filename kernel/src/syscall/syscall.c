@@ -4,6 +4,12 @@
 #include <common/log.h>
 #include <syscall/syscall.h>
 
+syscall_return_t syscall_debug_char(char c) {
+    syscall_return_t ret = {};
+    log_raw(c);
+    return ret;
+}
+
 syscall_return_t syscall_uname(struct utsname *buf) {
     syscall_return_t ret = {};
     log(LOG_LEVEL_DEBUG, "SYSCALL", "uname(buf: %#lx)", (uint64_t) buf);

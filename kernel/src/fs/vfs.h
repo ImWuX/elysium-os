@@ -16,7 +16,11 @@ typedef enum {
 } vfs_node_type_t;
 
 typedef struct {
-    size_t file_size;
+    size_t size;
+    uint64_t block_size;
+    uint64_t block_count;
+    uint64_t device_id;
+    uint64_t inode;
 } vfs_node_attr_t;
 
 typedef struct vfs_node {

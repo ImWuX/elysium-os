@@ -16,6 +16,8 @@
 syscall_return_t syscall_fs_open(int dir_resource_id, const char *path, int flags, mode_t mode) {
     syscall_return_t ret = {};
 
+    // TODO: handle flags & mode
+
     // TODO: Should standardize copying to/from userspace
     char *safe_path = heap_alloc(PATH_MAX + 1);
     strncpy(safe_path, path, PATH_MAX);
@@ -139,7 +141,7 @@ syscall_return_t syscall_fs_seek(int resource_id, off_t offset, int whence) {
                 ret.errno = -r;
                 return ret;
             }
-            new_offset = offset + attr.file_size;
+            new_offset = offset + attr.size;
             break;
         case SEEK_SET:
             new_offset = offset;
@@ -218,16 +220,16 @@ syscall_return_t syscall_fs_attr(int resource_id, const char *path, int flags, s
     }
 
     struct stat *safe_stat = heap_alloc(sizeof(struct stat));
-    safe_stat->st_dev = 0; // TODO: set st_dev
-	safe_stat->st_ino = 0; // TODO: set st_ino
+    safe_stat->st_dev = attr.device_id;
+	safe_stat->st_ino = attr.inode;
 	safe_stat->st_mode = 0; // TODO: set st_mode
 	safe_stat->st_nlink = 0; // TODO: set st_nlink
 	safe_stat->st_uid = 0; // TODO: set st_uid
 	safe_stat->st_gid = 0; // TODO: set st_gid
 	safe_stat->st_rdev = 0; // TODO: set st_rdev
-	safe_stat->st_size = attr.file_size;
-	safe_stat->st_blksize = 0; // TODO: set st_blksize
-	safe_stat->st_blocks = 0; // TODO: set st_blocks
+	safe_stat->st_size = attr.size;
+	safe_stat->st_blksize = attr.block_size;
+	safe_stat->st_blocks = attr.block_count;
 	safe_stat->st_atim.tv_sec = 0; // TODO: set st_atim
 	safe_stat->st_atim.tv_nsec = 0;
 	safe_stat->st_mtim.tv_sec = 0; // TODO: set st_mtim

@@ -46,7 +46,20 @@ int main(int argc, char **vargs) {
         printf("Failed to stat file (%s)\n", strerror(errno));
         return 1;
     }
-    printf("kernsymb.txt size: %li\n", stat_data.st_size);
+
+    printf(
+        "kernsymb.txt stat\nst_dev: %#lx\nst_ino: %#lx\nst_mode: %#x\nst_nlink: %#lx\nst_uid: %#x\nst_gid: %#x\nst_rdev: %#lx\nst_size: %li\nst_blksize: %li\nst_blocks: %li\n",
+        stat_data.st_dev,
+        stat_data.st_ino,
+        stat_data.st_mode,
+        stat_data.st_nlink,
+        stat_data.st_uid,
+        stat_data.st_gid,
+        stat_data.st_rdev,
+        stat_data.st_size,
+        stat_data.st_blksize,
+        stat_data.st_blocks
+    );
 
     return 0;
 }
