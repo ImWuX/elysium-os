@@ -1,12 +1,20 @@
+#include <stddef.h>
 #include <stdint.h>
 #include <sys/utsname.h>
 #include <lib/str.h>
 #include <common/log.h>
+#include <memory/heap.h>
 #include <syscall/syscall.h>
 
-syscall_return_t syscall_debug_char(char c) {
+syscall_return_t syscall_debug(size_t length, char *str) {
     syscall_return_t ret = {};
-    log_raw(c);
+
+    // TODO: Should standardize copying to/from userspace
+    char *safe_str = heap_alloc(length + 1);
+    strncpy(safe_str, str, length);
+    safe_str[length] = 0;
+
+    log(LOG_LEVEL_INFO, "MLIBC", "%s", safe_str);
     return ret;
 }
 

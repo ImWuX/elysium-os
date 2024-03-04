@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 
-typedef void (*format_out_t)(char ch);
+typedef void (* format_out_t)(char ch);
 
 /**
  * @brief Prints a formatted string. Tries to adhere to C spec

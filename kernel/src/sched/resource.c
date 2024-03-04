@@ -4,18 +4,19 @@
 #include <common/spinlock.h>
 #include <memory/heap.h>
 
-resource_t *resource_create_at(resource_table_t *table, vfs_node_t *node, int id, bool lock) {
+resource_t *resource_create_at(resource_table_t *table, int id, vfs_node_t *node, size_t offset, resource_mode_t mode, bool lock) {
     if(lock) spinlock_acquire(&table->lock);
     resource_t *resource = heap_alloc(sizeof(resource_t));
     resource->node = node;
-    resource->offset = 0;
+    resource->offset = offset;
+    resource->mode = mode;
     table->resources[id] = resource;
     if(lock) spinlock_release(&table->lock);
-    log(LOG_LEVEL_DEBUG, "RESOURCE", "Created resource %i", id);
+    log(LOG_LEVEL_DEBUG, "RESOURCE", "Created resource %i (offset: %#lx, mode: %i)", id, offset, mode);
     return resource;
 }
 
-int resource_create(resource_table_t *table, vfs_node_t *node) {
+int resource_create(resource_table_t *table, vfs_node_t *node, size_t offset, resource_mode_t mode) {
     spinlock_acquire(&table->lock);
     bool found = false;
     int id = 0;
@@ -28,7 +29,7 @@ int resource_create(resource_table_t *table, vfs_node_t *node) {
         spinlock_release(&table->lock);
         return -EMFILE;
     }
-    resource_create_at(table, node, id, false);
+    resource_create_at(table, id, node, offset, mode, false);
     spinlock_release(&table->lock);
     return id;
 }

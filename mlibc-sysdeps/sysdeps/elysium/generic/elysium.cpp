@@ -1,16 +1,16 @@
+#include <stddef.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <bits/ensure.h>
 #include <mlibc/debug.hpp>
 #include <mlibc/all-sysdeps.hpp>
 #include <elysium/syscall.h>
-#include <errno.h>
-#include <fcntl.h>
 
 namespace mlibc {
 
     void sys_libc_log(const char *message) {
-        for(int i = 0; i < 9; i++) syscall1(SYSCALL_DEBUG, (syscall_int_t) "mlibc :: "[i]);
-        for(int i = 0; message[i]; i++) syscall1(SYSCALL_DEBUG, (syscall_int_t) message[i]);
-        syscall1(SYSCALL_DEBUG, (syscall_int_t) '\n');
+        syscall2(SYSCALL_DEBUG, (syscall_int_t) strlen(message), (syscall_int_t) message);
     }
 
     [[noreturn]] void sys_libc_panic() {
@@ -24,9 +24,7 @@ namespace mlibc {
     }
 
     int sys_tcb_set(void *pointer) {
-        syscall_return_t ret = syscall1(SYSCALL_FS_SET, (syscall_int_t) pointer);
-        if(ret.err != 0) return ret.err;
-        return 0;
+        return syscall1(SYSCALL_FS_SET, (syscall_int_t) pointer).err;
     }
 
     int sys_futex_wait(int *pointer [[maybe_unused]], int expected [[maybe_unused]], const struct timespec *time [[maybe_unused]]) {
@@ -49,8 +47,7 @@ namespace mlibc {
     }
 
     int sys_anon_free(void *pointer, size_t size) {
-        syscall_return_t ret = syscall2(SYSCALL_ANON_FREE, (syscall_int_t) pointer, size);
-        return ret.err;
+        return syscall2(SYSCALL_ANON_FREE, (syscall_int_t) pointer, size).err;
     }
 
     int sys_openat(int dirfd, const char *path, int flags, mode_t mode, int *fd) {
@@ -67,15 +64,13 @@ namespace mlibc {
     int sys_read(int fd, void *buf, size_t count, ssize_t *bytes_read) {
         syscall_return_t ret = syscall3(SYSCALL_READ, (syscall_int_t) fd, (syscall_int_t) buf, count);
         *bytes_read = (ssize_t) ret.value;
-        if(ret.err != 0) return ret.err;
-        return 0;
+        return ret.err;
     }
 
     int sys_write(int fd, const void *buf, size_t count, ssize_t *bytes_written) {
         syscall_return_t ret = syscall3(SYSCALL_WRITE, (syscall_int_t) fd, (syscall_int_t) buf, count);
         *bytes_written = (ssize_t) ret.value;
-        if(ret.err != 0) return ret.err;
-        return 0;
+        return ret.err;
     }
 
     int sys_seek(int fd, off_t offset, int whence, off_t *new_offset) {
@@ -86,8 +81,7 @@ namespace mlibc {
     }
 
     int sys_close(int fd) {
-        syscall_return_t ret = syscall1(SYSCALL_CLOSE, (syscall_int_t) fd);
-        return ret.err;
+        return syscall1(SYSCALL_CLOSE, (syscall_int_t) fd).err;
     }
 
     int sys_stat(fsfd_target fsfdt, int fd, const char *path, int flags, struct stat *statbuf) {

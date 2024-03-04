@@ -137,40 +137,40 @@ static int rdsk_node_attr(vfs_node_t *node, vfs_node_attr_t *attr) {
     return 0;
 }
 
-static int rdsk_node_lookup(vfs_node_t *dir, char *name, vfs_node_t **out) {
-    if(dir->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
+static int rdsk_node_lookup(vfs_node_t *node, char *name, vfs_node_t **out) {
+    if(node->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
     if(strcmp(name, ".") == 0) {
-        *out = dir;
+        *out = node;
         return 0;
     }
-    rdsk_dir_t *rdir = (rdsk_dir_t *) dir->data;
+    rdsk_dir_t *rdir = (rdsk_dir_t *) node->data;
     if(strcmp(name, "..") == 0) {
         if(rdir->parent_index)
-            *out = get_dir_vfs_node(dir->vfs, rdir->parent_index);
+            *out = get_dir_vfs_node(node->vfs, rdir->parent_index);
         else
-            *out = dir;
+            *out = node;
         return 0;
     }
-    rdsk_file_t *ffile = find_file(dir->vfs, rdir, name);
+    rdsk_file_t *ffile = find_file(node->vfs, rdir, name);
     if(ffile) {
-        *out = get_file_vfs_node(dir->vfs, get_file_index(dir->vfs, ffile));
+        *out = get_file_vfs_node(node->vfs, get_file_index(node->vfs, ffile));
         return 0;
     }
-    rdsk_dir_t *fdir = find_dir(dir->vfs, rdir, name);
+    rdsk_dir_t *fdir = find_dir(node->vfs, rdir, name);
     if(fdir) {
-        *out = get_dir_vfs_node(dir->vfs, get_dir_index(dir->vfs, fdir));
+        *out = get_dir_vfs_node(node->vfs, get_dir_index(node->vfs, fdir));
         return 0;
     }
     return -ENOENT;
 }
 
-static int rdsk_node_rw(vfs_node_t *file, vfs_rw_t *packet, size_t *rw_count) {
+static int rdsk_node_rw(vfs_node_t *node, vfs_rw_t *packet, size_t *rw_count) {
     ASSERT(packet->buffer);
-    if(file->type != VFS_NODE_TYPE_FILE) return -EISDIR; // TODO: This errno for this assertion is not strictly correct
+    if(node->type != VFS_NODE_TYPE_FILE) return -EISDIR; // TODO: This errno for this assertion is not strictly correct
     if(packet->rw == VFS_RW_WRITE) return -EROFS;
 
-    info_t *info = (info_t *) file->vfs->data;
-    rdsk_file_t *rfile = (rdsk_file_t *) file->data;
+    info_t *info = (info_t *) node->vfs->data;
+    rdsk_file_t *rfile = (rdsk_file_t *) node->data;
     if(packet->offset >= rfile->size) {
         *rw_count = 0;
         return 0;
@@ -182,42 +182,46 @@ static int rdsk_node_rw(vfs_node_t *file, vfs_rw_t *packet, size_t *rw_count) {
     return 0;
 }
 
-static int rdsk_node_readdir(vfs_node_t *dir, int *offset, char **out) {
-    if(dir->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
+static int rdsk_node_readdir(vfs_node_t *node, int *offset, char **out) {
+    if(node->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
     int local_offset = *offset;
 
-    rdsk_header_t *header = ((info_t *) dir->vfs->data)->header;
-    rdsk_dir_t *rdir = (rdsk_dir_t *) dir->data;
+    rdsk_header_t *header = ((info_t *) node->vfs->data)->header;
+    rdsk_dir_t *rdir = (rdsk_dir_t *) node->data;
 
     if(local_offset < (int) header->filetable_entry_count) {
         rdsk_index_t index = rdir->filetable_index;
-        for(int i = 0; i < local_offset && index != 0; i++) index = get_file(dir->vfs, index)->next_index;
+        for(int i = 0; i < local_offset && index != 0; i++) index = get_file(node->vfs, index)->next_index;
         if(index == 0) {
             local_offset = header->filetable_entry_count;
         } else {
-            *out = (char *) get_name(dir->vfs, get_file(dir->vfs, index)->nametable_offset);
+            *out = (char *) get_name(node->vfs, get_file(node->vfs, index)->nametable_offset);
             *offset = local_offset + 1;
             return 0;
         }
     }
 
     rdsk_index_t index = rdir->dirtable_index;
-    for(int i = 0; i < local_offset - (int) header->filetable_entry_count && index != 0; i++) index = get_dir(dir->vfs, index)->next_index;
+    for(int i = 0; i < local_offset - (int) header->filetable_entry_count && index != 0; i++) index = get_dir(node->vfs, index)->next_index;
     if(index == 0) {
         *out = NULL;
         return 0;
     }
 
-    *out = (char *) get_name(dir->vfs, get_dir(dir->vfs, index)->nametable_offset);
+    *out = (char *) get_name(node->vfs, get_dir(node->vfs, index)->nametable_offset);
     *offset = local_offset + 1;
     return 0;
 }
 
-static int rdsk_node_mkdir(vfs_node_t *parent [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
+static int rdsk_node_mkdir(vfs_node_t *node [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
     return -EROFS;
 }
 
-static int rdsk_node_create(vfs_node_t *parent [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
+static int rdsk_node_create(vfs_node_t *node [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
+    return -EROFS;
+}
+
+static int rdsk_node_truncate(vfs_node_t *node [[maybe_unused]], size_t length [[maybe_unused]]) {
     return -EROFS;
 }
 
@@ -247,7 +251,8 @@ static vfs_node_ops_t node_ops = {
     .rw = rdsk_node_rw,
     .mkdir = rdsk_node_mkdir,
     .readdir = rdsk_node_readdir,
-    .create = rdsk_node_create
+    .create = rdsk_node_create,
+    .truncate = rdsk_node_truncate
 };
 
 vfs_ops_t g_rdsk_ops = {

@@ -79,30 +79,30 @@ static int tmpfs_node_attr(vfs_node_t *node, vfs_node_attr_t *attr) {
     return 0;
 }
 
-static int tmpfs_node_lookup(vfs_node_t *dir, char *name, vfs_node_t **out) {
-    if(dir->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
+static int tmpfs_node_lookup(vfs_node_t *node, char *name, vfs_node_t **out) {
+    if(node->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
     if(strcmp(name, ".") == 0) {
-        *out = dir;
+        *out = node;
         return 0;
     }
     if(strcmp(name, "..") == 0) {
-        tmpfs_node_t *parent = TNODE(dir)->parent;
+        tmpfs_node_t *parent = TNODE(node)->parent;
         if(parent)
             *out = parent->node;
         else
-            *out = dir;
+            *out = node;
         return 0;
     }
-    tmpfs_node_t *tnode = dir_find((tmpfs_node_t *) dir->data, name);
+    tmpfs_node_t *tnode = dir_find((tmpfs_node_t *) node->data, name);
     if(!tnode) return -ENOENT;
     *out = tnode->node;
     return 0;
 }
 
-static int tmpfs_node_rw(vfs_node_t *file, vfs_rw_t *packet, size_t *rw_count) {
-    ASSERT(packet->buffer);
-    if(file->type != VFS_NODE_TYPE_FILE) return -EISDIR; // TODO: This errno for this assertion is not strictly correct
-    tmpfs_file_t *tfile = (tmpfs_file_t *) TNODE(file)->file;
+static int tmpfs_node_rw(vfs_node_t *node, vfs_rw_t *packet, size_t *rw_count) {
+    ASSERT(packet->buffer != NULL);
+    if(node->type != VFS_NODE_TYPE_FILE) return -EISDIR; // TODO: This errno for this assertion is not strictly correct
+    tmpfs_file_t *tfile = (tmpfs_file_t *) TNODE(node)->file;
 
     *rw_count = 0;
     switch(packet->rw) {
@@ -130,9 +130,9 @@ static int tmpfs_node_rw(vfs_node_t *file, vfs_rw_t *packet, size_t *rw_count) {
     return 0;
 }
 
-static int tmpfs_node_readdir(vfs_node_t *dir, int *offset, char **out) {
-    if(dir->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
-    tmpfs_node_t *tnode = TNODE(dir)->dir.children;
+static int tmpfs_node_readdir(vfs_node_t *node, int *offset, char **out) {
+    if(node->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
+    tmpfs_node_t *tnode = TNODE(node)->dir.children;
     for(int i = 0; i < *offset && tnode; i++) tnode = tnode->sibling_next;
     if(tnode) *out = (char *) tnode->name;
     else *out = NULL;
@@ -140,21 +140,38 @@ static int tmpfs_node_readdir(vfs_node_t *dir, int *offset, char **out) {
     return 0;
 }
 
-static int tmpfs_node_mkdir(vfs_node_t *parent, const char *name, vfs_node_t **out) {
-    if(parent->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
-    tmpfs_node_t *tparent = TNODE(parent);
+static int tmpfs_node_mkdir(vfs_node_t *node, const char *name, vfs_node_t **out) {
+    if(node->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
+    tmpfs_node_t *tparent = TNODE(node);
     if(dir_find(tparent, name)) return -EEXIST;
-    tmpfs_node_t *dir = create_tnode(tparent, parent->vfs, true, name);
+    tmpfs_node_t *dir = create_tnode(tparent, node->vfs, true, name);
     *out = dir->node;
     return 0;
 }
 
-static int tmpfs_node_create(vfs_node_t *parent, const char *name, vfs_node_t **out) {
-    if(parent->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
-    tmpfs_node_t *tparent = TNODE(parent);
+static int tmpfs_node_create(vfs_node_t *node, const char *name, vfs_node_t **out) {
+    if(node->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
+    tmpfs_node_t *tparent = TNODE(node);
     if(dir_find(tparent, name)) return -EEXIST;
-    tmpfs_node_t *file = create_tnode(tparent, parent->vfs, false, name);
+    tmpfs_node_t *file = create_tnode(tparent, node->vfs, false, name);
     *out = file->node;
+    return 0;
+}
+
+static int tmpfs_node_truncate(vfs_node_t *node, size_t length) {
+    if(node->type != VFS_NODE_TYPE_FILE) return -EISDIR; // TODO: This errno for this assertion is not strictly correct
+    tmpfs_node_t *tnode = TNODE(node);
+    void *buf;
+    if(length > 0) {
+        buf = heap_alloc(length);
+        memset(buf, 0, length);
+        if((void *) tnode->file->base != NULL) memcpy(buf, (void *) tnode->file->base, tnode->file->size < length ? tnode->file->size : length);
+    } else {
+        buf = NULL;
+    }
+    if((void *) tnode->file->base != NULL) heap_free((void *) tnode->file->base);
+    tnode->file->base = (uintptr_t) buf;
+    tnode->file->size = length;
     return 0;
 }
 
@@ -177,7 +194,8 @@ static vfs_node_ops_t node_ops = {
     .rw = tmpfs_node_rw,
     .mkdir = tmpfs_node_mkdir,
     .readdir = tmpfs_node_readdir,
-    .create = tmpfs_node_create
+    .create = tmpfs_node_create,
+    .truncate = tmpfs_node_truncate
 };
 
 vfs_ops_t g_tmpfs_ops = {

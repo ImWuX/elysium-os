@@ -2,7 +2,7 @@ SYSCALL_RSP_OFFSET equ 16
 KERNEL_STACK_BASE_OFFSET equ 24
 
 extern x86_64_syscall_exit
-extern syscall_debug_char
+extern syscall_debug
 extern syscall_mem_anon_allocate
 extern syscall_mem_anon_free
 extern x86_64_syscall_fs_set
@@ -12,12 +12,12 @@ extern syscall_fs_close
 extern syscall_fs_write
 extern syscall_fs_read
 extern syscall_fs_seek
-extern syscall_fs_attr
+extern syscall_fs_stat
 
 section .data
 syscall_table:
     dq x86_64_syscall_exit ; 0
-    dq syscall_debug_char ; 1
+    dq syscall_debug ; 1
     dq syscall_mem_anon_allocate ; 2
     dq syscall_mem_anon_free ; 3
     dq x86_64_syscall_fs_set ; 4
@@ -27,7 +27,7 @@ syscall_table:
     dq syscall_fs_write ; 8
     dq syscall_fs_read ; 9
     dq syscall_fs_seek ; 10
-    dq syscall_fs_attr ; 11
+    dq syscall_fs_stat ; 11
 .length: dq ($ - syscall_table) / 8
 
 section .text
