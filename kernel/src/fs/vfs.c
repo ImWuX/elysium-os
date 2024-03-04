@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <lib/mem.h>
 #include <lib/str.h>
+#include <common/log.h>
 #include <common/panic.h>
 #include <common/assert.h>
 #include <memory/heap.h>
@@ -14,18 +15,18 @@ int vfs_mount(vfs_ops_t *vfs_ops, char *path, void *data) {
     vfs->ops = vfs_ops;
     vfs_ops->mount(vfs, data);
     if(list_is_empty(&g_vfs_all)) {
-        if(path) {
+        if(path != NULL) {
             heap_free(vfs);
             return -ENOENT;
         }
     } else {
         vfs_node_t *node;
         int r = vfs_lookup(path, &node, NULL);
-        if(r < 0) {
+        if(r != 0) {
             heap_free(vfs);
             return r;
         }
-        if(node->vfs_mounted) {
+        if(node->vfs_mounted != NULL) {
             heap_free(vfs);
             return -EBUSY;
         }
@@ -36,25 +37,30 @@ int vfs_mount(vfs_ops_t *vfs_ops, char *path, void *data) {
     return 0;
 }
 
-int vfs_lookup(char *path, vfs_node_t **out, vfs_node_t *cwd) {
-    ASSERT(g_vfs_all.next);
-    vfs_t *vfs = LIST_CONTAINER_GET(g_vfs_all.next, vfs_t, list);
+int vfs_root(vfs_node_t **out) {
+    if(list_is_empty(&g_vfs_all)) return -ENOENT;
+    ASSERT(LIST_NEXT(&g_vfs_all) != NULL);
+    vfs_t *vfs = LIST_CONTAINER_GET(LIST_NEXT(&g_vfs_all), vfs_t, list);
+    return vfs->ops->root(vfs, out);
+}
 
-    vfs_node_t *current_node;
+int vfs_lookup_ext(char *path, vfs_node_t **out, vfs_node_t *cwd, vfs_lookup_create_t create, bool exclusive) {
     int comp_start = 0, comp_end = 0;
+
+    vfs_node_t *current_node = cwd;
     if(path[comp_end] == '/') {
-        int r = vfs->ops->root(vfs, &current_node);
-        if(r < 0) return r;
-        comp_end++, comp_start++;
-    } else {
-        if(cwd)
-            current_node = cwd;
-        else
-            return -ENOENT;
+        int r = vfs_root(&current_node);
+        if(r != 0) return r;
+        comp_start++, comp_end++;
     }
+    if(current_node == NULL) return -ENOENT;
+
     do {
+        bool last_comp = false;
         switch(path[comp_end]) {
             case 0:
+                last_comp = true;
+                [[fallthrough]];
             case '/':
                 if(comp_start == comp_end) {
                     comp_start++;
@@ -67,16 +73,37 @@ int vfs_lookup(char *path, vfs_node_t **out, vfs_node_t *cwd) {
                 comp_start = comp_end + 1;
 
                 int r = current_node->ops->lookup(current_node, component, &current_node);
+
+                if(r == -ENOENT && last_comp) {
+                    switch(create) {
+                        case VFS_LOOKUP_CREATE_FILE:
+                            r = current_node->ops->create(current_node, component, &current_node);
+                            break;
+                        case VFS_LOOKUP_CREATE_DIR:
+                            r = current_node->ops->mkdir(current_node, component, &current_node);
+                            break;
+                        case VFS_LOOKUP_CREATE_NONE: break;
+                    }
+                } else {
+                    if(exclusive) r = -EEXIST;
+                }
+
                 heap_free(component);
-                if(r < 0) return r;
+                if(r != 0) return r;
                 break;
         }
-        if(!current_node->vfs_mounted) continue;
+
+        if(current_node->vfs_mounted == NULL) continue;
         int r = current_node->vfs_mounted->ops->root(current_node->vfs_mounted, &current_node);
-        if(r < 0) return r;
+        if(r != 0) return r;
     } while(path[comp_end++]);
+
     *out = current_node;
     return 0;
+}
+
+int vfs_lookup(char *path, vfs_node_t **out, vfs_node_t *cwd) {
+    return vfs_lookup_ext(path, out, cwd, VFS_LOOKUP_CREATE_NONE, false);
 }
 
 int vfs_rw(char *path, vfs_rw_t *packet, size_t *rw_count, vfs_node_t *cwd) {

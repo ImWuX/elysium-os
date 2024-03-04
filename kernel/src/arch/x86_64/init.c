@@ -281,9 +281,9 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     int r = vfs_mount(&g_rdsk_ops, NULL, (void *) HHDM(sysroot_module->paddr));
     if(r < 0) panic("Failed to mount RDSK (%i)", r);
 
-    vfs_t *root_vfs = LIST_CONTAINER_GET(LIST_NEXT(&g_vfs_all), vfs_t, list);
     vfs_node_t *root_node;
-    ASSERT(root_vfs->ops->root(root_vfs, &root_node) == 0);
+    ASSERT(vfs_root(&root_node) == 0);
+
     log(LOG_LEVEL_DEBUG, "FS", "Root Directory");
     for(int i = 0;;) {
         char *filename;
@@ -368,9 +368,9 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         char *envp[] = { NULL };
 
         process_t *proc = sched_process_create(as);
-        resource_create_at(&proc->resource_table, stdin, 0, true);
-        resource_create_at(&proc->resource_table, stdout, 1, true);
-        resource_create_at(&proc->resource_table, stderr, 2, true);
+        resource_create_at(&proc->resource_table, 0, stdin, 0, RESOURCE_MODE_READ_WRITE, true);
+        resource_create_at(&proc->resource_table, 1, stdout, 0, RESOURCE_MODE_READ_WRITE, true);
+        resource_create_at(&proc->resource_table, 2, stderr, 0, RESOURCE_MODE_READ_WRITE, true);
 
         uintptr_t thread_stack = arch_sched_stack_setup(proc, argv, envp, &auxv);
         thread_t *thread = arch_sched_thread_create_user(proc, interpreter ? interp_auxv.entry : auxv.entry, thread_stack);

@@ -15,18 +15,18 @@ typedef struct {
 } stdio_nodes_t;
 
 static int stdio_shared_node_attr(vfs_node_t *node [[maybe_unused]], vfs_node_attr_t *attr) {
-    (*attr).size = 0;
+    attr->size = 0;
     return 0;
 }
 
-static int stdio_stdin_node_rw(vfs_node_t *file [[maybe_unused]], vfs_rw_t *packet, size_t *rw_count) {
+static int stdio_stdin_node_rw(vfs_node_t *node [[maybe_unused]], vfs_rw_t *packet, size_t *rw_count) {
     if(packet->rw == VFS_RW_WRITE) return -EPERM;
     // TODO: STDIN
     *rw_count = 0;
     return 0;
 }
 
-static int stdio_stdout_node_rw(vfs_node_t *file [[maybe_unused]], vfs_rw_t *packet, size_t *rw_count) {
+static int stdio_stdout_node_rw(vfs_node_t *node [[maybe_unused]], vfs_rw_t *packet, size_t *rw_count) {
     if(packet->rw == VFS_RW_READ) return -EPERM;
     char *c = (char *) packet->buffer;
     for(size_t i = 0; i < packet->size && c[i] != 0; i++) log_raw(c[i]);
@@ -34,7 +34,7 @@ static int stdio_stdout_node_rw(vfs_node_t *file [[maybe_unused]], vfs_rw_t *pac
     return 0;
 }
 
-static int stdio_stderr_node_rw(vfs_node_t *file [[maybe_unused]], vfs_rw_t *packet, size_t *rw_count) {
+static int stdio_stderr_node_rw(vfs_node_t *node [[maybe_unused]], vfs_rw_t *packet, size_t *rw_count) {
     if(packet->rw == VFS_RW_READ) return -EPERM;
     char *c = (char *) packet->buffer;
     for(size_t i = 0; i < packet->size && c[i] != 0; i++) log_raw(c[i]);
@@ -42,20 +42,24 @@ static int stdio_stderr_node_rw(vfs_node_t *file [[maybe_unused]], vfs_rw_t *pac
     return 0;
 }
 
-static int stdio_shared_node_lookup(vfs_node_t *dir [[maybe_unused]], char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
+static int stdio_shared_node_lookup(vfs_node_t *node [[maybe_unused]], char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
     return -ENOTDIR;
 }
 
-static int stdio_shared_node_readdir(vfs_node_t *dir [[maybe_unused]], int *offset [[maybe_unused]], char **out [[maybe_unused]]) {
+static int stdio_shared_node_readdir(vfs_node_t *node [[maybe_unused]], int *offset [[maybe_unused]], char **out [[maybe_unused]]) {
     return -ENOTDIR;
 }
 
-static int stdio_shared_node_mkdir(vfs_node_t *parent [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
+static int stdio_shared_node_mkdir(vfs_node_t *node [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
     return -ENOTDIR;
 }
 
-static int stdio_shared_node_create(vfs_node_t *parent [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
+static int stdio_shared_node_create(vfs_node_t *node [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
     return -ENOTDIR;
+}
+
+static int stdio_shared_node_truncate(vfs_node_t *node [[maybe_unused]], size_t length [[maybe_unused]]) {
+    return -EPERM;
 }
 
 static vfs_node_ops_t stdin_ops = {
@@ -64,7 +68,8 @@ static vfs_node_ops_t stdin_ops = {
     .rw = stdio_stdin_node_rw,
     .mkdir = stdio_shared_node_mkdir,
     .readdir = stdio_shared_node_readdir,
-    .create = stdio_shared_node_create
+    .create = stdio_shared_node_create,
+    .truncate = stdio_shared_node_truncate
 };
 
 static vfs_node_ops_t stdout_ops = {
@@ -73,7 +78,8 @@ static vfs_node_ops_t stdout_ops = {
     .rw = stdio_stdout_node_rw,
     .mkdir = stdio_shared_node_mkdir,
     .readdir = stdio_shared_node_readdir,
-    .create = stdio_shared_node_create
+    .create = stdio_shared_node_create,
+    .truncate = stdio_shared_node_truncate
 };
 
 static vfs_node_ops_t stderr_ops = {
@@ -82,7 +88,8 @@ static vfs_node_ops_t stderr_ops = {
     .rw = stdio_stderr_node_rw,
     .mkdir = stdio_shared_node_mkdir,
     .readdir = stdio_shared_node_readdir,
-    .create = stdio_shared_node_create
+    .create = stdio_shared_node_create,
+    .truncate = stdio_shared_node_truncate
 };
 
 static int stdio_root_node_attr(vfs_node_t *node [[maybe_unused]], vfs_node_attr_t *attr) {
@@ -95,31 +102,31 @@ static int stdio_root_node_attr(vfs_node_t *node [[maybe_unused]], vfs_node_attr
     return 0;
 }
 
-static int stdio_root_node_lookup(vfs_node_t *dir, char *name, vfs_node_t **out) {
+static int stdio_root_node_lookup(vfs_node_t *node, char *name, vfs_node_t **out) {
     if(strcmp(name, ".") == 0) {
-        *out = dir;
+        *out = node;
         return 0;
     }
     if(strcmp(name, "stdin") == 0) {
-        *out = NODES(dir->vfs)->stdin;
+        *out = NODES(node->vfs)->stdin;
         return 0;
     }
     if(strcmp(name, "stdout") == 0) {
-        *out = NODES(dir->vfs)->stdout;
+        *out = NODES(node->vfs)->stdout;
         return 0;
     }
     if(strcmp(name, "stderr") == 0) {
-        *out = NODES(dir->vfs)->stderr;
+        *out = NODES(node->vfs)->stderr;
         return 0;
     }
     return -ENOENT;
 }
 
-static int stdio_root_node_rw(vfs_node_t *file [[maybe_unused]], vfs_rw_t *packet [[maybe_unused]], size_t *rw_count [[maybe_unused]]) {
+static int stdio_root_node_rw(vfs_node_t *node [[maybe_unused]], vfs_rw_t *packet [[maybe_unused]], size_t *rw_count [[maybe_unused]]) {
     return -EISDIR;
 }
 
-static int stdio_root_node_readdir(vfs_node_t *dir [[maybe_unused]], int *offset, char **out) {
+static int stdio_root_node_readdir(vfs_node_t *node [[maybe_unused]], int *offset, char **out) {
     switch(*offset) {
         case 0:
             *out = "stdin";
@@ -138,12 +145,16 @@ static int stdio_root_node_readdir(vfs_node_t *dir [[maybe_unused]], int *offset
     return 0;
 }
 
-static int stdio_root_node_mkdir(vfs_node_t *parent [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
-    return -EROFS;
+static int stdio_root_node_mkdir(vfs_node_t *node [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
+    return -EPERM;
 }
 
-static int stdio_root_node_create(vfs_node_t *parent [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
-    return -EROFS;
+static int stdio_root_node_create(vfs_node_t *node [[maybe_unused]], const char *name [[maybe_unused]], vfs_node_t **out [[maybe_unused]]) {
+    return -EPERM;
+}
+
+static int stdio_root_node_truncate(vfs_node_t *node [[maybe_unused]], size_t length [[maybe_unused]]) {
+    return -EISDIR;
 }
 
 static vfs_node_ops_t root_ops = {
@@ -152,7 +163,8 @@ static vfs_node_ops_t root_ops = {
     .rw = stdio_root_node_rw,
     .mkdir = stdio_root_node_mkdir,
     .readdir = stdio_root_node_readdir,
-    .create = stdio_root_node_create
+    .create = stdio_root_node_create,
+    .truncate = stdio_root_node_truncate
 };
 
 static int stdio_mount(vfs_t *vfs, [[maybe_unused]] void *data) {

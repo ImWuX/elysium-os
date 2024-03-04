@@ -3,6 +3,12 @@
 #include <stdint.h>
 #include <lib/list.h>
 
+typedef enum {
+    VFS_LOOKUP_CREATE_NONE,
+    VFS_LOOKUP_CREATE_FILE,
+    VFS_LOOKUP_CREATE_DIR,
+} vfs_lookup_create_t;
+
 typedef struct vfs {
     struct vfs_node *mount_node;
     struct vfs_ops *ops;
@@ -63,7 +69,7 @@ typedef struct vfs_node_ops {
      * @param rw_count bytes read/written (out)
      * @returns 0 on success, -errno on failure
      */
-    int (* rw)(vfs_node_t *file, vfs_rw_t *packet, size_t *rw_count);
+    int (* rw)(vfs_node_t *node, vfs_rw_t *packet, size_t *rw_count);
 
     /**
      * @brief Retrieve node attributes
@@ -76,7 +82,7 @@ typedef struct vfs_node_ops {
      * @brief Look up a node by name
      * @returns 0 on success, -errno on failure
      */
-    int (* lookup)(vfs_node_t *dir, char *name, vfs_node_t **out);
+    int (* lookup)(vfs_node_t *node, char *name, vfs_node_t **out);
 
     /**
      * @brief Read the next entry in a directory
@@ -84,22 +90,27 @@ typedef struct vfs_node_ops {
      * @param out directory entry, or NULL
      * @returns 0 on success, -errno on failure
      */
-    int (* readdir)(vfs_node_t *dir, int *offset, char **out);
+    int (* readdir)(vfs_node_t *node, int *offset, char **out);
 
     /**
      * @brief Creates a new directory in a directory
      * @param out new node (directory)
      * @returns 0 on success, -errno on failure
      */
-    int (* mkdir)(vfs_node_t *parent, const char *name, vfs_node_t **out);
+    int (* mkdir)(vfs_node_t *node, const char *name, vfs_node_t **out);
 
     /**
      * @brief Creates a new file in a directory
-     * @todo Attributes and open mode
      * @param out new node (file)
      * @return 0 on success, -errno on failure
      */
-    int (*create)(vfs_node_t *parent, const char *name, vfs_node_t **out);
+    int (* create)(vfs_node_t *node, const char *name, vfs_node_t **out);
+
+    /**
+     * @brief Truncate the file
+     * @return 0 on success, -errno on failure
+     */
+    int (* truncate)(vfs_node_t *node, size_t length);
 } vfs_node_ops_t;
 
 extern list_t g_vfs_all;
@@ -110,6 +121,19 @@ extern list_t g_vfs_all;
  * @returns 0 on success, -errno on failure
  */
 int vfs_mount(vfs_ops_t *vfs_ops, char *path, void *data);
+
+/**
+ * @brief Gets the root node of the entire vfs
+ * @returns 0 on success, -errno on failure
+ */
+int vfs_root(vfs_node_t **out);
+
+/**
+ * @brief Extended lookup a node by path
+ * @param create create mode
+ * @returns 0 on success, -errno on failure
+ */
+int vfs_lookup_ext(char *path, vfs_node_t **out, vfs_node_t *cwd, vfs_lookup_create_t create, bool exclusive);
 
 /**
  * @brief Lookup a node by path

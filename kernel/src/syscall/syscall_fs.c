@@ -16,7 +16,7 @@
 syscall_return_t syscall_fs_open(int dir_resource_id, const char *path, int flags, mode_t mode) {
     syscall_return_t ret = {};
 
-    // TODO: handle flags & mode
+    // TODO: handle mode
 
     // TODO: Should standardize copying to/from userspace
     char *safe_path = heap_alloc(PATH_MAX + 1);
@@ -24,6 +24,27 @@ syscall_return_t syscall_fs_open(int dir_resource_id, const char *path, int flag
     safe_path[PATH_MAX] = 0;
 
     log(LOG_LEVEL_DEBUG, "SYSCALL", "open(dir_resource_id: %i, path: %s, flags: %#i, mode: %u)", dir_resource_id, safe_path, flags, mode);
+
+    // TODO: this check is only here until all flags are supported
+    if((flags & ~(O_DIRECTORY | O_APPEND | O_CREAT | O_TRUNC | O_EXCL | O_ACCMODE)) != 0) {
+        log(LOG_LEVEL_ERROR, "SYSCALL", "Unsupported open flags: %i", flags);
+        ret.errno = ENOTSUP;
+        return ret;
+    }
+
+    resource_mode_t resource_mode;
+    switch(flags & O_ACCMODE) {
+        case O_RDONLY: resource_mode = RESOURCE_MODE_READ_ONLY; break;
+        case O_WRONLY: resource_mode = RESOURCE_MODE_WRITE_ONLY; break;
+        case O_RDWR: resource_mode = RESOURCE_MODE_READ_WRITE; break;
+        case O_EXEC: resource_mode = RESOURCE_MODE_REFERENCE; break;
+#if O_EXEC != O_SEARCH
+        case O_SEARCH: resource_mode = RESOURCE_MODE_REFERENCE; break;
+#endif
+        default:
+            ret.errno = EINVAL;
+            return ret;
+    }
 
     process_t *proc = arch_sched_thread_current()->proc;
 
@@ -40,13 +61,51 @@ syscall_return_t syscall_fs_open(int dir_resource_id, const char *path, int flag
     }
 
     vfs_node_t *node;
-    int r = vfs_lookup(safe_path, &node, cwd);
+    int r;
+    if((flags & O_CREAT) != 0) {
+        if((flags & O_DIRECTORY) != 0) {
+            ret.errno = EINVAL;
+            return ret;
+        }
+        // TODO: O_CREAT - we dont set user/group. we dont set mode. (cuz they dont exist atm)
+        r = vfs_lookup_ext(safe_path, &node, cwd, VFS_LOOKUP_CREATE_FILE, (flags & O_EXCL) != 0);
+    } else {
+        if((flags & O_EXCL) != 0) {
+            ret.errno = EINVAL;
+            return ret;
+        }
+        r = vfs_lookup(safe_path, &node, cwd);
+    }
     if(r != 0) {
         ret.errno = -r;
         return ret;
     }
 
-    ret.value = (size_t) resource_create(&proc->resource_table, node);
+    if((flags & O_DIRECTORY) != 0 && node->type != VFS_NODE_TYPE_DIR) {
+        ret.errno = ENOTDIR;
+        return ret;
+    }
+
+    if((flags & O_TRUNC) != 0 && (resource_mode == RESOURCE_MODE_WRITE_ONLY || resource_mode == RESOURCE_MODE_READ_WRITE) && node->type == VFS_NODE_TYPE_FILE) {
+        r = node->ops->truncate(node, 0);
+        if(r != 0) {
+            ret.errno = -r;
+            return ret;
+        }
+    }
+
+    size_t offset = 0;
+    if((flags & O_APPEND) != 0) {
+        vfs_node_attr_t attr;
+        r = node->ops->attr(node, &attr);
+        if(r != 0) {
+            ret.errno = -r;
+            return ret;
+        }
+        offset = attr.size;
+    }
+
+    ret.value = (size_t) resource_create(&proc->resource_table, node, offset, resource_mode);
     return ret;
 }
 
@@ -66,7 +125,7 @@ syscall_return_t syscall_fs_read(int resource_id, void *buf, size_t count) {
 
     process_t *proc = arch_sched_thread_current()->proc;
     resource_t *resource = resource_get(&proc->resource_table, resource_id);
-    if(resource == NULL) {
+    if(resource == NULL || (resource->mode != RESOURCE_MODE_READ_ONLY && resource->mode != RESOURCE_MODE_READ_WRITE)) {
         ret.errno = EBADF;
         return ret;
     }
@@ -90,11 +149,11 @@ syscall_return_t syscall_fs_read(int resource_id, void *buf, size_t count) {
 
 syscall_return_t syscall_fs_write(int resource_id, void *buf, size_t count) {
     syscall_return_t ret = {};
-    log(LOG_LEVEL_DEBUG, "SYSCALL", "write(resource_id: %i, buf: %#lx, count: %#lx)", resource_id, (uint64_t) buf, count);
+    if(resource_id > 2) log(LOG_LEVEL_DEBUG, "SYSCALL", "write(resource_id: %i, buf: %#lx, count: %#lx)", resource_id, (uint64_t) buf, count);
 
     process_t *proc = arch_sched_thread_current()->proc;
     resource_t *resource = resource_get(&proc->resource_table, resource_id);
-    if(resource == NULL) {
+    if(resource == NULL || (resource->mode != RESOURCE_MODE_WRITE_ONLY && resource->mode != RESOURCE_MODE_READ_WRITE)) {
         ret.errno = EBADF;
         return ret;
     }
@@ -123,7 +182,7 @@ syscall_return_t syscall_fs_seek(int resource_id, off_t offset, int whence) {
 
     process_t *proc = arch_sched_thread_current()->proc;
     resource_t *resource = resource_get(&proc->resource_table, resource_id);
-    if(resource == NULL) {
+    if(resource == NULL || resource->mode == RESOURCE_MODE_REFERENCE) {
         ret.errno = EBADF;
         return ret;
     }
@@ -163,7 +222,7 @@ syscall_return_t syscall_fs_seek(int resource_id, off_t offset, int whence) {
     return ret;
 }
 
-syscall_return_t syscall_fs_attr(int resource_id, const char *path, int flags, struct stat *statbuf) {
+syscall_return_t syscall_fs_stat(int resource_id, const char *path, int flags, struct stat *statbuf) {
     syscall_return_t ret = {};
 
     // TODO: Should standardize copying to/from userspace
@@ -171,7 +230,7 @@ syscall_return_t syscall_fs_attr(int resource_id, const char *path, int flags, s
     strncpy(safe_path, path, PATH_MAX);
     safe_path[PATH_MAX] = 0;
 
-    log(LOG_LEVEL_DEBUG, "SYSCALL", "attr(resource_id: %i, path: %s, flags: %i, statbuf: %#lx)", resource_id, safe_path, flags, (uintptr_t) statbuf);
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "stat(resource_id: %i, path: %s, flags: %i, statbuf: %#lx)", resource_id, safe_path, flags, (uintptr_t) statbuf);
 
     if(statbuf == NULL) {
         heap_free(safe_path);

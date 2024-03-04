@@ -235,7 +235,7 @@ install = ["DESTDIR=$INSTALL PREFIX=$PREFIX make install"]
 # # # # # # #
 # STD TARGETS
 [target.mlibc-headers]
-dependencies = ["source:mlibc", "source:support"] # TODO: Might need pkg-config
+dependencies = ["source:mlibc", "source:support"]
 configure = [
     """
     meson setup \
@@ -253,7 +253,7 @@ build = ["ninja"]
 install = ["DESTDIR=$INSTALL ninja install"]
 
 [target.mlibc]
-dependencies = ["source:mlibc", "source:support", "mlibc-headers", "host:bootstrap-gcc"] # TODO: Might need pkg-config
+dependencies = ["source:mlibc", "source:support", "mlibc-headers", "host:bootstrap-gcc"]
 configure = [
     """
     meson setup \

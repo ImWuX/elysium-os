@@ -19,13 +19,13 @@ typedef struct {
     /**
      * @brief Called on log
      */
-    void (*log)(log_level_t level, const char *tag, const char *fmt, va_list args);
+    void (* log)(log_level_t level, const char *tag, const char *fmt, va_list args);
 
     /**
      * @brief Called on raw log
      * @todo More of a hotfix at the moment
      */
-    void (*log_raw)(char c);
+    void (* log_raw)(char c);
 } log_sink_t;
 
 /**
