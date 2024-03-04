@@ -7,11 +7,11 @@ void (* g_x86_64_fpu_save)(void *area) = 0;
 void (* g_x86_64_fpu_restore)(void *area) = 0;
 
 static inline void xsave(void *area) {
-    asm volatile ("xsave (%0)" : : "r" (area), "a"(0xffffffff), "d"(0xffffffff) : "memory");
+    asm volatile ("xsave (%0)" : : "r" (area), "a" (0xFFFF'FFFF), "d" (0xFFFF'FFFF) : "memory");
 }
 
 static inline void xrstor(void *area) {
-    asm volatile ("xrstor (%0)" : : "r" (area), "a"(0xffffffff), "d"(0xffffffff) : "memory");
+    asm volatile ("xrstor (%0)" : : "r" (area), "a" (0xFFFF'FFFF), "d" (0xFFFF'FFFF) : "memory");
 }
 
 static inline void fxsave(void *area) {
@@ -37,6 +37,8 @@ void x86_64_fpu_init() {
 }
 
 void x86_64_fpu_init_cpu() {
+    ASSERT(x86_64_cpuid_feature(X86_64_CPUID_FEATURE_FXSR));
+
     /* Enable FPU */
     uint64_t cr0;
     asm volatile("mov %%cr0, %0" : "=r" (cr0) : : "memory");
