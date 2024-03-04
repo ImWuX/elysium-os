@@ -151,8 +151,13 @@ static x86_64_thread_t *create_thread(process_t *proc, stack_t kernel_stack, uin
     thread->state.fpu_area = heap_alloc_align(g_x86_64_fpu_area_size, 64);
     memset(thread->state.fpu_area, 0, g_x86_64_fpu_area_size);
 
-    // TODO: follow sysv abi for how floating points registers should be initialized
-    //          (either here, or in the userspace create thread, though I dont see why it would hurt to do this for kernel threads too)
+    g_x86_64_fpu_restore(thread->state.fpu_area);
+    uint16_t x87cw = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (0b11 << 8);
+    asm volatile("fldcw %0" : : "m" (x87cw) : "memory");
+    uint32_t mxcsr = (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 12);
+    asm volatile("ldmxcsr %0" : : "m" (mxcsr) : "memory");
+    g_x86_64_fpu_save(thread->state.fpu_area);
+
     return thread;
 }
 
