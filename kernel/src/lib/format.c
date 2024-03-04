@@ -223,8 +223,6 @@ int format(format_out_t out, const char *format, va_list list) {
         case LLONG:     value.integer = va_arg(list, signed long long); break;
         case ULLONG:    value.integer = va_arg(list, unsigned long long); break;
         case PTR:       value.pointer = va_arg(list, void *); break;
-        // case DOUBLE:    value.floatp = va_arg(list, double); break;
-        // case LDOUBLE:   value.floatp = va_arg(list, long double); break;
         case INTMAX:    value.integer = va_arg(list, intmax_t); break;
         case UINTMAX:   value.integer = va_arg(list, uintmax_t); break;
         case SSIZE:
@@ -236,14 +234,12 @@ int format(format_out_t out, const char *format, va_list list) {
     while(*fmt) {
         switch(*fmt) {
             case 'c':
-                // TODO: Handle wchar_t (l modifier)
                 if(!(flags & FLAG_LEFT)) for(int i = 1; i < width; i++) PUTCHAR(out, ' ', count);
                 PUTCHAR(out, (unsigned char) value.integer, count);
                 if(flags & FLAG_LEFT) for(int i = 1; i < width; i++) PUTCHAR(out, ' ', count);
                 fmt++;
                 goto lbl_normal;
             case 's':
-                // TODO: Handle wchar_t (l modifier)
                 char *str = (char *) value.pointer;
                 int length = 0;
                 while(str[length]) ++length;
