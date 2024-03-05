@@ -22,7 +22,7 @@ void log_list(log_level_t level, const char *tag, const char *fmt, va_list list)
         if(sink->level > level) continue;
 	    va_copy(local_list, list);
         spinlock_acquire(&sink->lock);
-        sink->log(level, tag, fmt, list);
+        sink->log(level, tag, fmt, local_list);
         spinlock_release(&sink->lock);
         va_end(local_list);
     }
