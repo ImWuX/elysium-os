@@ -45,6 +45,9 @@
 #include <arch/x86_64/sys/lapic.h>
 #include <arch/x86_64/syscall.h>
 #include <arch/x86_64/dev/pit.h>
+#include <arch/x86_64/dev/ps2.h>
+#include <arch/x86_64/dev/ps2kb.h>
+#include <arch/x86_64/dev/ioapic.h>
 #include <arch/x86_64/dev/pic8259.h>
 
 #define LAPIC_CALIBRATION_TICKS 0x10000
@@ -275,6 +278,17 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 
     // Initialize ACPI
     acpi_initialize(boot_info->acpi_rsdp);
+
+    // Initialize IOApic
+    acpi_sdt_header_t *madt = acpi_find_table((uint8_t *) "APIC");
+    if(madt != NULL) x86_64_ioapic_initialize(madt);
+
+    // Initialize PS2 devices
+    acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
+    if(fadt != NULL && (acpi_revision() == 0 || (fadt->boot_architecture_flags & (1 << 1)))) {
+        x86_64_ps2_initialize();
+        x86_64_ps2kb_set_handler((x86_64_ps2kb_handler_t) term_kb_handler);
+    }
 
     // Initialize sched
     x86_64_sched_init();

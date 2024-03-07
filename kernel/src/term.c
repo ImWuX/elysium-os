@@ -94,3 +94,7 @@ void term_init(draw_context_t *context) {
     log_sink_add(&g_term_sink);
     clear_term();
 }
+
+void term_kb_handler(uint8_t ch) {
+    log_raw(ch);
+}
