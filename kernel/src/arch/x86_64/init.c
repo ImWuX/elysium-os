@@ -24,6 +24,7 @@
 #include <sched/sched.h>
 #include <sched/resource.h>
 #include <graphics/draw.h>
+#include <drivers/acpi.h>
 #include <term.h>
 #include <arch/vmm.h>
 #include <arch/types.h>
@@ -271,6 +272,9 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     // Initialize FPU
     x86_64_fpu_init();
     x86_64_fpu_init_cpu();
+
+    // Initialize ACPI
+    acpi_initialize(boot_info->acpi_rsdp);
 
     // Initialize sched
     x86_64_sched_init();
