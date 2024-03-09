@@ -287,7 +287,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     acpi_fadt_t *fadt = (acpi_fadt_t *) acpi_find_table((uint8_t *) "FACP");
     if(fadt != NULL && (acpi_revision() == 0 || (fadt->boot_architecture_flags & (1 << 1)))) {
         x86_64_ps2_initialize();
-        x86_64_ps2kb_set_handler((x86_64_ps2kb_handler_t) term_kb_handler);
+        // x86_64_ps2kb_set_handler((x86_64_ps2kb_handler_t) term_kb_handler);
     }
 
     // Initialize sched
