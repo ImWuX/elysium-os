@@ -25,6 +25,14 @@ static void clear_term() {
     draw_rect(g_term.context, 0, 0, g_term.context->width, g_term.context->height, g_term.colors.bg);
 }
 
+static void draw_char_term(int x, int y, char ch) {
+    draw_char(g_term.context, x * g_term.font->width, y * g_term.font->height, ch, g_term.font, g_term.state.color);
+}
+
+static void blank_char_term(int x, int y) {
+    draw_rect(g_term.context, x * g_term.font->width, y * g_term.font->height, g_term.font->width, g_term.font->height, g_term.colors.bg);
+}
+
 static void log_raw_term(char c) {
     switch(c) {
         case '\n':
@@ -32,9 +40,7 @@ static void log_raw_term(char c) {
             g_term.state.y++;
             break;
         default:
-            int x = g_term.state.x * g_term.font->width;
-            int y = g_term.state.y * g_term.font->height;
-            draw_char(g_term.context, x, y, c, g_term.font, g_term.state.color);
+            draw_char_term(g_term.state.x, g_term.state.y, c);
             g_term.state.x++;
             break;
     }
@@ -96,5 +102,14 @@ void term_init(draw_context_t *context) {
 }
 
 void term_kb_handler(uint8_t ch) {
-    log_raw(ch);
+    switch(ch) {
+        case '\b':
+            if(g_term.state.x <= 0) break;
+            g_term.state.x--;
+            blank_char_term(g_term.state.x, g_term.state.y);
+            break;
+        default:
+            log_raw_term(ch);
+            break;
+    }
 }
