@@ -196,21 +196,21 @@ thread_t *arch_sched_thread_create_user(process_t *proc, uintptr_t ip, uintptr_t
 }
 
 uintptr_t arch_sched_stack_setup(process_t *proc, char **argv, char **envp, auxv_t *auxv) {
-    #define WRITE_QWORD(VALUE) \
-        do { \
-            stack -= sizeof(uint64_t); \
+#define WRITE_QWORD(VALUE) \
+    do { \
+        stack -= sizeof(uint64_t); \
+        uintptr_t phys_page; \
+        ASSERT(arch_vmm_physical(proc->address_space, MATH_FLOOR(stack, ARCH_PAGE_SIZE), &phys_page)); \
+        *(volatile uint64_t *) (HHDM(phys_page) + stack % ARCH_PAGE_SIZE) = (VALUE); \
+    } while(false)
+#define WRITE_STRING(DEST, VALUE, LENGTH) \
+    do { \
+        for(size_t x = 0; x < (LENGTH); x++) { \
             uintptr_t phys_page; \
-            ASSERT(arch_vmm_physical(proc->address_space, MATH_FLOOR(stack, ARCH_PAGE_SIZE), &phys_page)); \
-            *(volatile uint64_t *) (HHDM(phys_page) + stack % ARCH_PAGE_SIZE) = (VALUE); \
-        } while(false)
-    #define WRITE_STRING(DEST, VALUE, LENGTH) \
-        do { \
-            for(size_t x = 0; x < (LENGTH); x++) { \
-                uintptr_t phys_page; \
-                ASSERT(arch_vmm_physical(proc->address_space, MATH_FLOOR((DEST), ARCH_PAGE_SIZE), &phys_page)); \
-                *(volatile uint8_t *) (HHDM(phys_page) + ((DEST) + x) % ARCH_PAGE_SIZE) = (((uint8_t *) (VALUE))[x]); \
-            }; \
-        } while(false)
+            ASSERT(arch_vmm_physical(proc->address_space, MATH_FLOOR((DEST), ARCH_PAGE_SIZE), &phys_page)); \
+            *(volatile uint8_t *) (HHDM(phys_page) + ((DEST) + x) % ARCH_PAGE_SIZE) = (((uint8_t *) (VALUE))[x]); \
+        }; \
+    } while(false)
 
     void *stack_ptr = vmm_map(proc->address_space, NULL, USER_STACK_SIZE, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, &g_seg_anon, (void *) true);
     ASSERT(stack_ptr != NULL);
@@ -227,14 +227,14 @@ uintptr_t arch_sched_stack_setup(process_t *proc, char **argv, char **envp, auxv
 
     stack -= (stack - (12 + 1 + envc + 1 + argc + 1) * sizeof(uint64_t)) % 0x10;
 
-    #define WRITE_AUX(ID, VALUE) WRITE_QWORD(VALUE); WRITE_QWORD(ID);
+#define WRITE_AUX(ID, VALUE) { WRITE_QWORD(VALUE); WRITE_QWORD(ID); }
     WRITE_AUX(0, 0);
     WRITE_AUX(AUXV_SECURE, 0);
     WRITE_AUX(AUXV_ENTRY, auxv->entry);
     WRITE_AUX(AUXV_PHDR, auxv->phdr);
     WRITE_AUX(AUXV_PHENT, auxv->phent);
     WRITE_AUX(AUXV_PHNUM, auxv->phnum);
-    #undef WRITE_AUX
+#undef WRITE_AUX
 
     WRITE_QWORD(0);
     for(int i = 0; i < envc; i++) {
@@ -254,8 +254,8 @@ uintptr_t arch_sched_stack_setup(process_t *proc, char **argv, char **envp, auxv
     WRITE_QWORD(argc);
 
     return stack;
-    #undef WRITE_QWORD
-    #undef WRITE_STRING
+#undef WRITE_QWORD
+#undef WRITE_STRING
 }
 
 thread_t *arch_sched_thread_current() {
