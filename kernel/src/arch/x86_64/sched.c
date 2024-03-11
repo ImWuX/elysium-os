@@ -196,23 +196,9 @@ thread_t *arch_sched_thread_create_user(process_t *proc, uintptr_t ip, uintptr_t
 }
 
 uintptr_t arch_sched_stack_setup(process_t *proc, char **argv, char **envp, auxv_t *auxv) {
-#define WRITE_QWORD(VALUE) \
-    do { \
-        stack -= sizeof(uint64_t); \
-        uintptr_t phys_page; \
-        ASSERT(arch_vmm_physical(proc->address_space, MATH_FLOOR(stack, ARCH_PAGE_SIZE), &phys_page)); \
-        *(volatile uint64_t *) (HHDM(phys_page) + stack % ARCH_PAGE_SIZE) = (VALUE); \
-    } while(false)
-#define WRITE_STRING(DEST, VALUE, LENGTH) \
-    do { \
-        for(size_t x = 0; x < (LENGTH); x++) { \
-            uintptr_t phys_page; \
-            ASSERT(arch_vmm_physical(proc->address_space, MATH_FLOOR((DEST), ARCH_PAGE_SIZE), &phys_page)); \
-            *(volatile uint8_t *) (HHDM(phys_page) + ((DEST) + x) % ARCH_PAGE_SIZE) = (((uint8_t *) (VALUE))[x]); \
-        }; \
-    } while(false)
+#define WRITE_QWORD(VALUE) { stack -= sizeof(uint64_t); uint64_t tmp = (VALUE); ASSERT(vmm_copy_to(proc->address_space, stack, &tmp, 4) == 4); }
 
-    void *stack_ptr = vmm_map(proc->address_space, NULL, USER_STACK_SIZE, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, &g_seg_anon, (void *) true);
+    void *stack_ptr = vmm_map(proc->address_space, NULL, USER_STACK_SIZE, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, &g_seg_anon, NULL);
     ASSERT(stack_ptr != NULL);
     uintptr_t stack = (uintptr_t) stack_ptr + USER_STACK_SIZE - 1;
     stack &= ~0xF;
@@ -240,7 +226,7 @@ uintptr_t arch_sched_stack_setup(process_t *proc, char **argv, char **envp, auxv
     for(int i = 0; i < envc; i++) {
         WRITE_QWORD(env_data);
         size_t str_sz = strlen(envp[i]) + 1;
-        WRITE_STRING(env_data, envp[i], str_sz);
+        ASSERT(vmm_copy_to(proc->address_space, env_data, envp[i], str_sz) == str_sz);
         env_data += str_sz;
     }
 
@@ -248,14 +234,13 @@ uintptr_t arch_sched_stack_setup(process_t *proc, char **argv, char **envp, auxv
     for(int i = 0; i < argc; i++) {
         WRITE_QWORD(arg_data);
         size_t str_sz = strlen(argv[i]) + 1;
-        WRITE_STRING(arg_data, argv[i], str_sz);
+        ASSERT(vmm_copy_to(proc->address_space, arg_data, argv[i], str_sz) == str_sz);
         arg_data += str_sz;
     }
     WRITE_QWORD(argc);
 
     return stack;
 #undef WRITE_QWORD
-#undef WRITE_STRING
 }
 
 thread_t *arch_sched_thread_current() {
