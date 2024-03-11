@@ -48,10 +48,9 @@ extern vmm_address_space_t *g_vmm_kernel_address_space;
 
 // TODO: move
 typedef struct {
-    uintptr_t phys;
-    void *base;
+    uintptr_t phys_base;
+    void *virt_base;
 } seg_fixed_data_t;
-#define SEG_FIXED_DATA(ADDR) ((seg_fixed_data_t) { .base = NULL, .phys = (ADDR) })
 
 extern seg_driver_t g_seg_anon;
 extern seg_driver_t g_seg_fixed;

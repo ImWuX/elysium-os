@@ -133,10 +133,12 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, aux
                 size_t alignment_offset = phdr->vaddr - aligned_vaddr;
                 size_t length = MATH_CEIL(phdr->memsz + alignment_offset, ARCH_PAGE_SIZE);
 
+                // TODO: use anon > fixed
                 pmm_page_t *page = pmm_alloc_pages(length / ARCH_PAGE_SIZE, PMM_STANDARD | PMM_FLAG_ZERO);
 
                 seg_fixed_data_t *fixed_data = heap_alloc(sizeof(seg_fixed_data_t));
-                fixed_data->phys = page->paddr;
+                fixed_data->phys_base = page->paddr;
+                fixed_data->virt_base = NULL;
                 ASSERT(vmm_map(as, (void *) aligned_vaddr, length, prot, VMM_FLAG_FIXED, &g_seg_fixed, fixed_data) != NULL);
 
                 if(phdr->filesz > 0) {
