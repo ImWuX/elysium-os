@@ -13,7 +13,7 @@ typedef struct vfs {
     struct vfs_node *mount_node;
     struct vfs_ops *ops;
     void *data;
-    list_element_t list;
+    list_element_t list_elem;
 } vfs_t;
 
 typedef enum {

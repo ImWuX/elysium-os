@@ -14,7 +14,7 @@ typedef struct {
     char *name;
     log_level_t level;
     spinlock_t lock;
-    list_element_t list;
+    list_element_t list_elem;
 
     /**
      * @brief Called on log
