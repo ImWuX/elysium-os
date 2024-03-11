@@ -98,7 +98,7 @@ static log_sink_t g_serial_sink = {
 
 // TODO: A decent amount of duplicate code here. Consider having some sort of shared init.
 [[noreturn]] __attribute__((naked)) static void init_ap() {
-    log(LOG_LEVEL_INFO, "INIT", "AP %i:%i Init", g_x86_64_cpu_count, x86_64_lapic_id());
+    log(LOG_LEVEL_INFO, "INIT", "Initializing AP %i", x86_64_lapic_id());
 
     x86_64_gdt_load();
 
@@ -168,9 +168,9 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     g_fb_context.pitch = boot_info->framebuffer.pitch;
     term_init(&g_fb_context);
 
+    g_serial_sink.log_raw('\n');
     log_sink_add(&g_serial_sink);
-    log_raw('\n');
-    log(LOG_LEVEL_INFO, "INIT", "Elysium Alpha");
+    log(LOG_LEVEL_INFO, "INIT", "Elysium pre-alpha (" __DATE__ " " __TIME__ ")");
 
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
