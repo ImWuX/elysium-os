@@ -23,3 +23,13 @@
  * @returns result
  */
 #define MATH_FLOOR(VALUE, PRECISION) (((VALUE) / (PRECISION)) * (PRECISION))
+
+/**
+ * @brief Find the minimum number
+ */
+int math_min(int a, int b);
+
+/**
+ * @brief Find the maximum number
+ */
+int math_max(int a, int b);
