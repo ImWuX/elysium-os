@@ -85,3 +85,13 @@ void vmm_unmap(vmm_address_space_t *address_space, void *address, size_t length)
  * @returns fault handled
  */
 bool vmm_fault(vmm_address_space_t *address_space, uintptr_t address, int flags);
+
+/**
+ * @brief Copies data to another address space
+ */
+size_t vmm_copy_to(vmm_address_space_t *dest_as, uintptr_t dest_addr, void *src, size_t count);
+
+/**
+ * @brief Copies data from another address space
+ */
+size_t vmm_copy_from(void *dest, vmm_address_space_t *src_as, uintptr_t src_addr, size_t count);
