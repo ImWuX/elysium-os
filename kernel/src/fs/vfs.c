@@ -33,14 +33,14 @@ int vfs_mount(vfs_ops_t *vfs_ops, char *path, void *data) {
         node->vfs_mounted = vfs;
         vfs->mount_node = node;
     }
-    list_prepend(&g_vfs_all, &vfs->list);
+    list_prepend(&g_vfs_all, &vfs->list_elem);
     return 0;
 }
 
 int vfs_root(vfs_node_t **out) {
     if(list_is_empty(&g_vfs_all)) return -ENOENT;
     ASSERT(LIST_NEXT(&g_vfs_all) != NULL);
-    vfs_t *vfs = LIST_CONTAINER_GET(LIST_NEXT(&g_vfs_all), vfs_t, list);
+    vfs_t *vfs = LIST_CONTAINER_GET(LIST_NEXT(&g_vfs_all), vfs_t, list_elem);
     return vfs->ops->root(vfs, out);
 }
 
