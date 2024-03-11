@@ -210,7 +210,7 @@ size_t vmm_copy_from(void *dest, vmm_address_space_t *src_as, uintptr_t src_addr
         if(!arch_vmm_physical(src_as, src_addr + i, &phys)) return i;
 
         size_t len = math_min(count - i, offset != 0 ? ARCH_PAGE_SIZE - offset : ARCH_PAGE_SIZE);
-        memcpy(dest, HHDM(phys + offset), len);
+        memcpy(dest, (void *) HHDM(phys + offset), len);
         i += len;
         dest += len;
         offset = 0;
