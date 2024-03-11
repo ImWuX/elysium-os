@@ -78,7 +78,7 @@ static void log_term(log_level_t level, const char *tag, const char *fmt, va_lis
 
 static log_sink_t g_term_sink = {
     .name = "TERM",
-    .level = LOG_LEVEL_DEBUG,
+    .level = LOG_LEVEL_INFO,
     .log = log_term,
     .log_raw = log_raw_term
 };
