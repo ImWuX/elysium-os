@@ -96,7 +96,7 @@ void *heap_alloc_align(size_t size, size_t alignment) {
         spinlock_release(&g_lock);
         return (void *) ((uintptr_t) entry + sizeof(heap_entry_t));
     }
-    panic("HEAP: Out of memory\n");
+    panic("HEAP: Out of memory");
 }
 
 void *heap_alloc(size_t size) {
