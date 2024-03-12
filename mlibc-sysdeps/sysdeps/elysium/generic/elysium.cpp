@@ -51,7 +51,7 @@ namespace mlibc {
     }
 
     int sys_openat(int dirfd, const char *path, int flags, mode_t mode, int *fd) {
-        syscall_return_t ret = syscall4(SYSCALL_OPEN, (syscall_int_t) dirfd, (syscall_int_t) path, (syscall_int_t) flags, (syscall_int_t) mode);
+        syscall_return_t ret = syscall5(SYSCALL_OPEN, (syscall_int_t) dirfd, (syscall_int_t) strlen(path), (syscall_int_t) path, (syscall_int_t) flags, (syscall_int_t) mode);
         if(ret.err) return ret.err;
         *fd = (int) ret.value;
         return 0;
@@ -88,13 +88,13 @@ namespace mlibc {
         syscall_return_t ret;
         switch(fsfdt) {
             case fsfd_target::fd:
-                ret = syscall4(SYSCALL_ATTR, (syscall_int_t) fd, (syscall_int_t) "", (syscall_int_t) flags | AT_EMPTY_PATH, (syscall_int_t) statbuf);
+                ret = syscall5(SYSCALL_STAT, (syscall_int_t) fd, (syscall_int_t) 0, (syscall_int_t) "", (syscall_int_t) flags | AT_EMPTY_PATH, (syscall_int_t) statbuf);
                 break;
             case fsfd_target::path:
-                ret = syscall4(SYSCALL_ATTR, (syscall_int_t) AT_FDCWD, (syscall_int_t) path, (syscall_int_t) flags, (syscall_int_t) statbuf);
+                ret = syscall5(SYSCALL_STAT, (syscall_int_t) AT_FDCWD, (syscall_int_t) strlen(path), (syscall_int_t) path, (syscall_int_t) flags, (syscall_int_t) statbuf);
                 break;
             case fsfd_target::fd_path:
-                ret = syscall4(SYSCALL_ATTR, (syscall_int_t) fd, (syscall_int_t) path, (syscall_int_t) flags, (syscall_int_t) statbuf);
+                ret = syscall5(SYSCALL_STAT, (syscall_int_t) fd, (syscall_int_t) strlen(path), (syscall_int_t) path, (syscall_int_t) flags, (syscall_int_t) statbuf);
                 break;
             default:
                 __ensure(!"sys_stat: Invalid fsfdt");

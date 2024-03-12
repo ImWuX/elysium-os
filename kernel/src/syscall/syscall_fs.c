@@ -13,21 +13,23 @@
 #include <arch/types.h>
 #include <arch/sched.h>
 
-syscall_return_t syscall_fs_open(int dir_resource_id, const char *path, int flags, mode_t mode) {
+syscall_return_t syscall_fs_open(int dir_resource_id, size_t path_length, char *path, int flags, mode_t mode) {
     syscall_return_t ret = {};
 
     // TODO: handle mode
 
-    // TODO: Should standardize copying to/from userspace
-    char *safe_path = heap_alloc(PATH_MAX + 1);
-    strncpy(safe_path, path, PATH_MAX);
-    safe_path[PATH_MAX] = 0;
+    path = syscall_string_in(path, path_length);
+    if(path == NULL) {
+        ret.errno = EINVAL;
+        return ret;
+    }
 
-    log(LOG_LEVEL_DEBUG, "SYSCALL", "open(dir_resource_id: %i, path: %s, flags: %#i, mode: %u)", dir_resource_id, safe_path, flags, mode);
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "open(dir_resource_id: %i, path: %s, flags: %#i, mode: %u)", dir_resource_id, path, flags, mode);
 
     // TODO: this check is only here until all flags are supported
     if((flags & ~(O_DIRECTORY | O_APPEND | O_CREAT | O_TRUNC | O_EXCL | O_ACCMODE)) != 0) {
         log(LOG_LEVEL_ERROR, "SYSCALL", "Unsupported open flags: %i", flags);
+        heap_free(path);
         ret.errno = ENOTSUP;
         return ret;
     }
@@ -42,6 +44,7 @@ syscall_return_t syscall_fs_open(int dir_resource_id, const char *path, int flag
         case O_SEARCH: resource_mode = RESOURCE_MODE_REFERENCE; break;
 #endif
         default:
+            heap_free(path);
             ret.errno = EINVAL;
             return ret;
     }
@@ -54,6 +57,7 @@ syscall_return_t syscall_fs_open(int dir_resource_id, const char *path, int flag
     } else {
         resource_t *parent = resource_get(&proc->resource_table, dir_resource_id);
         if(parent == NULL) {
+            heap_free(path);
             ret.errno = EBADF;
             return ret;
         }
@@ -64,18 +68,21 @@ syscall_return_t syscall_fs_open(int dir_resource_id, const char *path, int flag
     int r;
     if((flags & O_CREAT) != 0) {
         if((flags & O_DIRECTORY) != 0) {
+            heap_free(path);
             ret.errno = EINVAL;
             return ret;
         }
         // TODO: O_CREAT - we dont set user/group. we dont set mode. (cuz they dont exist atm)
-        r = vfs_lookup_ext(safe_path, &node, cwd, VFS_LOOKUP_CREATE_FILE, (flags & O_EXCL) != 0);
+        r = vfs_lookup_ext(path, &node, cwd, VFS_LOOKUP_CREATE_FILE, (flags & O_EXCL) != 0);
     } else {
         if((flags & O_EXCL) != 0) {
+            heap_free(path);
             ret.errno = EINVAL;
             return ret;
         }
-        r = vfs_lookup(safe_path, &node, cwd);
+        r = vfs_lookup(path, &node, cwd);
     }
+    heap_free(path);
     if(r != 0) {
         ret.errno = -r;
         return ret;
@@ -130,17 +137,16 @@ syscall_return_t syscall_fs_read(int resource_id, void *buf, size_t count) {
         return ret;
     }
 
-    // TODO: Should standardize copying to/from userspace
-    void *safe_buf = heap_alloc(count);
+    void *read_buf = heap_alloc(count);
     size_t read_count = 0;
     int r = resource->node->ops->rw(resource->node, &(vfs_rw_t) {
         .rw = VFS_RW_READ,
-        .buffer = safe_buf,
+        .buffer = read_buf,
         .size = count,
         .offset = resource->offset
     }, &read_count);
-    memcpy(buf, safe_buf, read_count);
-    heap_free(safe_buf);
+    syscall_buffer_out(buf, read_buf, read_count);
+    heap_free(read_buf);
     resource->offset += read_count;
     ret.value = read_count;
     if(r != 0) ret.errno = -r;
@@ -158,18 +164,20 @@ syscall_return_t syscall_fs_write(int resource_id, void *buf, size_t count) {
         return ret;
     }
 
-    // TODO: Should standardize copying to/from userspace
-    void *safe_buf = heap_alloc(count);
-    memcpy(safe_buf, buf, count);
-
+    buf = syscall_buffer_in(buf, count);
+    if(buf == NULL) {
+        log(LOG_LEVEL_WARN, "SYSCALL", "write: buffer in failed");
+        ret.errno = EINVAL;
+        return ret;
+    }
     size_t write_count = 0;
     int r = resource->node->ops->rw(resource->node, &(vfs_rw_t) {
         .rw = VFS_RW_WRITE,
-        .buffer = safe_buf,
+        .buffer = buf,
         .size = count,
         .offset = resource->offset
     }, &write_count);
-    heap_free(safe_buf);
+    heap_free(buf);
     resource->offset += write_count;
     ret.value = write_count;
     if(r != 0) ret.errno = -r;
@@ -222,21 +230,21 @@ syscall_return_t syscall_fs_seek(int resource_id, off_t offset, int whence) {
     return ret;
 }
 
-syscall_return_t syscall_fs_stat(int resource_id, const char *path, int flags, struct stat *statbuf) {
+syscall_return_t syscall_fs_stat(int resource_id, size_t path_length, char *path, int flags, struct stat *statbuf) {
     syscall_return_t ret = {};
 
-    // TODO: Should standardize copying to/from userspace
-    char *safe_path = heap_alloc(PATH_MAX + 1);
-    strncpy(safe_path, path, PATH_MAX);
-    safe_path[PATH_MAX] = 0;
-
-    log(LOG_LEVEL_DEBUG, "SYSCALL", "stat(resource_id: %i, path: %s, flags: %i, statbuf: %#lx)", resource_id, safe_path, flags, (uintptr_t) statbuf);
-
     if(statbuf == NULL) {
-        heap_free(safe_path);
         ret.errno = EINVAL;
         return ret;
     }
+
+    path = syscall_string_in(path, path_length);
+    if(path == NULL) {
+        ret.errno = EINVAL;
+        return ret;
+    }
+
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "stat(resource_id: %i, path: %s, flags: %i, statbuf: %#lx)", resource_id, path, flags, (uintptr_t) statbuf);
 
     process_t *proc = arch_sched_thread_current()->proc;
 
@@ -246,7 +254,7 @@ syscall_return_t syscall_fs_stat(int resource_id, const char *path, int flags, s
     } else {
         resource_t *resource = resource_get(&proc->resource_table, resource_id);
         if(resource == NULL) {
-            heap_free(safe_path);
+            heap_free(path);
             ret.errno = EBADF;
             return ret;
         }
@@ -254,50 +262,48 @@ syscall_return_t syscall_fs_stat(int resource_id, const char *path, int flags, s
     }
 
     vfs_node_t *node;
-    if(strlen(safe_path) == 0) {
+    if(strlen(path) == 0) {
         if((flags & AT_EMPTY_PATH) == 0) {
-            heap_free(safe_path);
+            heap_free(path);
             ret.errno = ENOENT;
             return ret;
         }
         node = parent;
     } else {
         // TODO: (flags & AT_SYMLINK_NOFOLLOW) should be passed here
-        int r = vfs_lookup(safe_path, &node, parent);
+        int r = vfs_lookup(path, &node, parent);
         if(r != 0) {
             ret.errno = -r;
             return ret;
         }
     }
+    heap_free(path);
 
     vfs_node_attr_t attr;
     int r = node->ops->attr(node, &attr);
     if(r != 0) {
-        heap_free(safe_path);
         ret.errno = -r;
         return ret;
     }
 
-    struct stat *safe_stat = heap_alloc(sizeof(struct stat));
-    safe_stat->st_dev = attr.device_id;
-	safe_stat->st_ino = attr.inode;
-	safe_stat->st_mode = 0; // TODO: set st_mode
-	safe_stat->st_nlink = 0; // TODO: set st_nlink
-	safe_stat->st_uid = 0; // TODO: set st_uid
-	safe_stat->st_gid = 0; // TODO: set st_gid
-	safe_stat->st_rdev = 0; // TODO: set st_rdev
-	safe_stat->st_size = attr.size;
-	safe_stat->st_blksize = attr.block_size;
-	safe_stat->st_blocks = attr.block_count;
-	safe_stat->st_atim.tv_sec = 0; // TODO: set st_atim
-	safe_stat->st_atim.tv_nsec = 0;
-	safe_stat->st_mtim.tv_sec = 0; // TODO: set st_mtim
-	safe_stat->st_mtim.tv_nsec = 0;
-	safe_stat->st_ctim.tv_sec = 0; // TODO: set st_ctim
-	safe_stat->st_ctim.tv_nsec = 0;
-
-    // TODO: Should standardize copying to/from userspace
-    memcpy(statbuf, safe_stat, sizeof(struct stat));
-    heap_free(safe_stat);
+    struct stat *stat = heap_alloc(sizeof(struct stat));
+    stat->st_dev = attr.device_id;
+	stat->st_ino = attr.inode;
+	stat->st_mode = 0; // TODO: set st_mode
+	stat->st_nlink = 0; // TODO: set st_nlink
+	stat->st_uid = 0; // TODO: set st_uid
+	stat->st_gid = 0; // TODO: set st_gid
+	stat->st_rdev = 0; // TODO: set st_rdev
+	stat->st_size = attr.size;
+	stat->st_blksize = attr.block_size;
+	stat->st_blocks = attr.block_count;
+	stat->st_atim.tv_sec = 0; // TODO: set st_atim
+	stat->st_atim.tv_nsec = 0;
+	stat->st_mtim.tv_sec = 0; // TODO: set st_mtim
+	stat->st_mtim.tv_nsec = 0;
+	stat->st_ctim.tv_sec = 0; // TODO: set st_ctim
+	stat->st_ctim.tv_nsec = 0;
+    syscall_buffer_out(statbuf, stat, sizeof(struct stat));
+    heap_free(stat);
     return ret;
 }
