@@ -18,34 +18,34 @@ int main(int argc, char **vargs) {
     ASSERT(uname(&name) == 0);
     printf("%s (%s %s)\n", name.sysname, name.nodename, name.version);
 
-    // /* Test reading kernel symbols */
-    // FILE *kernel_symbols = fopen("/modules/KERNSYMBTXT", "r");
-    // ASSERT(kernel_symbols != NULL);
+    /* Test reading kernel symbols */
+    FILE *kernel_symbols = fopen("/modules/KERNSYMBTXT", "r");
+    ASSERT(kernel_symbols != NULL);
 
-    // int read_count = 32;
-    // char *data = malloc(read_count);
-    // ASSERT(fread(data, 1, read_count, kernel_symbols) == (size_t) read_count)
-    // printf("some data from kernsymb.txt: %.*s\n", read_count, data);
-    // free(data);
+    int read_count = 32;
+    char *data = malloc(read_count);
+    ASSERT(fread(data, 1, read_count, kernel_symbols) == (size_t) read_count)
+    printf("some data from kernsymb.txt: %.*s\n", read_count, data);
+    free(data);
 
-    // ASSERT(fclose(kernel_symbols) == 0);
+    ASSERT(fclose(kernel_symbols) == 0);
 
-    // /* Stat */
-    // struct stat stat_data;
-    // ASSERT(stat("/modules/KERNSYMBTXT", &stat_data) == 0)
-    // printf(
-    //     "kernsymb.txt stat\n  st_dev: %#lx\n  st_ino: %#lx\n  st_mode: %#x\n  st_nlink: %#lx\n  st_uid: %#x\n  st_gid: %#x\n  st_rdev: %#lx\n  st_size: %li\n  st_blksize: %li\n  st_blocks: %li\n",
-    //     stat_data.st_dev,
-    //     stat_data.st_ino,
-    //     stat_data.st_mode,
-    //     stat_data.st_nlink,
-    //     stat_data.st_uid,
-    //     stat_data.st_gid,
-    //     stat_data.st_rdev,
-    //     stat_data.st_size,
-    //     stat_data.st_blksize,
-    //     stat_data.st_blocks
-    // );
+    /* Stat */
+    struct stat stat_data;
+    ASSERT(stat("/modules/KERNSYMBTXT", &stat_data) == 0)
+    printf(
+        "kernsymb.txt stat\n  st_dev: %#lx\n  st_ino: %#lx\n  st_mode: %#x\n  st_nlink: %#lx\n  st_uid: %#x\n  st_gid: %#x\n  st_rdev: %#lx\n  st_size: %li\n  st_blksize: %li\n  st_blocks: %li\n",
+        stat_data.st_dev,
+        stat_data.st_ino,
+        stat_data.st_mode,
+        stat_data.st_nlink,
+        stat_data.st_uid,
+        stat_data.st_gid,
+        stat_data.st_rdev,
+        stat_data.st_size,
+        stat_data.st_blksize,
+        stat_data.st_blocks
+    );
 
     /* Create file, write to it, append to it, read from it */
     FILE *hello_file = fopen("/tmp/hello", "w");
