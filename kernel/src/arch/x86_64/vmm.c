@@ -82,7 +82,7 @@ static inline uint64_t read_cr3() {
 
 static uint64_t flags_prot_to_x86_flags(vmm_protection_t prot, int flags) {
     uint64_t x86_flags = 0;
-    if(!(prot & VMM_PROT_READ)) panic("!VMM_PROT_READ not supported\n");
+    if(!(prot & VMM_PROT_READ)) panic("!VMM_PROT_READ not supported");
     if(prot & VMM_PROT_WRITE) x86_flags |= PTE_FLAG_RW;
     if(!(prot & VMM_PROT_EXEC)) x86_flags |= PTE_FLAG_NX;
     if(flags & ARCH_VMM_FLAG_USER) x86_flags |= PTE_FLAG_USER;

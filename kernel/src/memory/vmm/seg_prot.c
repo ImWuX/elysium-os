@@ -2,11 +2,11 @@
 #include <common/panic.h>
 
 static void seg_attach(vmm_segment_t *segment) {
-    panic("SEG_PROT: Tried attaching a protected segment (%s)\n", (char *) segment->driver_data);
+    panic("SEG_PROT: Tried attaching a protected segment (%s)", (char *) segment->driver_data);
 }
 
 static void seg_detach(vmm_segment_t *segment) {
-    panic("SEG_PROT: Tried detaching a protected segment (%s)\n", (char *) segment->driver_data);
+    panic("SEG_PROT: Tried detaching a protected segment (%s)", (char *) segment->driver_data);
 }
 
 static bool seg_fault([[maybe_unused]] vmm_segment_t *segment, [[maybe_unused]] uintptr_t address, [[maybe_unused]] int flags) {
