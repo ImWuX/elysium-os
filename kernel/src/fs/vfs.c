@@ -82,13 +82,15 @@ int vfs_lookup_ext(char *path, vfs_node_t **out, vfs_node_t *cwd, vfs_lookup_cre
                         case VFS_LOOKUP_CREATE_DIR:
                             r = current_node->ops->mkdir(current_node, component, &current_node);
                             break;
-                        case VFS_LOOKUP_CREATE_NONE: break;
+                        case VFS_LOOKUP_CREATE_NONE:
+                            heap_free(component);
+                            break;
                     }
                 } else {
                     if(exclusive) r = -EEXIST;
+                    heap_free(component);
                 }
 
-                heap_free(component);
                 if(r != 0) return r;
                 break;
         }
