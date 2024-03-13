@@ -113,3 +113,8 @@ void term_kb_handler(uint8_t ch) {
             break;
     }
 }
+
+void term_close() {
+    log_sink_remove(&g_term_sink);
+    clear_term();
+}
