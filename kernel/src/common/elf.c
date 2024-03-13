@@ -14,7 +14,7 @@
 #define ID2 'L'
 #define ID3 'F'
 
-// TODO: This are only correct for amd64
+// TODO: These are only correct for x86_64
 #define LITTLE_ENDIAN 1
 #define CLASS64 2
 #define MACHINE_386 0x3E
