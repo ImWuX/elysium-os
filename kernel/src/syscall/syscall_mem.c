@@ -12,7 +12,7 @@ syscall_return_t syscall_mem_anon_allocate(uintptr_t size) {
         ret.errno = EINVAL;
         return ret;
     }
-    void *p = vmm_map(arch_sched_thread_current()->proc->address_space, NULL, size, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, &g_seg_anon, NULL);
+    void *p = vmm_map(arch_sched_thread_current()->proc->address_space, NULL, size, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, &g_seg_anon, SEG_ANON_FLAG_ZERO);
     ret.value = (uintptr_t) p;
     log(LOG_LEVEL_DEBUG, "SYSCALL", "anon_alloc(size: %#lx) -> %#lx", size, ret.value);
     return ret;

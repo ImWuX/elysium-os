@@ -51,10 +51,12 @@ typedef struct {
     uintptr_t phys_base;
     void *virt_base;
 } seg_fixed_data_t;
-
+#define SEG_ANON_FLAG_PREALLOC (1 << 0)
+#define SEG_ANON_FLAG_ZERO (1 << 1)
 extern seg_driver_t g_seg_anon;
 extern seg_driver_t g_seg_fixed;
 extern seg_driver_t g_seg_prot;
+//
 
 /**
  * @brief Map a region of memory
