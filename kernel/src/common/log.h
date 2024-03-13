@@ -13,7 +13,6 @@ typedef enum {
 typedef struct {
     char *name;
     log_level_t level;
-    spinlock_t lock;
     list_element_t list_elem;
 
     /**
@@ -32,6 +31,11 @@ typedef struct {
  * @brief Add a log sink
  */
 void log_sink_add(log_sink_t *sink);
+
+/**
+ * @brief Remove a log sink
+ */
+void log_sink_remove(log_sink_t *sink);
 
 /**
  * @brief Emit a log
