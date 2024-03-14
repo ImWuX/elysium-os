@@ -207,40 +207,38 @@ bool vmm_fault(vmm_address_space_t *address_space, uintptr_t address, int flags)
 
 size_t vmm_copy_to(vmm_address_space_t *dest_as, uintptr_t dest_addr, void *src, size_t count) {
     if(!memory_exists(dest_as, dest_addr, count)) return 0;
-    size_t offset = dest_addr % ARCH_PAGE_SIZE;
     size_t i = 0;
     while(i < count) {
+        size_t offset = (dest_addr + i) % ARCH_PAGE_SIZE;
         uintptr_t phys;
         if(!arch_vmm_physical(dest_as, dest_addr + i, &phys)) {
             if(!vmm_fault(dest_as, dest_addr + i, VMM_FAULT_NONPRESENT)) return i;
             ASSERT(arch_vmm_physical(dest_as, dest_addr + i, &phys));
         }
 
-        size_t len = math_min(count - i, offset != 0 ? ARCH_PAGE_SIZE - offset : ARCH_PAGE_SIZE);
+        size_t len = math_min(count - i, ARCH_PAGE_SIZE - offset);
         memcpy((void *) HHDM(phys + offset), src, len);
         i += len;
         src += len;
-        offset = 0;
     }
     return i;
 }
 
 size_t vmm_copy_from(void *dest, vmm_address_space_t *src_as, uintptr_t src_addr, size_t count) {
     if(!memory_exists(src_as, src_addr, count)) return 0;
-    size_t offset = src_addr % ARCH_PAGE_SIZE;
     size_t i = 0;
     while(i < count) {
+        size_t offset = (src_addr + i) % ARCH_PAGE_SIZE;
         uintptr_t phys;
         if(!arch_vmm_physical(src_as, src_addr + i, &phys)) {
             if(!vmm_fault(src_as, src_addr + i, VMM_FAULT_NONPRESENT)) return i;
             ASSERT(arch_vmm_physical(src_as, src_addr + i, &phys));
         }
 
-        size_t len = math_min(count - i, offset != 0 ? ARCH_PAGE_SIZE - offset : ARCH_PAGE_SIZE);
+        size_t len = math_min(count - i, ARCH_PAGE_SIZE - offset);
         memcpy(dest, (void *) HHDM(phys + offset), len);
         i += len;
         dest += len;
-        offset = 0;
     }
     return i;
 }
