@@ -15,6 +15,7 @@
 #define SYSCALL_READ 9
 #define SYSCALL_SEEK 10
 #define SYSCALL_STAT 11
+#define SYSCALL_ELIB_FRAMEBUFFER 12
 
 #define DEFINE_SYSCALL(...)                     \
     syscall_return_t ret;                       \

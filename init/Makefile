@@ -4,4 +4,4 @@ CFLAGS = -std=gnu2x -static -O0
 CFLAGS += -Wall -Wextra -Wvla -Wshadow -Wno-unused-variable -Wno-unused-function -Wno-unused-parameter
 
 init: src/main.c
-	x86_64-elysium-gcc $(CFLAGS) $^ -o $@
+	x86_64-elysium-gcc $(CFLAGS) $^ -lelib -o $@
