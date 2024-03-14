@@ -16,7 +16,35 @@
 #define SYSCALL_SEEK 10
 #define SYSCALL_STAT 11
 #define SYSCALL_ELIB_FRAMEBUFFER 12
+#define SYSCALL_CLOCK 13
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef uint64_t syscall_int_t;
+
+typedef struct {
+    syscall_int_t value;
+    syscall_int_t err;
+} syscall_return_t;
+
+typedef enum {
+    SYSCALL_CLOCK_TYPE_REALTIME,
+    SYSCALL_CLOCK_TYPE_MONOTONIC
+} syscall_clock_type_t;
+
+typedef enum {
+    SYSCALL_CLOCK_MODE_RES,
+    SYSCALL_CLOCK_MODE_GET,
+    SYSCALL_CLOCK_MODE_SET
+} syscall_clock_mode_t;
+
+#ifdef __cplusplus
+}
+#endif
+
+#ifndef __MLIBC_ABI_ONLY
 #define DEFINE_SYSCALL(...)                     \
     syscall_return_t ret;                       \
     asm volatile("syscall"                      \
@@ -29,13 +57,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-    typedef long unsigned int syscall_int_t;
-
-    typedef struct {
-        syscall_int_t value;
-        syscall_int_t err;
-    } syscall_return_t;
 
     static syscall_return_t syscall0(int sc) {
         DEFINE_SYSCALL("a" (sc));
@@ -73,6 +94,7 @@ extern "C" {
 
 #ifdef __cplusplus
 }
+#endif
 #endif
 
 #endif

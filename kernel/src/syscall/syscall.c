@@ -46,7 +46,7 @@ syscall_return_t syscall_debug(size_t length, char *str) {
     str = syscall_string_in(str, length);
     if(str == NULL) {
         heap_free(str);
-        ret.errno = EINVAL;
+        ret.err = EINVAL;
         return ret;
     }
 

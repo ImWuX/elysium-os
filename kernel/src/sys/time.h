@@ -15,7 +15,9 @@ typedef struct timer {
     list_element_t list_elem;
 } timer_t;
 
-extern time_t g_monotonic_time;
+extern time_t g_time_resolution;
+extern time_t g_time_realtime;
+extern time_t g_time_monotonic;
 
 /**
  * @brief Add a and b

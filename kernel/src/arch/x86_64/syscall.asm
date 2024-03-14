@@ -14,6 +14,7 @@ extern syscall_fs_read
 extern syscall_fs_seek
 extern syscall_fs_stat
 extern syscall_elib_framebuffer
+extern syscall_time_clock
 
 section .data
 syscall_table:
@@ -30,6 +31,7 @@ syscall_table:
     dq syscall_fs_seek ; 10
     dq syscall_fs_stat ; 11
     dq syscall_elib_framebuffer ; 12
+    dq syscall_time_clock ; 13
 .length: dq ($ - syscall_table) / 8
 
 section .text
