@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -122,10 +123,37 @@ namespace mlibc {
         return -1;
     }
 
-    int sys_clock_get(int clock [[maybe_unused]], time_t *secs [[maybe_unused]], long *nanos [[maybe_unused]]) {
-        // TODO: Implement
-        mlibc::infoLogger() << "unimplemented sys_clock_get called" << frg::endlog;
-        return -1;
+    static int clock_get(int clock, syscall_clock_mode_t mode, time_t *secs, long *nanos) {
+        syscall_clock_type_t type;
+        switch(clock) {
+            case CLOCK_REALTIME:
+            case CLOCK_REALTIME_COARSE:
+                type = SYSCALL_CLOCK_TYPE_REALTIME;
+                break;
+            case CLOCK_BOOTTIME:
+            case CLOCK_MONOTONIC:
+            case CLOCK_MONOTONIC_RAW:
+            case CLOCK_MONOTONIC_COARSE:
+                type = SYSCALL_CLOCK_TYPE_MONOTONIC;
+                break;
+            default: return EINVAL;
+        }
+
+        uint64_t seconds;
+        uint32_t nanoseconds;
+        syscall_return_t ret = syscall4(SYSCALL_CLOCK, (syscall_int_t) type, (syscall_int_t) mode, (syscall_int_t) &seconds, (syscall_int_t) &nanoseconds);
+        if(ret.err != 0) return ret.err;
+        *secs = (time_t) seconds;
+        *nanos = (long) nanoseconds;
+        return 0;
+    }
+
+    int sys_clock_getres(int clock, time_t *secs, long *nanos) {
+        return clock_get(clock, SYSCALL_CLOCK_MODE_RES, secs, nanos);
+    }
+
+    int sys_clock_get(int clock, time_t *secs, long *nanos) {
+        return clock_get(clock, SYSCALL_CLOCK_MODE_GET, secs, nanos);
     }
 
     int sys_isatty(int fd [[maybe_unused]]) {

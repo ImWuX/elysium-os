@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/utsname.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <elib.h>
 
 #define ASSERT(ASSERTION) if(!(ASSERTION)) { printf("Assertion failed (%i) [%s]: \"%s\"\n", errno, strerror(errno), #ASSERTION); return 1; }
@@ -66,6 +67,14 @@ int main(int argc, char **vargs) {
     free(hello_data);
     ASSERT(fclose(hello_file) == 0);
 
+    /* Clock testing */
+    struct timespec tp;
+    ASSERT(clock_getres(CLOCK_REALTIME, &tp) == 0);
+    printf("Realtime resolution: %lu, %lu\n", tp.tv_sec, tp.tv_nsec);
+
+    ASSERT(clock_gettime(CLOCK_REALTIME, &tp) == 0);
+    printf("Realtime: %lu, %lu\n", tp.tv_sec, tp.tv_nsec);
+
     /* Acquire framebuffer */
     elib_framebuffer_info_t fb_info;
     void *fb = elib_acquire_framebuffer(&fb_info);
@@ -80,6 +89,9 @@ int main(int argc, char **vargs) {
             *((uint32_t *) (fb + (i * fb_info.pitch * 4) + j * 4)) = ((255 << 16) | (255 << 8) | (0 << 0));
         }
     }
+
+    ASSERT(clock_gettime(CLOCK_REALTIME, &tp) == 0);
+    printf("Realtime: %lu, %lu\n", tp.tv_sec, tp.tv_nsec);
 
     return 0;
 }
