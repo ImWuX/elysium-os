@@ -163,6 +163,7 @@ x86_64_init_stage_t x86_64_init_stage() {
 
 void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     init_stage = stage;
+    log(LOG_LEVEL_DEBUG, "INIT", "Stage: %u", stage);
 }
 
 [[noreturn]] void init(tartarus_boot_info_t *boot_info) {
