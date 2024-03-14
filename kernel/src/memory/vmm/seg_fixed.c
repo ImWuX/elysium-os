@@ -19,7 +19,7 @@ static bool seg_fault(vmm_segment_t *segment, uintptr_t address, int flags) {
     if((flags & VMM_FAULT_NONPRESENT) == 0) return false;
     int mapflags = ARCH_VMM_FLAG_NONE;
     if(segment->address_space != g_vmm_kernel_address_space) mapflags |= ARCH_VMM_FLAG_USER;
-    arch_vmm_map(segment->address_space, MATH_FLOOR(address, ARCH_PAGE_SIZE), PADDR(segment, address), segment->protection, mapflags);
+    arch_vmm_map(segment->address_space, MATH_FLOOR(address, ARCH_PAGE_SIZE), PADDR(segment, MATH_FLOOR(address, ARCH_PAGE_SIZE)), segment->protection, mapflags);
     return true;
 }
 
