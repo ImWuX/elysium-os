@@ -143,6 +143,8 @@ static void pit_time_handler([[maybe_unused]] x86_64_interrupt_frame_t *frame) {
     cpu->lapic_id = x86_64_lapic_id();
     cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
     cpu->tss = tss;
+    cpu->tlb_shootdown_check = SPINLOCK_INIT;
+    cpu->tlb_shootdown_lock = SPINLOCK_INIT;
 
     // Misc
     x86_64_fpu_init_cpu();
@@ -433,6 +435,8 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     cpu->lapic_id = x86_64_lapic_id();
     cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
     cpu->tss = tss;
+    cpu->tlb_shootdown_check = SPINLOCK_INIT;
+    cpu->tlb_shootdown_lock = SPINLOCK_INIT;
 
     g_x86_64_cpu_count = 0;
     for(size_t i = 0; i < boot_info->cpu_count; i++) {
