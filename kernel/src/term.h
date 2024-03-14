@@ -4,7 +4,7 @@
 /**
  * @brief Initialize the terminal
  */
-void term_init(draw_context_t *context);
+void term_init();
 
 /**
  * @brief Close the terminal

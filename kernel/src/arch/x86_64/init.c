@@ -24,6 +24,7 @@
 #include <sched/sched.h>
 #include <sched/resource.h>
 #include <graphics/draw.h>
+#include <graphics/framebuffer.h>
 #include <drivers/acpi.h>
 #include <term.h>
 #include <arch/vmm.h>
@@ -56,13 +57,13 @@
 uintptr_t g_hhdm_base;
 size_t g_hhdm_size;
 
+framebuffer_t g_framebuffer;
+
 static vmm_segment_t g_hhdm_segment, g_kernel_segment;
 static x86_64_init_stage_t init_stage = X86_64_INIT_STAGE_ENTRY;
 
 volatile size_t g_x86_64_cpu_count;
 x86_64_cpu_t *g_x86_64_cpus;
-
-static draw_context_t g_fb_context;
 
 static void log_raw_serial(char c) {
 	x86_64_port_outb(0x3F8, c);
@@ -162,11 +163,13 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 	g_hhdm_base = boot_info->hhdm_base;
 	g_hhdm_size = boot_info->hhdm_size;
 
-    g_fb_context.address = boot_info->framebuffer.address;
-    g_fb_context.width = boot_info->framebuffer.width;
-    g_fb_context.height = boot_info->framebuffer.height;
-    g_fb_context.pitch = boot_info->framebuffer.pitch;
-    term_init(&g_fb_context);
+    g_framebuffer.phys_address = HHDM_TO_PHYS(boot_info->framebuffer.address);
+    g_framebuffer.size = boot_info->framebuffer.size;
+    g_framebuffer.width = boot_info->framebuffer.width;
+    g_framebuffer.height = boot_info->framebuffer.height;
+    g_framebuffer.pitch = boot_info->framebuffer.pitch;
+
+    term_init();
 
     g_serial_sink.log_raw('\n');
     log_sink_add(&g_serial_sink);

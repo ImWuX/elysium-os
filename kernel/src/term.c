@@ -1,7 +1,12 @@
 #include "term.h"
 #include <lib/format.h>
 #include <common/log.h>
+#include <memory/hhdm.h>
 #include <graphics/font.h>
+#include <graphics/framebuffer.h>
+
+static bool g_active = false;
+static draw_context_t g_fb_context;
 
 static struct {
     draw_context_t *context;
@@ -83,11 +88,19 @@ static log_sink_t g_term_sink = {
     .log_raw = log_raw_term
 };
 
-void term_init(draw_context_t *context) {
-    g_term.context = context;
+void term_init() {
+    if(g_active) return;
+    g_active = true;
+
+    g_fb_context.address = (void *) HHDM(g_framebuffer.phys_address);
+    g_fb_context.width = g_framebuffer.width;
+    g_fb_context.height = g_framebuffer.height;
+    g_fb_context.pitch = g_framebuffer.pitch;
+
+    g_term.context = &g_fb_context;
     g_term.font = &g_font_basic;
-    g_term.ch_width = context->width / g_term.font->width;
-    g_term.ch_height = context->height / g_term.font->height;
+    g_term.ch_width = g_term.context->width / g_term.font->width;
+    g_term.ch_height = g_term.context->height / g_term.font->height;
     g_term.colors.bg = draw_color(10, 10, 12);
     g_term.colors.fg = draw_color(255, 255, 255);
     g_term.colors.debug = draw_color(18, 121, 255);
@@ -115,6 +128,8 @@ void term_kb_handler(uint8_t ch) {
 }
 
 void term_close() {
+    if(!g_active) return;
+    g_active = false;
     log_sink_remove(&g_term_sink);
     clear_term();
 }
