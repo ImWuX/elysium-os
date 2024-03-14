@@ -130,20 +130,18 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, aux
                 if(phdr->flags & PF_X) prot |= VMM_PROT_EXEC;
 
                 uintptr_t aligned_vaddr = MATH_FLOOR(phdr->vaddr, ARCH_PAGE_SIZE);
-                size_t alignment_offset = phdr->vaddr - aligned_vaddr;
-                size_t length = MATH_CEIL(phdr->memsz + alignment_offset, ARCH_PAGE_SIZE);
+                size_t length = MATH_CEIL(phdr->memsz + (phdr->vaddr - aligned_vaddr), ARCH_PAGE_SIZE);
 
-                // TODO: use anon > fixed
-                pmm_page_t *page = pmm_alloc_pages(length / ARCH_PAGE_SIZE, PMM_STANDARD | PMM_FLAG_ZERO);
-
-                seg_fixed_data_t *fixed_data = heap_alloc(sizeof(seg_fixed_data_t));
-                fixed_data->phys_base = page->paddr;
-                fixed_data->virt_base = NULL;
-                ASSERT(vmm_map(as, (void *) aligned_vaddr, length, prot, VMM_FLAG_FIXED, &g_seg_fixed, fixed_data) != NULL);
-
+                ASSERT(vmm_map(as, (void *) aligned_vaddr, length, prot, VMM_FLAG_FIXED, &g_seg_anon, (void *) (SEG_ANON_FLAG_ZERO)) != NULL);
                 if(phdr->filesz > 0) {
-                    r = node->ops->rw(node, &(vfs_rw_t) { .rw = VFS_RW_READ, .size = phdr->filesz, .offset = phdr->offset, .buffer = (void *) HHDM(page->paddr + alignment_offset) }, &read_count);
-                    if(r != 0 || read_count != phdr->filesz) FAIL("Failed to load program header");
+                    void *buf = heap_alloc(phdr->filesz);
+                    r = node->ops->rw(node, &(vfs_rw_t) { .rw = VFS_RW_READ, .size = phdr->filesz, .offset = phdr->offset, .buffer = buf }, &read_count);
+                    if(r != 0 || read_count != phdr->filesz) {
+                        heap_free(buf);
+                        FAIL("Failed to load program header");
+                    }
+                    ASSERT(vmm_copy_to(as, phdr->vaddr, buf, phdr->filesz) == phdr->filesz);
+                    heap_free(buf);
                 }
                 break;
             case PT_INTERP:
