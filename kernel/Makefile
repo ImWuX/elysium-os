@@ -1,23 +1,21 @@
 include conf.mk
 
-ifndef DESTDIR
-DESTDIR=/
-endif
+DESTDIR ?= /
 
 # Flags
-CFLAGS = -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -O2
+CFLAGS := -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -O2
 CFLAGS += -Wall -Wextra -Wvla -Wshadow
 CFLAGS += -fno-stack-protector -fno-stack-check -fno-omit-frame-pointer -fno-strict-aliasing
 CFLAGS += -D__ARCH_$(shell echo $(ARCH) | tr a-z A-Z) -D__MLIBC_ABI_ONLY
 CFLAGS += -g
 CFLAGS += -I$(SYSROOT)/usr/include
 
-ASMFLAGS = -Werror
+ASMFLAGS := -Werror
 
 # Sources
-ASM_SOURCES = $(shell find $(SRC) -type f -name "*.asm" -not -path "arch/*")
+ASM_SOURCES := $(shell find $(SRC) -type f -name "*.asm" -not -path "arch/*")
 ASM_SOURCES += $(shell find $(SRC)/arch/$(ARCH) -type f -name "*.asm")
-C_SOURCES = $(shell find $(SRC) -type f -name "*.c" -not -path "arch/*")
+C_SOURCES := $(shell find $(SRC) -type f -name "*.c" -not -path "arch/*")
 C_SOURCES += $(shell find $(SRC)/arch/$(ARCH) -type f -name "*.c")
 
 # Targets
