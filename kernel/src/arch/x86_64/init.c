@@ -26,6 +26,7 @@
 #include <graphics/draw.h>
 #include <graphics/framebuffer.h>
 #include <drivers/acpi.h>
+#include <sys/time.h>
 #include <term.h>
 #include <arch/vmm.h>
 #include <arch/types.h>
@@ -51,6 +52,7 @@
 #include <arch/x86_64/dev/ioapic.h>
 #include <arch/x86_64/dev/pic8259.h>
 
+#define PIT_TIMER_FREQ 1000
 #define LAPIC_CALIBRATION_TICKS 0x10000
 #define ADJUST_STACK(OFFSET) asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp\nmov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (OFFSET) : "rax", "memory")
 
@@ -97,6 +99,10 @@ static log_sink_t g_serial_sink = {
     .log_raw = log_raw_serial
 };
 
+static void pit_time_handler([[maybe_unused]] x86_64_interrupt_frame_t *frame) {
+    time_advance((time_t) { .nanoseconds = TIME_NANOSECONDS_IN_SECOND / PIT_TIMER_FREQ });
+}
+
 // TODO: A decent amount of duplicate code here. Consider having some sort of shared init.
 [[noreturn]] __attribute__((naked)) static void init_ap() {
     log(LOG_LEVEL_INFO, "INIT", "Initializing AP %i", x86_64_lapic_id());
@@ -128,7 +134,7 @@ static log_sink_t g_serial_sink = {
     tss->iomap_base = sizeof(x86_64_tss_t);
     x86_64_gdt_load_tss(tss);
 
-    x86_64_pit_initialize(UINT16_MAX);
+    x86_64_pit_set_reload(UINT16_MAX);
     uint16_t start_count = x86_64_pit_count();
     x86_64_lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
     uint16_t end_count = x86_64_pit_count();
@@ -417,7 +423,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     tss->iomap_base = sizeof(x86_64_tss_t);
     x86_64_gdt_load_tss(tss);
 
-    x86_64_pit_initialize(UINT16_MAX);
+    x86_64_pit_set_reload(UINT16_MAX);
     uint16_t start_count = x86_64_pit_count();
     x86_64_lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
     uint16_t end_count = x86_64_pit_count();
@@ -438,6 +444,13 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     }
     log(LOG_LEVEL_DEBUG, "INIT", "BSP init exit (%i/%i cpus initialized)", g_x86_64_cpu_count, boot_info->cpu_count);
     x86_64_init_stage_set(X86_64_INIT_STAGE_SMP);
+
+    // Initialize timer
+    x86_64_pit_set_frequency(PIT_TIMER_FREQ);
+    int pit_time_vector = x86_64_interrupt_request(X86_64_INTERRUPT_PRIORITY_TIMER, pit_time_handler);
+    ASSERT(pit_time_vector != -1);
+    x86_64_ioapic_map_legacy_irq(0, x86_64_lapic_id(), false, true, pit_time_vector);
+    x86_64_init_stage_set(X86_64_INIT_STAGE_TIME);
 
     // Enable interrupts & handoff to sched
     arch_interrupt_set_ipl(IPL_SCHED);
