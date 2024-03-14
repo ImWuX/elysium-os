@@ -6,10 +6,16 @@
 #define CHANNEL2_DATA 0x42
 #define CMD 0x43
 
-void x86_64_pit_initialize(uint16_t divisor) {
+void x86_64_pit_set_reload(uint16_t reload_value) {
     x86_64_port_outb(CMD, 0x34);
-    x86_64_port_outb(CHANNEL0_DATA, (uint8_t) divisor);
-    x86_64_port_outb(CHANNEL0_DATA, (uint8_t) (divisor >> 8));
+    x86_64_port_outb(CHANNEL0_DATA, (uint8_t) reload_value);
+    x86_64_port_outb(CHANNEL0_DATA, (uint8_t) (reload_value >> 8));
+}
+
+void x86_64_pit_set_frequency(uint64_t frequency) {
+    uint64_t divider = PIT_FREQ / frequency;
+    if(PIT_FREQ % frequency > frequency / 2) divider++;
+    x86_64_pit_set_reload((uint16_t) divider);
 }
 
 uint16_t x86_64_pit_count() {

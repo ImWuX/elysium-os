@@ -4,10 +4,14 @@
 #define PIT_FREQ 1193182
 
 /**
- * @brief Initialized the PIT
- * @param divisor PIT divisor
+ * @brief Set the reload value
  */
-void x86_64_pit_initialize(uint16_t divisor);
+void x86_64_pit_set_reload(uint16_t reload_value);
+
+/**
+ * @brief Set the frequency
+ */
+void x86_64_pit_set_frequency(uint64_t frequency);
 
 /**
  * @brief Retrieve current PIT count
