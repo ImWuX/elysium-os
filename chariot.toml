@@ -112,6 +112,10 @@ url = "rdsk"
 type = "local"
 url = "init"
 
+[source.elib]
+type = "local"
+url = "elib"
+
 
 # # # # # # # #
 # HOST TARGETS
@@ -305,8 +309,19 @@ configure = ["$SOURCE:kernel/conf.sh --target=x86_64 --prefix=$PREFIX --libgcc=$
 build = ["make all SYSROOT=$ROOT"]
 install = ["DESTDIR=$INSTALL make install"]
 
+[target.elib]
+dependencies = ["host:gcc", "mlibc-headers", "source:elib"]
+configure = ["cp -r $SOURCE:elib/* ."]
+build = ["make libelib.a"]
+install = [
+    "mkdir -p $INSTALL/usr/lib",
+    "cp libelib.a $INSTALL/usr/lib",
+    "mkdir -p $INSTALL/usr/include",
+    "cp elib.h $INSTALL/usr/include"
+]
+
 [target.init]
-dependencies = ["host:gcc", "mlibc-headers", "source:init"]
+dependencies = ["host:gcc", "mlibc-headers", "elib", "source:init"]
 configure = ["cp -r $SOURCE:init/* ."]
 build = ["make init"]
 install = [

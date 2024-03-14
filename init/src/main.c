@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/utsname.h>
 #include <sys/stat.h>
+#include <elib.h>
 
 #define ASSERT(ASSERTION) if(!(ASSERTION)) { printf("Assertion failed (%i) [%s]: \"%s\"\n", errno, strerror(errno), #ASSERTION); return 1; }
 
@@ -64,6 +65,21 @@ int main(int argc, char **vargs) {
     printf("hello data: %s\n", hello_data);
     free(hello_data);
     ASSERT(fclose(hello_file) == 0);
+
+    /* Acquire framebuffer */
+    elib_framebuffer_info_t fb_info;
+    void *fb = elib_acquire_framebuffer(&fb_info);
+    if(fb == NULL) {
+        printf("Failed to acquire the framebuffer\n");
+        return 1;
+    }
+    printf("Acquired framebuffer\n");
+
+    for(uint64_t i = 0; i < fb_info.height; i++) {
+        for(uint64_t j = 0; j < fb_info.pitch; j++) {
+            *((uint32_t *) (fb + (i * fb_info.pitch * 4) + j * 4)) = ((255 << 16) | (255 << 8) | (0 << 0));
+        }
+    }
 
     return 0;
 }
