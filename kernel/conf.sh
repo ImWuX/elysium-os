@@ -1,6 +1,7 @@
 #!/bin/sh
 
 PREFIX="/usr/local"
+ENV="dev"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -12,6 +13,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --target=*)
             TARGET=${1#*=}
+            ;;
+        --prod)
+            ENV="prod"
             ;;
         -*|--*)
             echo "Unknown option \"$1\""
@@ -51,3 +55,4 @@ echo "LD := x86_64-elysium-ld" >> $CONFMK
 echo "LIBGCC := $LIBGCC" >> $CONFMK
 echo "PREFIX := $PREFIX" >> $CONFMK
 echo "ARCH := $TARGET" >> $CONFMK
+echo "ENV := $ENV" >> $CONFMK

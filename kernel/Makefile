@@ -6,11 +6,17 @@ DESTDIR ?= /
 CFLAGS := -std=gnu2x -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -O2
 CFLAGS += -Wall -Wextra -Wvla -Wshadow
 CFLAGS += -fno-stack-protector -fno-stack-check -fno-omit-frame-pointer -fno-strict-aliasing
-CFLAGS += -D__ARCH_$(shell echo $(ARCH) | tr a-z A-Z) -D__MLIBC_ABI_ONLY
-CFLAGS += -g
+CFLAGS += -D__ARCH_$(shell echo $(ARCH) | tr a-z A-Z) -D__ENV_$(shell echo $(ENV) | tr a-z A-Z) -D__MLIBC_ABI_ONLY
 CFLAGS += -I$(SYSROOT)/usr/include
 
 ASMFLAGS := -Werror
+
+ifeq ($(ENV), dev)
+CFLAGS += -g -fsanitize=undefined -fno-sanitize=alignment
+ifeq ($(ARCH), x86_64)
+CFLAGS += -fno-sanitize=alignment
+endif
+endif
 
 # Sources
 ASM_SOURCES := $(shell find $(SRC) -type f -name "*.asm" -not -path "arch/*")
