@@ -132,7 +132,7 @@ void x86_64_ioapic_map_gsi(uint8_t gsi, uint8_t apic_id, bool low_polarity, bool
     ioapic_write(iored_low, low_entry);
 
     uint32_t high_data = ioapic_read(iored_low + 1);
-    high_data &= ~(0xFF << 24);
+    high_data &= ~((uint32_t) 0xFF << 24);
     high_data |= apic_id << 24;
     ioapic_write(iored_low + 1, high_data);
 }
