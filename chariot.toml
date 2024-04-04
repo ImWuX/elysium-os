@@ -279,21 +279,9 @@ install = ["DESTDIR=$INSTALL ninja install"]
 
 [target.tartarus]
 dependencies = ["source:tartarus", "source:support", "host:cross-gcc"]
-configure = ["cp -r $SOURCE:tartarus/* ."]
-build = [
-    "make -j$THREADS -C bios disk/mbr.bin ASMC=nasm",
-    """
-    make -j$THREADS -C core tartarus.sys TARGET=amd64-bios \
-        CC=x86_64-elf-gcc OBJCPY=x86_64-elf-objcopy LD=x86_64-elf-ld ASMC=nasm GIT=git \
-        IA32_LIBGCC=$SOURCE:support/libgcc-i686.a AMD64_LIBGCC=$SOURCE:support/libgcc-x86_64.a
-    """
-]
-install = [
-    "mkdir -p $INSTALL/usr/share/tartarus",
-    "cp bios/disk/mbr.bin core/tartarus.sys $INSTALL/usr/share/tartarus",
-    "mkdir -p $INSTALL/usr/include",
-    "cp tartarus.h $INSTALL/usr/include"
-]
+configure = ["$SOURCE:tartarus/conf.sh --target=x86_64-bios --prefix=/usr --libgcc-dir=$SOURCE:support/libgcc"]
+build = ["make -j$THREADS all",]
+install = ["DESTDIR=$INSTALL make install"]
 
 [target.kernel-headers]
 dependencies = ["mlibc-headers", "tartarus"]
@@ -305,7 +293,7 @@ install = [
 
 [target.kernel]
 dependencies = ["source:kernel", "source:support", "host:gcc", "kernel-headers"]
-configure = ["$SOURCE:kernel/conf.sh --target=x86_64 --prefix=$PREFIX --libgcc=$SOURCE:support/libgcc-x86_64.a"]
+configure = ["$SOURCE:kernel/conf.sh --target=x86_64 --prefix=$PREFIX --libgcc=$SOURCE:support/libgcc/x86_64.a"]
 build = ["make all SYSROOT=$ROOT"]
 install = ["DESTDIR=$INSTALL make install"]
 
