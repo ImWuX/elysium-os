@@ -1,23 +1,17 @@
 CHARIOT_BUILT = .chariot-cache/built
 ROOT = $(CHARIOT_BUILT)/root/root.rdk
 TARTARUS = $(CHARIOT_BUILT)/tartarus
+KERNEL = $(CHARIOT_BUILT)/kernel
 
-.PHONY: all clean setup_dev $(ROOT)
+.PHONY: all clean setup_dev $(ROOT) $(KERNEL)
 
 all: build/elysium.img
-
-mkimg/mkimg:
-	(cd mkimg && go build .)
 
 build:
 	mkdir -p build
 
-build/kernel.elf: build
+$(KERNEL):
 	chariot source:kernel kernel
-	cp $(CHARIOT_BUILT)/kernel/usr/local/share/kernel.elf $@
-
-build/kernsymb.txt: build/kernel.elf
-	nm build/kernel.elf -n > $@
 
 $(ROOT):
 	chariot source:init init root
@@ -25,13 +19,11 @@ $(ROOT):
 $(TARTARUS):
 	chariot tartarus
 
-build/elysium.img: build mkimg/mkimg build/kernel.elf build/kernsymb.txt $(ROOT) $(TARTARUS)
-	mkimg/mkimg \
-		--bootsect=$(TARTARUS)/usr/share/tartarus/mbr.bin \
-		--tartarus=$(TARTARUS)/usr/share/tartarus/tartarus.sys \
-		--kernel=build/kernel.elf \
-		--files=support/tartarus.cfg,build/kernsymb.txt,$(ROOT) \
-		$@
+build/kernsymb.txt: $(KERNEL)
+	nm $(KERNEL)/usr/local/share/kernel.elf -n > $@
+
+build/elysium.img: build build/kernsymb.txt $(ROOT) $(TARTARUS) $(KERNEL)
+	mkimg --config=support/mkimg.toml
 
 setup_dev:
 	chariot host:cross-gcc host:gcc tartarus kernel-headers

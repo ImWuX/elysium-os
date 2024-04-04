@@ -7,14 +7,14 @@
  * @param ADDRESS physical address
  * @returns virtual address inside the HHDM
  */
-#define HHDM(ADDRESS) ((uintptr_t) (ADDRESS) + g_hhdm_base)
+#define HHDM(ADDRESS) ((uintptr_t) (ADDRESS) + g_hhdm_offset)
 
 /**
  * @brief Converts a virtual HHDM address to a physical address
  * @param ADDRESS virtual address inside the HHDM
  * @returns physical address
  */
-#define HHDM_TO_PHYS(ADDRESS) ((uintptr_t) (ADDRESS) - g_hhdm_base)
+#define HHDM_TO_PHYS(ADDRESS) ((uintptr_t) (ADDRESS) - g_hhdm_offset)
 
-extern uintptr_t g_hhdm_base;
+extern uintptr_t g_hhdm_offset;
 extern size_t g_hhdm_size; // TODO: Maybe do some bounds checking here. maybe under a debug flag?

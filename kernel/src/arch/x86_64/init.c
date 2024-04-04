@@ -56,7 +56,7 @@
 #define LAPIC_CALIBRATION_TICKS 0x10000
 #define ADJUST_STACK(OFFSET) asm volatile("mov %%rsp, %%rax\nadd %0, %%rax\nmov %%rax, %%rsp\nmov %%rbp, %%rax\nadd %0, %%rax\nmov %%rax, %%rbp" : : "rm" (OFFSET) : "rax", "memory")
 
-uintptr_t g_hhdm_base;
+uintptr_t g_hhdm_offset;
 size_t g_hhdm_size;
 
 framebuffer_t g_framebuffer;
@@ -120,7 +120,7 @@ static void pit_time_handler([[maybe_unused]] x86_64_interrupt_frame_t *frame) {
     cr4 |= 1 << 7; /* CR4.PGE */
     asm volatile("mov %0, %%cr4" : : "r" (cr4) : "memory");
 
-    ADJUST_STACK(g_hhdm_base);
+    ADJUST_STACK(g_hhdm_offset);
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
     // Interrupts
@@ -169,8 +169,8 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 }
 
 [[noreturn]] void init(tartarus_boot_info_t *boot_info) {
-	g_hhdm_base = boot_info->hhdm_base;
-	g_hhdm_size = boot_info->hhdm_size;
+	g_hhdm_offset = boot_info->hhdm.offset;
+	g_hhdm_size = boot_info->hhdm.size;
 
     g_framebuffer.phys_address = HHDM_TO_PHYS(boot_info->framebuffer.address);
     g_framebuffer.size = boot_info->framebuffer.size;
@@ -186,12 +186,12 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
-        if(strcmp("KERNSYMBTXT", module->name) != 0) continue;
+        if(strcmp("kernsymb.txt", module->name) != 0) continue;
         g_panic_symbols = (char *) HHDM(module->paddr);
         g_panic_symbols_length = module->size;
     }
 
-    log(LOG_LEVEL_DEBUG, "HHDM", "Base: %#lx, Size: %#lx", g_hhdm_base, g_hhdm_size);
+    log(LOG_LEVEL_DEBUG, "HHDM", "Base: %#lx, Size: %#lx", g_hhdm_offset, g_hhdm_size);
 
     ASSERT(x86_64_cpuid_feature(X86_64_CPUID_FEATURE_MSR));
 
@@ -201,9 +201,9 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 	// Initialize physical memory
     pmm_zone_register(PMM_ZONE_DMA, "DMA", 0, 0x100'0000);
     pmm_zone_register(PMM_ZONE_NORMAL, "Normal", 0x100'0000, UINTPTR_MAX);
-    for(int i = 0; i < boot_info->memory_map_size; i++) {
-        tartarus_mmap_entry_t entry = boot_info->memory_map[i];
-        if(entry.type != TARTARUS_MEMAP_TYPE_USABLE) continue;
+    for(int i = 0; i < boot_info->memory_map.size; i++) {
+        tartarus_memory_map_entry_t entry = boot_info->memory_map.entries[i];
+        if(entry.type != TARTARUS_MEMORY_MAP_TYPE_USABLE) continue;
         pmm_region_add(entry.base, entry.length);
     }
     x86_64_init_stage_set(X86_64_INIT_STAGE_PHYS_MEMORY);
@@ -251,7 +251,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     g_vmm_kernel_address_space = x86_64_vmm_init();
 
     g_hhdm_segment.address_space = g_vmm_kernel_address_space;
-    g_hhdm_segment.base = MATH_FLOOR(g_hhdm_base, ARCH_PAGE_SIZE);
+    g_hhdm_segment.base = MATH_FLOOR(g_hhdm_offset, ARCH_PAGE_SIZE);
     g_hhdm_segment.length = MATH_CEIL(g_hhdm_size, ARCH_PAGE_SIZE);
     g_hhdm_segment.protection = VMM_PROT_READ | VMM_PROT_WRITE;
     g_hhdm_segment.driver = &g_seg_prot;
@@ -259,14 +259,14 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     list_append(&g_vmm_kernel_address_space->segments, &g_hhdm_segment.list_elem);
 
     g_kernel_segment.address_space = g_vmm_kernel_address_space;
-    g_kernel_segment.base = MATH_FLOOR(boot_info->kernel_vaddr, ARCH_PAGE_SIZE);
-    g_kernel_segment.length = MATH_CEIL(boot_info->kernel_size, ARCH_PAGE_SIZE);
+    g_kernel_segment.base = MATH_FLOOR(boot_info->kernel.vaddr, ARCH_PAGE_SIZE);
+    g_kernel_segment.length = MATH_CEIL(boot_info->kernel.size, ARCH_PAGE_SIZE);
     g_kernel_segment.protection = VMM_PROT_READ | VMM_PROT_WRITE;
     g_kernel_segment.driver = &g_seg_prot;
     g_kernel_segment.driver_data = "Kernel";
     list_append(&g_vmm_kernel_address_space->segments, &g_kernel_segment.list_elem);
 
-    ADJUST_STACK(g_hhdm_base);
+    ADJUST_STACK(g_hhdm_offset);
     arch_vmm_load_address_space(g_vmm_kernel_address_space);
 
     x86_64_interrupt_set(0xE, X86_64_INTERRUPT_PRIORITY_EXCEPTION, x86_64_vmm_page_fault_handler);
@@ -312,7 +312,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     tartarus_module_t *sysroot_module = NULL;
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
-        if(strcmp("ROOT    RDK", module->name) != 0) continue;
+        if(strcmp("root.rdk", module->name) != 0) continue;
         sysroot_module = module;
         break;
     }
