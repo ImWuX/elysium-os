@@ -7,6 +7,7 @@ void *memset(void *dest, int ch, size_t count) {
 }
 
 void *memcpy(void *dest, const void *src, size_t count) {
+    // CRITICAL: this is x86_64 only...
     asm volatile("cld");
     asm volatile("rep movsb" : "+D"(dest), "+S"(src), "+c"(count) : : "memory");
     return dest;
