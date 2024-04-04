@@ -62,7 +62,7 @@ static int stdio_shared_node_truncate(vfs_node_t *node [[maybe_unused]], size_t 
     return -EPERM;
 }
 
-static vfs_node_ops_t stdin_ops = {
+static vfs_node_ops_t g_stdin_ops = {
     .attr = stdio_shared_node_attr,
     .lookup = stdio_shared_node_lookup,
     .rw = stdio_stdin_node_rw,
@@ -72,7 +72,7 @@ static vfs_node_ops_t stdin_ops = {
     .truncate = stdio_shared_node_truncate
 };
 
-static vfs_node_ops_t stdout_ops = {
+static vfs_node_ops_t g_stdout_ops = {
     .attr = stdio_shared_node_attr,
     .lookup = stdio_shared_node_lookup,
     .rw = stdio_stdout_node_rw,
@@ -82,7 +82,7 @@ static vfs_node_ops_t stdout_ops = {
     .truncate = stdio_shared_node_truncate
 };
 
-static vfs_node_ops_t stderr_ops = {
+static vfs_node_ops_t g_stderr_ops = {
     .attr = stdio_shared_node_attr,
     .lookup = stdio_shared_node_lookup,
     .rw = stdio_stderr_node_rw,
@@ -157,7 +157,7 @@ static int stdio_root_node_truncate(vfs_node_t *node [[maybe_unused]], size_t le
     return -EISDIR;
 }
 
-static vfs_node_ops_t root_ops = {
+static vfs_node_ops_t g_root_ops = {
     .attr = stdio_root_node_attr,
     .lookup = stdio_root_node_lookup,
     .rw = stdio_root_node_rw,
@@ -174,25 +174,25 @@ static int stdio_mount(vfs_t *vfs, [[maybe_unused]] void *data) {
     memset(nodes->root, 0, sizeof(vfs_node_t));
     nodes->root->vfs = vfs;
     nodes->root->type = VFS_NODE_TYPE_DIR;
-    nodes->root->ops = &root_ops;
+    nodes->root->ops = &g_root_ops;
 
     nodes->stdin = heap_alloc(sizeof(vfs_node_t));
     memset(nodes->stdin, 0, sizeof(vfs_node_t));
     nodes->stdin->vfs = vfs;
     nodes->stdin->type = VFS_NODE_TYPE_FILE;
-    nodes->stdin->ops = &stdin_ops;
+    nodes->stdin->ops = &g_stdin_ops;
 
     nodes->stdout = heap_alloc(sizeof(vfs_node_t));
     memset(nodes->stdout, 0, sizeof(vfs_node_t));
     nodes->stdout->vfs = vfs;
     nodes->stdout->type = VFS_NODE_TYPE_FILE;
-    nodes->stdout->ops = &stdout_ops;
+    nodes->stdout->ops = &g_stdout_ops;
 
     nodes->stderr = heap_alloc(sizeof(vfs_node_t));
     memset(nodes->stderr, 0, sizeof(vfs_node_t));
     nodes->stderr->vfs = vfs;
     nodes->stderr->type = VFS_NODE_TYPE_FILE;
-    nodes->stderr->ops = &stderr_ops;
+    nodes->stderr->ops = &g_stderr_ops;
 
     vfs->data = (void *) nodes;
     return 0;

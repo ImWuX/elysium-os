@@ -52,7 +52,7 @@ typedef struct {
     uint64_t file_cache_size;
 } info_t;
 
-static vfs_node_ops_t node_ops;
+static vfs_node_ops_t g_node_ops;
 
 static const char *get_name(vfs_t *vfs, uint64_t offset) {
     info_t *info = (info_t *) vfs->data;
@@ -87,7 +87,7 @@ static vfs_node_t *get_dir_vfs_node(vfs_t *vfs, rdsk_index_t index) {
     node->vfs = vfs;
     node->type = VFS_NODE_TYPE_DIR;
     node->data = get_dir(vfs, index);
-    node->ops = &node_ops;
+    node->ops = &g_node_ops;
     info->dir_cache[index - 1] = node;
     return node;
 }
@@ -100,7 +100,7 @@ static vfs_node_t *get_file_vfs_node(vfs_t *vfs, rdsk_index_t index) {
     node->vfs = vfs;
     node->type = VFS_NODE_TYPE_FILE;
     node->data = get_file(vfs, index);
-    node->ops = &node_ops;
+    node->ops = &g_node_ops;
     info->file_cache[index - 1] = node;
     return node;
 }
@@ -245,7 +245,7 @@ static int rdsk_root(vfs_t *vfs, vfs_node_t **out) {
     return 0;
 }
 
-static vfs_node_ops_t node_ops = {
+static vfs_node_ops_t g_node_ops = {
     .attr = rdsk_node_attr,
     .lookup = rdsk_node_lookup,
     .rw = rdsk_node_rw,

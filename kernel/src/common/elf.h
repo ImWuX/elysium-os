@@ -8,8 +8,8 @@
  * @brief Load an ELF as a process image
  * @param node ELF file
  * @param as address space
- * @param entry (out) entry address
  * @param interpreter interpreter or null
+ * @param auxv (out) auxv
  * @returns true on error
  */
 bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, auxv_t *auxv);

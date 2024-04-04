@@ -32,7 +32,7 @@ typedef struct tmpfs_node {
     };
 } tmpfs_node_t;
 
-static vfs_node_ops_t node_ops;
+static vfs_node_ops_t g_node_ops;
 
 static tmpfs_node_t *dir_find(tmpfs_node_t *dir, const char *name) {
     tmpfs_node_t *node = dir->dir.children;
@@ -63,7 +63,7 @@ static tmpfs_node_t *create_tnode(tmpfs_node_t *parent, vfs_t *vfs, bool is_dir,
     node->vfs = vfs;
     node->type = is_dir ? VFS_NODE_TYPE_DIR : VFS_NODE_TYPE_FILE;
     node->data = (void *) tnode;
-    node->ops = &node_ops;
+    node->ops = &g_node_ops;
 
     tnode->node = node;
     return tnode;
@@ -188,7 +188,7 @@ static int tmpfs_root(vfs_t *vfs, vfs_node_t **out) {
     return 0;
 }
 
-static vfs_node_ops_t node_ops = {
+static vfs_node_ops_t g_node_ops = {
     .attr = tmpfs_node_attr,
     .lookup = tmpfs_node_lookup,
     .rw = tmpfs_node_rw,
