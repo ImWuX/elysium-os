@@ -19,9 +19,9 @@ endif
 endif
 
 # Sources
-ASM_SOURCES := $(shell find $(SRC) -type f -name "*.asm" -not -path "arch/*")
+ASM_SOURCES := $(shell find $(SRC) -type f -name "*.asm" -not -path "$(SRC)/arch/*")
 ASM_SOURCES += $(shell find $(SRC)/arch/$(ARCH) -type f -name "*.asm")
-C_SOURCES := $(shell find $(SRC) -type f -name "*.c" -not -path "arch/*")
+C_SOURCES := $(shell find $(SRC) -type f -name "*.c" -not -path "$(SRC)/arch/*")
 C_SOURCES += $(shell find $(SRC)/arch/$(ARCH) -type f -name "*.c")
 
 # Targets
@@ -31,6 +31,7 @@ all: $(BUILD)/kernel.elf clean
 
 ifeq ($(ARCH), x86_64)
 $(BUILD)/kernel.elf: $(ASM_SOURCES:.asm=_asm.o) $(C_SOURCES:.c=.o) $(LIBGCC)
+	mkdir -p $(BUILD)
 	$(LD) -o $@ -T"$(SUPPORT)/link.x86_64.ld" $^
 endif
 
