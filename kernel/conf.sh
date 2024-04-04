@@ -43,7 +43,6 @@ SRCDIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 DSTDIR=$(pwd)
 
 cp $SRCDIR/Makefile $DSTDIR
-mkdir -p $DSTDIR/build
 
 CONFMK="$DSTDIR/conf.mk"
 echo "SRC := $SRCDIR/src" > $CONFMK
