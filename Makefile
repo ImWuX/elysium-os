@@ -19,10 +19,10 @@ $(ROOT):
 $(TARTARUS):
 	chariot tartarus
 
-build/kernsymb.txt: $(KERNEL)
+build/kernelsymbols.txt: $(KERNEL)
 	nm $(KERNEL)/usr/local/share/kernel.elf -n > $@
 
-build/elysium.img: build build/kernsymb.txt $(ROOT) $(TARTARUS) $(KERNEL)
+build/elysium.img: build build/kernelsymbols.txt $(ROOT) $(TARTARUS) $(KERNEL)
 	mkimg --config=support/mkimg.toml
 
 setup_dev:

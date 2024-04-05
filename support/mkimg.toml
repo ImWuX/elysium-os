@@ -17,5 +17,5 @@ files = [
     ".chariot-cache/built/kernel/usr/local/share/kernel.elf",
     ".chariot-cache/built/root/root.rdk",
     "support/tartarus.cfg",
-    "build/kernsymb.txt"
+    "build/kernelsymbols.txt"
 ]

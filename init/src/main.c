@@ -21,22 +21,22 @@ int main(int argc, char **vargs) {
     printf("%s (%s %s)\n", name.sysname, name.nodename, name.version);
 
     /* Test reading kernel symbols */
-    FILE *kernel_symbols = fopen("/modules/KERNSYMBTXT", "r");
+    FILE *kernel_symbols = fopen("/modules/kernelsymbols.txt", "r");
     ASSERT(kernel_symbols != NULL);
 
     int read_count = 32;
     char *data = malloc(read_count);
     ASSERT(fread(data, 1, read_count, kernel_symbols) == (size_t) read_count)
-    printf("some data from kernsymb.txt: %.*s\n", read_count, data);
+    printf("some data from kernelsymbols.txt: %.*s\n", read_count, data);
     free(data);
 
     ASSERT(fclose(kernel_symbols) == 0);
 
     /* Stat */
     struct stat stat_data;
-    ASSERT(stat("/modules/KERNSYMBTXT", &stat_data) == 0)
+    ASSERT(stat("/modules/kernelsymbols.txt", &stat_data) == 0)
     printf(
-        "kernsymb.txt stat\n  st_dev: %#lx\n  st_ino: %#lx\n  st_mode: %#x\n  st_nlink: %#lx\n  st_uid: %#x\n  st_gid: %#x\n  st_rdev: %#lx\n  st_size: %li\n  st_blksize: %li\n  st_blocks: %li\n",
+        "kernelsymbols.txt stat\n  st_dev: %#lx\n  st_ino: %#lx\n  st_mode: %#x\n  st_nlink: %#lx\n  st_uid: %#x\n  st_gid: %#x\n  st_rdev: %#lx\n  st_size: %li\n  st_blksize: %li\n  st_blocks: %li\n",
         stat_data.st_dev,
         stat_data.st_ino,
         stat_data.st_mode,
@@ -84,9 +84,10 @@ int main(int argc, char **vargs) {
     }
     printf("Acquired framebuffer\n");
 
-    for(uint64_t i = 0; i < fb_info.height; i++) {
-        for(uint64_t j = 0; j < fb_info.pitch; j++) {
-            *((uint32_t *) (fb + (i * fb_info.pitch * 4) + j * 4)) = ((255 << 16) | (255 << 8) | (0 << 0));
+    printf("w: %lu, h: %lu, p: %lu\n", fb_info.width, fb_info.height, fb_info.pitch);
+    for(uint64_t y = 0; y < fb_info.height; y++) {
+        for(uint64_t x = 0; x < fb_info.width; x++) {
+            *((uint32_t *) (fb + (y * fb_info.pitch) + (x * 4))) = ((255 << 16) | (255 << 8) | (0 << 0));
         }
     }
 
