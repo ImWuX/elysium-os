@@ -4,7 +4,7 @@
 
 time_t g_time_resolution = {};
 time_t g_time_realtime = {};
-time_t g_time_monotonic = {}; // TODO: this should be time since boot
+time_t g_time_monotonic = {};
 static spinlock_t g_lock = SPINLOCK_INIT;
 static list_t g_timers = LIST_INIT; // TODO: this needs to be a vector instead of a list (cuz linked list is def too slow here)
 
