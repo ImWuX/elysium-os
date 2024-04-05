@@ -451,6 +451,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     x86_64_init_stage_set(X86_64_INIT_STAGE_SMP);
 
     // Initialize timer
+    g_time_realtime = (time_t) { .seconds = boot_info->boot_timestamp };
     g_time_resolution = (time_t) { .nanoseconds = TIME_NANOSECONDS_IN_SECOND / PIT_TIMER_FREQ };
     x86_64_pit_set_frequency(PIT_TIMER_FREQ);
     int pit_time_vector = x86_64_interrupt_request(X86_64_INTERRUPT_PRIORITY_TIMER, pit_time_handler);
