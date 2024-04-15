@@ -59,7 +59,7 @@ static gdt_entry_t g_gdt[] = {
         .flags = 0b00100000,
         .base_high = 0
     },
-    {}, {}
+    {}, {} // TSS
 };
 
 void x86_64_gdt_load() {
@@ -68,23 +68,23 @@ void x86_64_gdt_load() {
     gdtr.base = (uint64_t) &g_gdt;
     asm volatile(
         "lgdt %0\n"
-        "push $" XSTR(X86_64_GDT_CODE_RING0) "\n"
+        "push $" XSTR(X86_64_GDT_SELECTOR_CODE64_RING0) "\n"
         "lea 1f(%%rip), %%rax\n"
         "push %%rax\n"
         "lretq\n"
         "1:\n"
-        "mov $" XSTR(X86_64_GDT_DATA_RING0) ", %%rax\n"
+        "mov $" XSTR(X86_64_GDT_SELECTOR_DATA64_RING0) ", %%rax\n"
         "mov %%rax, %%ds\n"
         "mov %%rax, %%ss\n"
         "mov %%rax, %%es\n"
-        "mov %%rax, %%fs\n"
-        "mov %%rax, %%gs\n"
         : : "m" (gdtr) : "rax", "memory"
     );
 }
 
 void x86_64_gdt_load_tss(x86_64_tss_t *tss) {
-    gdt_system_entry_t *entry = (gdt_system_entry_t *) ((uintptr_t) g_gdt + X86_64_GDT_TSS);
+    uint16_t tss_segment = sizeof(g_gdt) - 16;
+
+    gdt_system_entry_t *entry = (gdt_system_entry_t *) ((uintptr_t) g_gdt + tss_segment);
     entry->entry.access = 0b10001001;
     entry->entry.flags = (1 << 4) | (((uint8_t) (sizeof(x86_64_tss_t) << 16)) & 0b00001111);
     entry->entry.limit = (uint16_t) sizeof(x86_64_tss_t);
@@ -93,6 +93,5 @@ void x86_64_gdt_load_tss(x86_64_tss_t *tss) {
     entry->entry.base_high = (uint8_t) ((uint64_t) tss >> 24);
     entry->base_ext = (uint32_t) ((uint64_t) tss >> 32);
 
-    uint16_t segment = X86_64_GDT_TSS;
-    asm volatile("ltr %0" : : "m" (segment));
+    asm volatile("ltr %0" : : "m" (tss_segment));
 }

@@ -1,6 +1,0 @@
-{
-    "C_Cpp.files.exclude": {
-        "**/.vscode": true,
-        "**/.chariot-cache": true
-    }
-}

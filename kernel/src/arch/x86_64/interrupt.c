@@ -83,7 +83,7 @@ void x86_64_interrupt_handler(x86_64_interrupt_frame_t *frame) {
 
 void x86_64_interrupt_init() {
     for(unsigned long i = 0; i < sizeof(g_idt) / sizeof(idt_entry_t); i++) {
-        set_idt_gate(i, g_isr_stubs[i], X86_64_GDT_CODE_RING0, FLAGS_NORMAL);
+        set_idt_gate(i, g_isr_stubs[i], X86_64_GDT_SELECTOR_CODE64_RING0, FLAGS_NORMAL);
         g_entries[i].free = true;
     }
 }

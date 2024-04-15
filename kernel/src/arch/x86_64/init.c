@@ -186,7 +186,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 
     for(uint16_t i = 0; i < boot_info->module_count; i++) {
         tartarus_module_t *module = &boot_info->modules[i];
-        if(strcmp("kernsymb.txt", module->name) != 0) continue;
+        if(strcmp("kernelsymbols.txt", module->name) != 0) continue;
         g_panic_symbols = (char *) HHDM(module->paddr);
         g_panic_symbols_length = module->size;
     }
