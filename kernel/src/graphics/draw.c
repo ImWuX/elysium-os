@@ -1,4 +1,5 @@
 #include "draw.h"
+#include <lib/mem.h>
 #include <graphics/font.h>
 
 static inline void putpixel(draw_context_t *ctx, uint64_t offset, draw_color_t color) {
@@ -66,10 +67,18 @@ void draw_rect(draw_context_t *ctx, int x, int y, uint16_t w, uint16_t h, draw_c
         h += y;
         y = 0;
     }
-    uint64_t offset = x * sizeof(draw_color_t) + y * ctx->pitch;
-    for(int yy = 0; yy < h && y + yy < ctx->height; yy++) {
-        for(int xx = 0; xx < w && x + xx < ctx->width; xx++) {
-            putpixel(ctx, offset + xx * sizeof(draw_color_t), color);
+    if(x + w > ctx->width) {
+        w = ctx->width - x;
+    }
+    if(y + h > ctx->height) {
+        h = ctx->height - y;
+    }
+    uint64_t offset = y * ctx->pitch + x * sizeof(draw_color_t);
+    for(int yy = 0; yy < h; yy++) {
+        uint64_t local_offset = offset;
+        for(int xx = 0; xx < w; xx++) {
+            putpixel(ctx, local_offset, color);
+            local_offset += sizeof(draw_color_t);
         }
         offset += ctx->pitch;
     }
