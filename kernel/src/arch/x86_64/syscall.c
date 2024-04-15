@@ -26,9 +26,12 @@ syscall_return_t x86_64_syscall_fs_set(void *ptr) {
     return ret;
 }
 
+// Ensure GDT conforms to sysret
+static_assert(X86_64_GDT_SELECTOR_DATA64_RING3 + 8 == X86_64_GDT_SELECTOR_CODE64_RING3);
+
 void x86_64_syscall_init_cpu() {
     x86_64_msr_write(X86_64_MSR_EFER, x86_64_msr_read(X86_64_MSR_EFER) | MSR_EFER_SCE);
-    x86_64_msr_write(X86_64_MSR_STAR, ((uint64_t) X86_64_GDT_CODE_RING0 << 32) | ((uint64_t) (X86_64_GDT_CODE_RING3 - 16) << 48));
+    x86_64_msr_write(X86_64_MSR_STAR, ((uint64_t) X86_64_GDT_SELECTOR_CODE64_RING0 << 32) | ((uint64_t) (X86_64_GDT_SELECTOR_DATA64_RING3 - 8) << 48));
     x86_64_msr_write(X86_64_MSR_LSTAR, (uint64_t) x86_64_syscall_entry);
     x86_64_msr_write(X86_64_MSR_SFMASK, x86_64_msr_read(X86_64_MSR_SFMASK) | (1 << 9));
 }

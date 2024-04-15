@@ -33,6 +33,11 @@ isr_stub:
     mov rax, ds
     push rax
 
+    mov rax, 0x10 ; TODO: Change to one of the GDT defines once using gas
+    mov ds, rax
+    mov es, rax
+    mov ss, rax
+
     xor rbp, rbp
     mov rdi, rsp                                            ; RDI to be used as a pointer to the int frame
     call x86_64_interrupt_handler                           ; Call interrupt handler
