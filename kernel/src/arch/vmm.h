@@ -20,7 +20,7 @@ void arch_vmm_load_address_space(vmm_address_space_t *address_space);
 /**
  * @brief Map a virtual address to a physical address
  */
-void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, vmm_protection_t prot, int flags);
+void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, vmm_protection_t prot, vmm_cache_t cache, int flags);
 
 /**
  * @brief Unmap a virtual address from address space

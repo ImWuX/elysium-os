@@ -34,7 +34,7 @@ static uint64_t get_prot(heap_entry_t *entry) {
 #endif
 
 void heap_initialize(vmm_address_space_t *address_space, size_t size) {
-    void *addr = vmm_map(address_space, NULL, size, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, &g_seg_anon, NULL);
+    void *addr = vmm_map(address_space, NULL, size, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, VMM_CACHE_STANDARD, &g_seg_anon, NULL);
     ASSERT(addr != NULL);
 
     heap_entry_t *entry = (heap_entry_t *) addr;
