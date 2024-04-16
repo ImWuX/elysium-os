@@ -254,6 +254,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     g_hhdm_segment.base = MATH_FLOOR(g_hhdm_offset, ARCH_PAGE_SIZE);
     g_hhdm_segment.length = MATH_CEIL(g_hhdm_size, ARCH_PAGE_SIZE);
     g_hhdm_segment.protection = VMM_PROT_READ | VMM_PROT_WRITE;
+    g_hhdm_segment.cache = VMM_CACHE_STANDARD;
     g_hhdm_segment.driver = &g_seg_prot;
     g_hhdm_segment.driver_data = "HHDM";
     list_append(&g_vmm_kernel_address_space->segments, &g_hhdm_segment.list_elem);
@@ -262,6 +263,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     g_kernel_segment.base = MATH_FLOOR(boot_info->kernel.vaddr, ARCH_PAGE_SIZE);
     g_kernel_segment.length = MATH_CEIL(boot_info->kernel.size, ARCH_PAGE_SIZE);
     g_kernel_segment.protection = VMM_PROT_READ | VMM_PROT_WRITE;
+    g_kernel_segment.cache = VMM_CACHE_STANDARD;
     g_kernel_segment.driver = &g_seg_prot;
     g_kernel_segment.driver_data = "Kernel";
     list_append(&g_vmm_kernel_address_space->segments, &g_kernel_segment.list_elem);
@@ -273,7 +275,7 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
 
     x86_64_init_stage_set(X86_64_INIT_STAGE_MEMORY);
 
-    void *vmm_random_addr = vmm_map(g_vmm_kernel_address_space, NULL, 0x5000, VMM_PROT_READ, VMM_FLAG_NONE, &g_seg_anon, NULL);
+    void *vmm_random_addr = vmm_map(g_vmm_kernel_address_space, NULL, 0x5000, VMM_PROT_READ, VMM_FLAG_NONE, VMM_CACHE_STANDARD, &g_seg_anon, NULL);
     ASSERT(vmm_random_addr != NULL);
     log(LOG_LEVEL_DEBUG, "VMM", "randomly allocated & mapped address: %#lx", (uintptr_t) vmm_random_addr);
 

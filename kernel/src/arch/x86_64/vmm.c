@@ -51,6 +51,17 @@ typedef enum {
     PTE_FLAG_NX = ((uint64_t) 1 << 63)
 } pte_flag_t;
 
+typedef enum {
+    PTE_PAT0 = 0,
+    PTE_PAT1 = PTE_FLAG_WRITETHROUGH,
+    PTE_PAT2 = PTE_FLAG_DISABLECACHE,
+    PTE_PAT3 = PTE_FLAG_DISABLECACHE | PTE_FLAG_WRITETHROUGH,
+    PTE_PAT4 = PTE_FLAG_PAT,
+    PTE_PAT5 = PTE_FLAG_PAT | PTE_FLAG_WRITETHROUGH,
+    PTE_PAT6 = PTE_FLAG_PAT | PTE_FLAG_DISABLECACHE,
+    PTE_PAT7 = PTE_FLAG_PAT | PTE_FLAG_DISABLECACHE | PTE_FLAG_WRITETHROUGH
+} pte_pat_t;
+
 typedef struct {
     spinlock_t cr3_lock;
     uintptr_t cr3;
@@ -80,13 +91,15 @@ static inline uint64_t read_cr3() {
     return value;
 }
 
-static uint64_t flags_prot_to_x86_flags(vmm_protection_t prot, int flags) {
+static uint64_t flags_cache_prot_to_x86_flags(vmm_protection_t prot, vmm_cache_t cache, int flags) {
     uint64_t x86_flags = 0;
-    if(!(prot & VMM_PROT_READ)) panic("!VMM_PROT_READ not supported");
-    if(prot & VMM_PROT_WRITE) x86_flags |= PTE_FLAG_RW;
-    if(!(prot & VMM_PROT_EXEC)) x86_flags |= PTE_FLAG_NX;
-    if(flags & ARCH_VMM_FLAG_USER) x86_flags |= PTE_FLAG_USER;
-    if(flags & ARCH_VMM_FLAG_GLOBAL) x86_flags |= PTE_FLAG_GLOBAL;
+    if((prot & VMM_PROT_READ) == 0) panic("!VMM_PROT_READ not supported");
+    if((prot & VMM_PROT_WRITE) != 0) x86_flags |= PTE_FLAG_RW;
+    if((prot & VMM_PROT_EXEC) == 0) x86_flags |= PTE_FLAG_NX;
+    if((flags & ARCH_VMM_FLAG_USER) != 0) x86_flags |= PTE_FLAG_USER;
+    if((flags & ARCH_VMM_FLAG_GLOBAL) != 0) x86_flags |= PTE_FLAG_GLOBAL;
+    if(cache == VMM_CACHE_STANDARD) x86_flags |= PTE_PAT0;
+    if(cache == VMM_CACHE_WRITE_COMBINE) x86_flags |= PTE_PAT4;
     return x86_flags;
 }
 
@@ -179,29 +192,26 @@ void arch_vmm_load_address_space(vmm_address_space_t *address_space) {
     write_cr3(X86_64_AS(address_space)->cr3);
 }
 
-void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, vmm_protection_t prot, int flags) {
-    uint64_t x86_flags = flags_prot_to_x86_flags(prot, flags);
+void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, vmm_protection_t prot, vmm_cache_t cache, int flags) {
+    uint64_t x86_flags = flags_cache_prot_to_x86_flags(prot, cache, flags);
     spinlock_acquire(&X86_64_AS(address_space)->cr3_lock);
     uint64_t *current_table = (uint64_t *) HHDM(X86_64_AS(address_space)->cr3);
     for(int i = 4; i > 1; i--) {
         int index = VADDR_TO_INDEX(vaddr, i);
-        if(current_table[index] & PTE_FLAG_PRESENT) {
-            if(!(x86_flags & PTE_FLAG_NX)) current_table[index] &= ~PTE_FLAG_NX;
+        if((current_table[index] & PTE_FLAG_PRESENT) != 0) {
+            if((x86_flags & PTE_FLAG_NX) == 0) current_table[index] &= ~PTE_FLAG_NX;
         } else {
             pmm_page_t *page = pmm_alloc_page(PMM_STANDARD | PMM_FLAG_ZERO);
             current_table[index] = PTE_FLAG_PRESENT;
             pte_set_address(&current_table[index], page->paddr);
-            if(x86_flags & PTE_FLAG_NX) current_table[index] |= PTE_FLAG_NX;
+            if((x86_flags & PTE_FLAG_NX) != 0) current_table[index] |= PTE_FLAG_NX;
         }
-        if(x86_flags & PTE_FLAG_RW) current_table[index] |= PTE_FLAG_RW;
-        if(x86_flags & PTE_FLAG_USER) current_table[index] |= PTE_FLAG_USER;
+        current_table[index] |= (x86_flags & (PTE_FLAG_RW | PTE_FLAG_USER));
         current_table = (uint64_t *) HHDM(pte_get_address(current_table[index]));
     }
     int index = VADDR_TO_INDEX(vaddr, 1);
-    current_table[index] = PTE_FLAG_PRESENT;
-    current_table[index] |= x86_flags;
+    current_table[index] = PTE_FLAG_PRESENT | x86_flags;
     pte_set_address(&current_table[index], paddr);
-
     tlb_shootdown(address_space);
     spinlock_release(&X86_64_AS(address_space)->cr3_lock);
 }

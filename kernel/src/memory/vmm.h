@@ -17,6 +17,11 @@
 typedef uint64_t vmm_flags_t;
 typedef uint8_t vmm_protection_t;
 
+typedef enum {
+    VMM_CACHE_STANDARD,
+    VMM_CACHE_WRITE_COMBINE
+} vmm_cache_t;
+
 typedef struct {
     spinlock_t lock;
     list_t segments;
@@ -39,6 +44,7 @@ typedef struct vmm_segment {
     uintptr_t base;
     uintptr_t length;
     vmm_protection_t protection;
+    vmm_cache_t cache;
     list_element_t list_elem;
     seg_driver_t *driver;
     void *driver_data;
@@ -69,7 +75,7 @@ extern seg_driver_t g_seg_prot;
  * @param driver_data private segment driver data
  * @returns mapped region
  */
-void *vmm_map(vmm_address_space_t *address_space, void *address, size_t length, vmm_protection_t prot, vmm_flags_t flags, seg_driver_t *driver, void *driver_data);
+void *vmm_map(vmm_address_space_t *address_space, void *address, size_t length, vmm_protection_t prot, vmm_flags_t flags, vmm_cache_t cache, seg_driver_t *driver, void *driver_data);
 
 /**
  * @brief Unmap a region of memory

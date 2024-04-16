@@ -132,7 +132,7 @@ bool elf_load(vfs_node_t *node, vmm_address_space_t *as, char **interpreter, aux
                 uintptr_t aligned_vaddr = MATH_FLOOR(phdr->vaddr, ARCH_PAGE_SIZE);
                 size_t length = MATH_CEIL(phdr->memsz + (phdr->vaddr - aligned_vaddr), ARCH_PAGE_SIZE);
 
-                ASSERT(vmm_map(as, (void *) aligned_vaddr, length, prot, VMM_FLAG_FIXED, &g_seg_anon, (void *) (SEG_ANON_FLAG_ZERO)) != NULL);
+                ASSERT(vmm_map(as, (void *) aligned_vaddr, length, prot, VMM_FLAG_FIXED, VMM_CACHE_STANDARD, &g_seg_anon, (void *) (SEG_ANON_FLAG_ZERO)) != NULL);
                 if(phdr->filesz > 0) {
                     void *buf = heap_alloc(phdr->filesz);
                     r = node->ops->rw(node, &(vfs_rw_t) { .rw = VFS_RW_READ, .size = phdr->filesz, .offset = phdr->offset, .buffer = buf }, &read_count);

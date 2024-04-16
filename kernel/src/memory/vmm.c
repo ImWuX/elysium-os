@@ -45,7 +45,7 @@ static vmm_segment_t *segments_alloc(bool kernel_as_lock_acquired) {
         pmm_page_t *page = pmm_alloc_page(PMM_STANDARD);
         if(!kernel_as_lock_acquired) spinlock_acquire(&g_vmm_kernel_address_space->lock);
         uintptr_t address = find_space(g_vmm_kernel_address_space, 0, ARCH_PAGE_SIZE);
-        arch_vmm_map(g_vmm_kernel_address_space, address, page->paddr, VMM_PROT_READ | VMM_PROT_WRITE, ARCH_VMM_FLAG_NONE);
+        arch_vmm_map(g_vmm_kernel_address_space, address, page->paddr, VMM_PROT_READ | VMM_PROT_WRITE, VMM_CACHE_STANDARD, ARCH_VMM_FLAG_NONE);
 
         vmm_segment_t *new_segments = (vmm_segment_t *) address;
         new_segments[0].address_space = g_vmm_kernel_address_space;
@@ -108,14 +108,15 @@ static bool memory_exists(vmm_address_space_t *address_space, uintptr_t address,
     return false;
 }
 
-void *vmm_map(vmm_address_space_t *address_space, void *address, size_t length, vmm_protection_t prot, vmm_flags_t flags, seg_driver_t *driver, void *driver_data) {
-    log(LOG_LEVEL_DEBUG, "VMM", "map(address: %#lx, length: %#lx, prot: %c%c%c, flags: %lu, driver: %s)",
+void *vmm_map(vmm_address_space_t *address_space, void *address, size_t length, vmm_protection_t prot, vmm_flags_t flags, vmm_cache_t cache, seg_driver_t *driver, void *driver_data) {
+    log(LOG_LEVEL_DEBUG, "VMM", "map(address: %#lx, length: %#lx, prot: %c%c%c, flags: %lu, cache: %u, driver: %s)",
         (uintptr_t) address,
         length,
         prot & VMM_PROT_READ ? 'R' : '-',
         prot & VMM_PROT_WRITE ? 'W' : '-',
         prot & VMM_PROT_EXEC ? 'E' : '-',
         flags,
+        cache,
         driver->name
     );
     uintptr_t caddr = (uintptr_t) address;
@@ -141,6 +142,7 @@ void *vmm_map(vmm_address_space_t *address_space, void *address, size_t length, 
     segment->base = caddr;
     segment->length = length;
     segment->protection = prot;
+    segment->cache = cache;
     segment->driver = driver;
     segment->driver_data = driver_data;
     segment->driver->ops.attach(segment);
