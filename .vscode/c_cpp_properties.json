@@ -4,7 +4,7 @@
             "name": "ElysiumOS",
             "includePath": [
                 "${workspaceFolder}/kernel/src",
-                "${workspaceFolder}/.chariot-cache/built/kernel-headers/usr/include"
+                "${workspaceFolder}/.chariot-cache/target/kernel_headers/install/usr/include"
             ],
             "defines": [
                 "__ARCH_X86_64",
@@ -17,7 +17,7 @@
                 "bool=_Bool",
                 "static_assert=_Static_assert"
             ],
-            "compilerPath": "${workspaceFolder}/.chariot-cache/host-built/cross-gcc/usr/local/bin/x86_64-elf-gcc",
+            "compilerPath": "${workspaceFolder}/.chariot-cache/host/gcc/install/usr/local/bin/x86_64-elysium-gcc",
             "cStandard": "gnu23",
             "intelliSenseMode": "gcc-x64",
             "compilerArgs": [
@@ -44,7 +44,7 @@
         {
             "name": "Elib",
             "includePath": [
-                "${workspaceFolder}/.chariot-cache/built/mlibc-headers/usr/include",
+                "${workspaceFolder}/.chariot-cache/target/mlibc_headers/install/usr/include",
                 "${workspaceFolder}/elib"
             ],
             "defines": [
@@ -55,7 +55,7 @@
                 "bool=_Bool",
                 "static_assert=_Static_assert"
             ],
-            "compilerPath": "${workspaceFolder}/.chariot-cache/host-built/gcc/usr/local/bin/x86_64-elysium-gcc",
+            "compilerPath": "${workspaceFolder}/.chariot-cache/host/gcc/install/usr/local/bin/x86_64-elysium-gcc",
             "cStandard": "gnu23",
             "intelliSenseMode": "gcc-x64",
             "compilerArgs": ["-std=gnu2x"]
@@ -63,8 +63,8 @@
         {
             "name": "Init",
             "includePath": [
-                "${workspaceFolder}/.chariot-cache/built/mlibc-headers/usr/include",
-                "${workspaceFolder}/.chariot-cache/built/elib/usr/include"
+                "${workspaceFolder}/.chariot-cache/target/mlibc_headers/install/usr/include",
+                "${workspaceFolder}/.chariot-cache/target/elib/install/usr/include"
             ],
             "defines": [
                 /* Unsupported C23 features work-around */
@@ -74,7 +74,7 @@
                 "bool=_Bool",
                 "static_assert=_Static_assert"
             ],
-            "compilerPath": "${workspaceFolder}/.chariot-cache/host-built/gcc/usr/local/bin/x86_64-elysium-gcc",
+            "compilerPath": "${workspaceFolder}/.chariot-cache/host/gcc/install/usr/local/bin/x86_64-elysium-gcc",
             "cStandard": "gnu23",
             "intelliSenseMode": "gcc-x64",
             "compilerArgs": ["-std=gnu2x", "-static"]
