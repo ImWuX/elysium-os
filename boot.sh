@@ -1,13 +1,15 @@
-#!/bin/bash
+#!/usr/bin/env bash
 clear
 
-make clean all
+chariot target/kernel-headers source/kernel target/kernel target/root target/image
+
+IMAGE_PATH=./.chariot-cache/target/image/install/elysium.img
 
 qemu_args=()
 qemu_args+=(-m 256M)
 qemu_args+=(-machine q35)
 qemu_args+=(-cpu qemu64)
-qemu_args+=(-drive format=raw,file=build/elysium.img)
+qemu_args+=(-drive format=raw,file=$IMAGE_PATH)
 qemu_args+=(-smp cores=1)
 # qemu_args+=(-vnc :0,websocket=on)
 qemu_args+=(-vga virtio)
@@ -21,6 +23,6 @@ qemu_args+=(-monitor stdio)
 qemu_args+=(-no-reboot)
 qemu_args+=(-no-shutdown)
 qemu_args+=(-net none)
-qemu_args+=(-machine accel=kvm)
+# qemu_args+=(-machine accel=kvm)
 
 qemu-system-x86_64 "${qemu_args[@]}"
