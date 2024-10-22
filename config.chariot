@@ -1,0 +1,413 @@
+// // // // // //
+// Source Recipes
+
+source/support {
+    url: support
+    type: local
+}
+
+source/kernel {
+    url: kernel
+    type: local
+}
+
+source/tartarus {
+    url: ../tartarus-bootloader
+    type: local
+}
+
+source/mlibc_sysdeps {
+    url: mlibc-sysdeps
+    type: local
+}
+
+source/rdsk {
+    url: rdsk
+    type: local
+}
+
+source/init {
+    url: init
+    type: local
+}
+
+source/elib {
+    url: elib
+    type: local
+}
+
+source/mkimg {
+    url: https://git.thenest.dev/wux/mkimg/-/archive/main/mkimg-main.tar.gz
+    b2sum: 653ee4d9516d24c906646cbfe69ae4f02369143c2ddb3207f9bb357666385f4a28d9ab009efe827b874b7478c2f50fb30231b0ba19b4c60a3d4618734308b99b
+    type: tar.gz
+}
+
+source/cross_binutils {
+    url: https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.gz
+    b2sum: 5a4c2bc5e4dfcb9902732d8393c58e8b435dbc91db974672a4d2fd6f6c5ae6d7651ccbcb7faf8915bb2405ff11c0788a5994ea717f929b76ca86dbcb567f7029
+    type: tar.gz
+}
+
+source/cross_gcc {
+    url: https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.gz
+    b2sum: 749671e29fb8bcd35e5bb9d1f8a5a4b815d1764c48f996ce406ef198731962d58b86d69db7b04a75a4ebcaf5d9f80d0715fe6b14139a60da5b4d2445388efa58
+    type: tar.gz
+    patch: cross-gcc.diff
+}
+
+source/autoconf {
+    url: https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
+    b2sum: 7e8a513bbfcabadad1577919c048cc05ca0a084788850b42570f88afc2fa9c25fb32277412f135b81ba1c0d8079465a6b581d2d78662c991d2183b739fac407c
+    type: tar.gz
+}
+
+source/automake {
+    url: https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.gz
+    b2sum: 5ccdcbe2d3deb2b0baed4a8590b07714cd7098fbda251afebe83232ed03f4db84abbe023cf0544622dbc5137254347273247428eb5420564a167b86de95d113e
+    type: tar.gz
+    patch: automake.diff
+}
+
+source/libtool {
+    url: https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.gz
+    b2sum: 3b7c66050237931443008d6be9c0c30f4938402bf68576cdf02f2248b216bb68c6b797bbfdb8a92caa5e12cb10208cd19771cdcb6b0d83572ad60bfc03e67e98
+    type: tar.gz
+    patch: libtool.diff
+    dependencies [ host/automake ]
+    strap { ./bootstrap --force }
+}
+
+source/pkgconf {
+    url: https://github.com/pkgconf/pkgconf/archive/refs/tags/pkgconf-2.0.3.tar.gz
+    b2sum: 2f305e102913dbd6e45acb4e008afea879f95aab010f1ebc7a83c218d27f2079eb6fac51be811dad9a62057928ce270fe4e8cb6db24070d8f900956af5a67249
+    type: tar.gz
+    patch: pkgconf.diff
+    dependencies [ host/automake host/libtool]
+    strap { libtoolize -cfvi && autoreconf -fvi }
+}
+
+source/binutils {
+    url: https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.gz
+    b2sum: 5a4c2bc5e4dfcb9902732d8393c58e8b435dbc91db974672a4d2fd6f6c5ae6d7651ccbcb7faf8915bb2405ff11c0788a5994ea717f929b76ca86dbcb567f7029
+    type: tar.gz
+    patch: binutils.diff
+    dependencies [ host/automake host/libtool host/pkgconf ]
+    strap {
+        CFG=$(realpath ./config)
+        for f in $(find . -name configure.ac); do \
+            ( cd "$(dirname "$f")" && libtoolize -cfvi && autoreconf -fvi -I"$CFG" ); \
+        done
+    }
+}
+
+source/gcc {
+    url: https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.gz
+    b2sum: 749671e29fb8bcd35e5bb9d1f8a5a4b815d1764c48f996ce406ef198731962d58b86d69db7b04a75a4ebcaf5d9f80d0715fe6b14139a60da5b4d2445388efa58
+    type: tar.gz
+    patch: gcc.diff
+    dependencies [ host/automake host/libtool host/pkgconf ]
+    strap {
+        CFG=$(realpath ./config)
+        for f in $(find . -name configure.ac); do \
+            ( cd "$(dirname "$f")" && libtoolize -cfvi && autoreconf -fvi -I"$CFG" ); \
+        done
+    }
+}
+
+source/mlibc {
+    url: https://github.com/managarm/mlibc/archive/5ea203152ce7b4423dfbe6999e66434c0800ffbe.tar.gz
+    b2sum: c91c182edfdc933fdd9f8a48ed9bcfeaab5eecdc2d77e6ae073aac05bd11791f8b01eb568983f6e2abb1f6249328666cb35b04a866d9b321b3c900772ba26a6a
+    type: tar.gz
+    patch: mlibc.diff
+    dependencies [ source/mlibc_sysdeps ]
+    strap { mv @(sources_dir)/mlibc_sysdeps/sysdeps/elysium ./sysdeps/ }
+}
+
+// // // // // //
+// Host Recipes
+
+host/cross_binutils {
+    source: cross_binutils
+    configure {
+        @(source_dir)/configure \
+            --target=x86_64-elf \
+            --prefix=@(prefix) \
+            --disable-nls \
+            --disable-werror \
+            --with-sysroot
+    }
+    build { make -j@(thread_count) all }
+    install { DESTDIR=@(install_dir) make install }
+}
+
+host/cross_gcc {
+    source: cross_gcc
+    dependencies [ *host/cross_binutils ]
+    configure {
+        @(source_dir)/configure \
+            --target=x86_64-elf \
+            --prefix=@(prefix) \
+            --disable-nls \
+            --enable-languages=c \
+            --without-headers
+    }
+    build { make -j@(thread_count) all-gcc all-target-libgcc }
+    install { DESTDIR=@(install_dir) make install-gcc install-target-libgcc }
+}
+
+host/autoconf {
+    source: autoconf
+    configure { @(source_dir)/configure --prefix=@(prefix) }
+    build { make -j@(thread_count) }
+    install { DESTDIR=@(install_dir) make install }
+}
+
+host/automake {
+    source: automake
+    dependencies [ *host/autoconf ]
+    configure { @(source_dir)/configure --prefix=@(prefix) }
+    build { make -j@(thread_count) }
+    install { DESTDIR=@(install_dir) make install-strip }
+}
+
+host/libtool {
+    source: libtool
+    dependencies [ *host/autoconf host/automake ]
+    configure { @(source_dir)/configure --prefix=@(prefix) }
+    build { make -j@(thread_count) }
+    install { DESTDIR=@(install_dir) make install-strip }
+}
+
+host/pkgconf {
+    source: pkgconf
+    configure { @(source_dir)/configure --prefix=@(prefix) }
+    build { make -j@(thread_count) }
+    install {
+        DESTDIR=@(install_dir) make install-strip
+        mkdir -p @(install_dir)@(prefix)/share/pkgconfig/personality.d
+        cat << EOF > "@(install_dir)@(prefix)/share/pkgconfig/personality.d/x86_64-elysium.personality"
+Triplet: x86_64-elysium
+SysrootDir: @(sysroot_dir)
+DefaultSearchPaths: @(sysroot_dir)/usr/lib/pkgconfig:@(sysroot_dir)/usr/share/pkgconfig
+SystemIncludePaths: @(sysroot_dir)/usr/include
+SystemLibraryPaths: @(sysroot_dir)/usr/lib
+EOF
+        ln -s pkgconf @(install_dir)@(prefix)/bin/x86_64-elysium-pkg-config
+    }
+}
+
+host/binutils {
+    source: binutils
+    configure {
+        @(source_dir)/configure \
+            --with-sysroot=@(sysroot_dir) \
+            --prefix=@(prefix) \
+            --target=x86_64-elysium \
+            --enable-targets=x86_64-elf,x86_64-pe \
+            --disable-nls \
+            --disable-werror \
+            --disable-dependency-tracking
+    }
+    build { make -j@(thread_count) all }
+    install { DESTDIR=@(install_dir) make install-strip }
+}
+
+host/bootstrap_gcc {
+    source: gcc
+    dependencies [ *host/binutils target/mlibc_headers ]
+    configure {
+        CFLAGS="-O2" CXXFLAGS="-O2" @(source_dir)/configure \
+            --prefix=@(prefix) \
+            --target=x86_64-elysium \
+            --with-sysroot=@(sysroot_dir) \
+            --enable-languages=c,c++ \
+            --disable-nls \
+            --disable-multilib \
+            --disable-shared \
+            --enable-initfini-array
+    }
+    build {
+        make -j@(thread_count) inhibit_libc=true all-gcc
+        make -j@(thread_count) inhibit_libc=true all-target-libgcc
+    }
+    install {
+        DESTDIR=@(install_dir) make install-gcc
+        DESTDIR=@(install_dir) make install-target-libgcc
+    }
+}
+
+host/gcc {
+    source: gcc
+    dependencies [ *host/binutils *target/mlibc_headers *target/mlibc ]
+    configure {
+        CFLAGS="-O2" CXXFLAGS="-O2" @(source_dir)/configure \
+            --prefix=@(prefix) \
+            --target=x86_64-elysium \
+            --with-sysroot=@(sysroot_dir) \
+            --enable-languages=c,c++ \
+            --disable-nls \
+            --disable-multilib \
+            --enable-initfini-array
+    }
+    build {
+        make -j@(thread_count) sall-gcc
+        make -j@(thread_count) all-target-libgcc
+    }
+    install {
+        DESTDIR=@(install_dir) make install-gcc
+        DESTDIR=@(install_dir) make install-target-libgcc
+    }
+}
+
+// TODO: Possibly implement a configure esque build system for rdsk.. if not autotools
+host/rdsk {
+    source: rdsk
+    configure {
+        cp -r @(source_dir)/src .
+        cp @(source_dir)/Makefile .
+    }
+    build { make -j@(thread_count) all }
+    install { DESTDIR=@(install_dir) PREFIX=@(prefix) make install }
+}
+
+host/mkimg {
+    source: mkimg
+    configure { cp @(source_dir)/go.mod @(source_dir)/go.sum @(source_dir)/main.go . }
+    build { go build }
+    install {
+        mkdir -p @(install_dir)@(prefix)/bin
+        cp mkimg @(install_dir)@(prefix)/bin
+    }
+}
+
+// // // // // //
+// Target Recipes
+
+target/mlibc_headers {
+    source: mlibc
+    dependencies [ source/support ]
+    configure {
+        meson setup \
+            --cross-file @(sources_dir)/support/elysium.cross-file \
+            --prefix=@(prefix) \
+            -Dheaders_only=true \
+            -Ddisable_iconv_option=true \
+            -Ddisable_intl_option=true \
+            -Ddisable_crypt_option=true \
+            -Ddisable_linux_option=true \
+            --buildtype=release \
+            @(source_dir)
+    }
+    build { ninja }
+    install { DESTDIR=@(install_dir) ninja install }
+}
+
+target/mlibc {
+    source: mlibc
+    dependencies [ target/mlibc_headers host/bootstrap_gcc source/support ]
+    configure {
+        meson setup \
+            --cross-file @(sources_dir)/support/elysium.cross-file \
+            --prefix=@(prefix) \
+            --libdir=lib \
+            -Dmlibc_no_headers=true \
+            -Ddisable_iconv_option=true \
+            -Ddisable_intl_option=true \
+            -Ddisable_crypt_option=true \
+            -Ddisable_linux_option=true \
+            --buildtype=debug \
+            -Ddefault_library=both \
+            @(source_dir)
+    }
+    build { ninja }
+    install { DESTDIR=@(install_dir) ninja install }
+}
+
+target/tartarus {
+    source: tartarus
+    dependencies [ host/cross_gcc source/support ]
+    configure {
+        @(source_dir)/conf.sh \
+            --prefix=@(prefix) \
+            --target=x86_64-bios \
+            --libgcc-dir=@(sources_dir)/support/libgcc
+    }
+    build { make -j@(thread_count) all }
+    install { DESTDIR=@(install_dir) make install }
+}
+
+target/kernel_headers {
+    dependencies [ target/mlibc_headers target/tartarus ]
+    configure { cp -r @(sysroot_dir)/usr/include/* . }
+    install {
+        mkdir -p @(install_dir)/usr/include
+        cp -r . @(install_dir)/usr/include
+    }
+}
+
+target/kernel {
+    source: kernel
+    dependencies [ host/gcc target/kernel_headers source/support ]
+    configure {
+        @(source_dir)/conf.sh \
+            --prefix=@(prefix) \
+            --target=x86_64 \
+            --libgcc=@(sources_dir)/support/libgcc/x86_64.a
+    }
+    build { make all SYSROOT=@(sysroot_dir) }
+    install { DESTDIR=@(install_dir) make install }
+}
+
+target/elib {
+    source: elib
+    dependencies [ host/gcc target/mlibc_headers ]
+    configure { cp -r @(source_dir)/* . }
+    build { make libelib.a }
+    install {
+        mkdir -p @(install_dir)@(prefix)/lib
+        cp libelib.a @(install_dir)@(prefix)/lib
+        mkdir -p @(install_dir)@(prefix)/include
+        cp elib.h @(install_dir)@(prefix)/include
+    }
+}
+
+target/init {
+    source: init
+    dependencies [ host/gcc target/mlibc_headers target/elib ]
+    configure { cp -r @(source_dir)/* . }
+    build { make init }
+    install {
+        mkdir -p @(install_dir)@(prefix)/bin
+        cp init @(install_dir)@(prefix)/bin
+    }
+}
+
+target/root {
+    dependencies [ host/rdsk target/mlibc target/init ]
+    configure {
+        mkdir ./rootdir
+        cp -r @(sysroot_dir)/* ./rootdir
+        mkdir ./rootdir/modules
+        mkdir ./rootdir/tmp
+    }
+    build { rdsk -c ./rootdir -o root.rdk }
+    install {
+        mkdir -p @(install_dir)@(prefix)/share
+        cp root.rdk @(install_dir)@(prefix)/share/root.rdk
+    }
+}
+
+target/image {
+    dependencies [ host/mkimg target/root source/support target/tartarus target/kernel ]
+    build {
+        cp @(sysroot_dir)@(prefix)/share/root.rdk .
+        cp @(sysroot_dir)@(prefix)/share/tartarus/* .
+        cp @(sysroot_dir)@(prefix)/share/kernel.elf .
+        cp @(sources_dir)/support/tartarus.cfg .
+
+        nm kernel.elf -n > kernelsymbols.txt
+
+        mkimg --config=@(sources_dir)/support/mkimg.toml
+    }
+    install { cp elysium.img @(install_dir) }
+}
