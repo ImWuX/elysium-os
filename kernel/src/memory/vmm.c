@@ -45,7 +45,7 @@ static vmm_segment_t *segments_alloc(bool kernel_as_lock_acquired) {
         pmm_page_t *page = pmm_alloc_page(PMM_STANDARD);
         if(!kernel_as_lock_acquired) spinlock_acquire(&g_vmm_kernel_address_space->lock);
         uintptr_t address = find_space(g_vmm_kernel_address_space, 0, ARCH_PAGE_SIZE);
-        arch_vmm_map(g_vmm_kernel_address_space, address, page->paddr, VMM_PROT_READ | VMM_PROT_WRITE, VMM_CACHE_STANDARD, ARCH_VMM_FLAG_NONE);
+        arch_vmm_ptm_map(g_vmm_kernel_address_space, address, page->paddr, VMM_PROT_READ | VMM_PROT_WRITE, VMM_CACHE_STANDARD, ARCH_VMM_FLAG_NONE);
 
         vmm_segment_t *new_segments = (vmm_segment_t *) address;
         new_segments[0].address_space = g_vmm_kernel_address_space;
@@ -213,9 +213,9 @@ size_t vmm_copy_to(vmm_address_space_t *dest_as, uintptr_t dest_addr, void *src,
     while(i < count) {
         size_t offset = (dest_addr + i) % ARCH_PAGE_SIZE;
         uintptr_t phys;
-        if(!arch_vmm_physical(dest_as, dest_addr + i, &phys)) {
+        if(!arch_vmm_ptm_physical(dest_as, dest_addr + i, &phys)) {
             if(!vmm_fault(dest_as, dest_addr + i, VMM_FAULT_NONPRESENT)) return i;
-            ASSERT(arch_vmm_physical(dest_as, dest_addr + i, &phys));
+            ASSERT(arch_vmm_ptm_physical(dest_as, dest_addr + i, &phys));
         }
 
         size_t len = math_min(count - i, ARCH_PAGE_SIZE - offset);
@@ -232,9 +232,9 @@ size_t vmm_copy_from(void *dest, vmm_address_space_t *src_as, uintptr_t src_addr
     while(i < count) {
         size_t offset = (src_addr + i) % ARCH_PAGE_SIZE;
         uintptr_t phys;
-        if(!arch_vmm_physical(src_as, src_addr + i, &phys)) {
+        if(!arch_vmm_ptm_physical(src_as, src_addr + i, &phys)) {
             if(!vmm_fault(src_as, src_addr + i, VMM_FAULT_NONPRESENT)) return i;
-            ASSERT(arch_vmm_physical(src_as, src_addr + i, &phys));
+            ASSERT(arch_vmm_ptm_physical(src_as, src_addr + i, &phys));
         }
 
         size_t len = math_min(count - i, ARCH_PAGE_SIZE - offset);

@@ -192,7 +192,7 @@ void arch_vmm_load_address_space(vmm_address_space_t *address_space) {
     write_cr3(X86_64_AS(address_space)->cr3);
 }
 
-void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, vmm_protection_t prot, vmm_cache_t cache, int flags) {
+void arch_vmm_ptm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t paddr, vmm_protection_t prot, vmm_cache_t cache, int flags) {
     uint64_t x86_flags = flags_cache_prot_to_x86_flags(prot, cache, flags);
     spinlock_acquire(&X86_64_AS(address_space)->cr3_lock);
     uint64_t *current_table = (uint64_t *) HHDM(X86_64_AS(address_space)->cr3);
@@ -216,7 +216,7 @@ void arch_vmm_map(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t
     spinlock_release(&X86_64_AS(address_space)->cr3_lock);
 }
 
-void arch_vmm_unmap(vmm_address_space_t *address_space, uintptr_t vaddr) {
+void arch_vmm_ptm_unmap(vmm_address_space_t *address_space, uintptr_t vaddr) {
     spinlock_acquire(&X86_64_AS(address_space)->cr3_lock);
     uint64_t *current_table = (uint64_t *) HHDM(X86_64_AS(address_space)->cr3);
     for(int i = 4; i > 1; i--) {
@@ -236,7 +236,7 @@ void arch_vmm_unmap(vmm_address_space_t *address_space, uintptr_t vaddr) {
     spinlock_release(&X86_64_AS(address_space)->cr3_lock);
 }
 
-bool arch_vmm_physical(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t *out) {
+bool arch_vmm_ptm_physical(vmm_address_space_t *address_space, uintptr_t vaddr, uintptr_t *out) {
     spinlock_acquire(&X86_64_AS(address_space)->cr3_lock);
     uint64_t *current_table = (uint64_t *) HHDM(X86_64_AS(address_space)->cr3);
     for(int i = 4; i > 1; i--) {
