@@ -144,3 +144,16 @@ void pmm_free(pmm_page_t *page) {
     list_append(&zone->lists[page->order], &page->list_elem);
     spinlock_release(&zone->lock);
 }
+
+void pmm_free_address(uintptr_t physical_address) {
+    for(size_t i = 0; i <= PMM_ZONE_MAX; i++) {
+        pmm_zone_t *zone = &g_pmm_zones[i];
+        if(zone->start > physical_address || zone->end <= physical_address) continue;
+        LIST_FOREACH(&zone->regions, elem) {
+            pmm_region_t *region = LIST_CONTAINER_GET(elem, pmm_region_t, list_elem);
+            if(region->base > physical_address || region->base + region->page_count * ARCH_PAGE_SIZE <= physical_address) continue;
+
+            pmm_free(&region->pages[(physical_address - region->base) / ARCH_PAGE_SIZE]);
+        }
+    }
+}

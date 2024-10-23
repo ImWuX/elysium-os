@@ -31,6 +31,7 @@ typedef struct {
 } pmm_zone_t;
 
 typedef struct pmm_page {
+    /* unallocated = used by pmm, allocated = reserved for vmm */
     list_element_t list_elem;
     struct pmm_region *region;
     uintptr_t paddr;
@@ -80,3 +81,9 @@ pmm_page_t *pmm_alloc_page(pmm_flags_t flags);
  * @brief Frees a previously allocated page
  */
 void pmm_free(pmm_page_t *page);
+
+/**
+ * @brief Frees a previously allocated page by address
+ * @warning relatively expensive
+ */
+void pmm_free_address(uintptr_t physical_address);
