@@ -56,7 +56,7 @@ static void segment_map(vmm_segment_t *segment, uintptr_t address, uintptr_t len
                 physical_address = pmm_alloc_page(physical_flags)->paddr;
                 break;
             case VMM_SEGMENT_TYPE_DIRECT:
-                physical_address = segment->type_specific_data.direct.physical_address + (segment->base - virtual_address);
+                physical_address = segment->type_specific_data.direct.physical_address + (virtual_address - segment->base);
                 break;
         }
         arch_vmm_ptm_map(segment->address_space, virtual_address, physical_address, segment->protection, segment->cache, map_flags);
@@ -210,7 +210,7 @@ void *vmm_map_anon(vmm_address_space_t *address_space, void *hint, size_t length
 }
 
 void *vmm_map_direct(vmm_address_space_t *address_space, void *hint, size_t length, vmm_protection_t prot, vmm_cache_t cache, vmm_flags_t flags, uintptr_t physical_address) {
-    return map_common(address_space, hint, length, prot, cache, flags, VMM_SEGMENT_TYPE_ANON, physical_address);
+    return map_common(address_space, hint, length, prot, cache, flags, VMM_SEGMENT_TYPE_DIRECT, physical_address);
 }
 
 void vmm_unmap(vmm_address_space_t *address_space, void *address, size_t length) {
