@@ -12,7 +12,7 @@ CFLAGS += -I$(SYSROOT)/usr/include
 ASMFLAGS := -Werror
 
 ifeq ($(ENV), dev)
-CFLAGS += -g -fsanitize=undefined -fno-sanitize=alignment
+CFLAGS += -g -fsanitize=undefined
 ifeq ($(ARCH), x86_64)
 CFLAGS += -fno-sanitize=alignment
 endif
