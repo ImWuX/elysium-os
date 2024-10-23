@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 clear
 
-chariot target/kernel_headers source/kernel target/kernel target/root target/image
+chariot --hide-conflicts target/kernel_headers source/kernel target/kernel target/root target/image
 
 IMAGE_PATH=./.chariot-cache/target/image/install/elysium.img
 
