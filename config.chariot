@@ -250,7 +250,7 @@ host/gcc {
             --enable-initfini-array
     }
     build {
-        make -j@(thread_count) sall-gcc
+        make -j@(thread_count) all-gcc
         make -j@(thread_count) all-target-libgcc
     }
     install {
