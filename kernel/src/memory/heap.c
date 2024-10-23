@@ -3,6 +3,7 @@
 #include <common/spinlock.h>
 #include <common/assert.h>
 #include <common/panic.h>
+#include <common/log.h>
 #include <memory/pmm.h>
 #include <memory/vmm.h>
 #include <arch/types.h>
@@ -34,7 +35,8 @@ static uint64_t get_prot(heap_entry_t *entry) {
 #endif
 
 void heap_initialize(vmm_address_space_t *address_space, size_t size) {
-    void *addr = vmm_map(address_space, NULL, size, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, VMM_CACHE_STANDARD, &g_seg_anon, NULL);
+    void *addr = vmm_map_anon(address_space, NULL, size, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, VMM_CACHE_STANDARD);
+    log(LOG_LEVEL_DEBUG, "HEAP", "Initialized at address %#lx with size %#lx", (uintptr_t) addr, size);
     ASSERT(addr != NULL);
 
     heap_entry_t *entry = (heap_entry_t *) addr;
@@ -48,6 +50,7 @@ void heap_initialize(vmm_address_space_t *address_space, size_t size) {
 
 void *heap_alloc_align(size_t size, size_t alignment) {
     ASSERT(size > 0);
+    log(LOG_LEVEL_DEBUG, "HEAP", "alloc(size: %#lx, alignment: %#lx)", size, alignment);
     spinlock_acquire(&g_lock);
     LIST_FOREACH(&g_entries, elem) {
         heap_entry_t *entry = LIST_CONTAINER_GET(elem, heap_entry_t, list_elem);
@@ -94,7 +97,10 @@ void *heap_alloc_align(size_t size, size_t alignment) {
         }
 
         spinlock_release(&g_lock);
-        return (void *) ((uintptr_t) entry + sizeof(heap_entry_t));
+
+        size_t address = (uintptr_t) entry + sizeof(heap_entry_t);
+        log(LOG_LEVEL_DEBUG, "HEAP", "alloc success (address: %#lx)", address);
+        return (void *) address;
     }
     panic("HEAP: Out of memory");
 }

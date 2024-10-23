@@ -39,6 +39,44 @@ static uintptr_t find_space(vmm_address_space_t *address_space, uintptr_t addres
     return address;
 }
 
+static void segment_map(vmm_segment_t *segment, uintptr_t address, uintptr_t length) {
+    ASSERT(address % ARCH_PAGE_SIZE == 0 && length % ARCH_PAGE_SIZE == 0);
+    ASSERT(address < segment->base || address + length >= segment->base);
+
+    int map_flags = ARCH_VMM_FLAG_NONE;
+    if(segment->address_space != g_vmm_kernel_address_space) map_flags |= ARCH_VMM_FLAG_USER;
+
+    for(size_t i = 0; i < length; i += ARCH_PAGE_SIZE) {
+        uintptr_t virtual_address = address + i;
+        uintptr_t physical_address = 0;
+        switch(segment->type) {
+            case VMM_SEGMENT_TYPE_ANON:
+                pmm_flags_t physical_flags = PMM_STANDARD;
+                if(segment->type_specific_data.anon.back_zeroed) physical_flags |= PMM_FLAG_ZERO;
+                physical_address = pmm_alloc_page(physical_flags)->paddr;
+                break;
+            case VMM_SEGMENT_TYPE_DIRECT:
+                physical_address = segment->type_specific_data.direct.physical_address + (segment->base - virtual_address);
+                break;
+        }
+        arch_vmm_ptm_map(segment->address_space, virtual_address, physical_address, segment->protection, segment->cache, map_flags);
+    }
+}
+
+static void segment_unmap(vmm_segment_t *segment, uintptr_t address, uintptr_t length) {
+    ASSERT(address % ARCH_PAGE_SIZE == 0 && length % ARCH_PAGE_SIZE == 0);
+    ASSERT(address < segment->base || address + length >= segment->base);
+
+    switch(segment->type) {
+        case VMM_SEGMENT_TYPE_ANON:
+            // OPTIMIZE: invent page cache for segments
+            // TODO: unmap phys mem
+            break;
+        case VMM_SEGMENT_TYPE_DIRECT: break;
+    }
+    for(uintptr_t i = 0; i < length; i += ARCH_PAGE_SIZE) arch_vmm_ptm_unmap(segment->address_space, address + i);
+}
+
 static vmm_segment_t *segments_alloc(bool kernel_as_lock_acquired) {
     spinlock_acquire(&g_segments_lock);
     if(list_is_empty(&g_segments_free)) {
@@ -52,14 +90,12 @@ static vmm_segment_t *segments_alloc(bool kernel_as_lock_acquired) {
         new_segments[0].base = address;
         new_segments[0].length = ARCH_PAGE_SIZE;
         new_segments[0].protection = VMM_PROT_READ | VMM_PROT_WRITE;
-        new_segments[0].driver = &g_seg_anon;
-        new_segments[0].driver_data = NULL;
-        new_segments[0].driver->ops.attach(&new_segments[0]);
+        new_segments[0].type = VMM_SEGMENT_TYPE_ANON;
+        new_segments[0].cache = VMM_CACHE_STANDARD;
+
         list_append(&g_vmm_kernel_address_space->segments, &new_segments[0].list_elem);
 
-        for(unsigned int i = 1; i < ARCH_PAGE_SIZE / sizeof(vmm_segment_t); i++) {
-            list_append(&g_segments_free, &new_segments[i].list_elem);
-        }
+        for(unsigned int i = 1; i < ARCH_PAGE_SIZE / sizeof(vmm_segment_t); i++) list_append(&g_segments_free, &new_segments[i].list_elem);
 
         if(!kernel_as_lock_acquired) spinlock_release(&g_vmm_kernel_address_space->lock);
     }
@@ -108,48 +144,73 @@ static bool memory_exists(vmm_address_space_t *address_space, uintptr_t address,
     return false;
 }
 
-void *vmm_map(vmm_address_space_t *address_space, void *address, size_t length, vmm_protection_t prot, vmm_flags_t flags, vmm_cache_t cache, seg_driver_t *driver, void *driver_data) {
-    log(LOG_LEVEL_DEBUG, "VMM", "map(address: %#lx, length: %#lx, prot: %c%c%c, flags: %lu, cache: %u, driver: %s)",
-        (uintptr_t) address,
+static void *map_common(
+    vmm_address_space_t *address_space,
+    void *hint,
+    size_t length,
+    vmm_protection_t prot,
+    vmm_cache_t cache,
+    vmm_flags_t flags,
+    vmm_segment_type_t type,
+    uintptr_t direct_physical_address
+) {
+    log(LOG_LEVEL_DEBUG, "VMM", "map(hint: %#lx, length: %#lx, prot: %c%c%c, flags: %lu, cache: %u, type: %u)",
+        (uintptr_t) hint,
         length,
         prot & VMM_PROT_READ ? 'R' : '-',
         prot & VMM_PROT_WRITE ? 'W' : '-',
         prot & VMM_PROT_EXEC ? 'E' : '-',
         flags,
         cache,
-        driver->name
+        type
     );
-    uintptr_t caddr = (uintptr_t) address;
+
+    uintptr_t address = (uintptr_t) hint;
     if(length == 0 || length % ARCH_PAGE_SIZE != 0) return NULL;
-    if(caddr % ARCH_PAGE_SIZE != 0) {
+    if(address % ARCH_PAGE_SIZE != 0) {
         if(flags & VMM_FLAG_FIXED) return NULL;
-        caddr += ARCH_PAGE_SIZE - (caddr % ARCH_PAGE_SIZE);
+        address += ARCH_PAGE_SIZE - (address % ARCH_PAGE_SIZE);
     }
 
     vmm_segment_t *segment = segments_alloc(false);
     spinlock_acquire(&address_space->lock);
-    caddr = find_space(address_space, caddr, length);
-    if(caddr == 0 || ((uintptr_t) address != caddr && (flags & VMM_FLAG_FIXED))) {
-        spinlock_release(&address_space->lock);
+    address = find_space(address_space, address, length);
+    if(address == 0 || ((uintptr_t) hint != address && (flags & VMM_FLAG_FIXED) != 0)) {
         segments_free(segment, false);
+        spinlock_release(&address_space->lock);
         return NULL;
     }
 
-    ASSERT(SEGMENT_IN_BOUNDS(address_space, caddr, length));
-    ASSERT(caddr % ARCH_PAGE_SIZE == 0 && length % ARCH_PAGE_SIZE == 0);
+    ASSERT(SEGMENT_IN_BOUNDS(address_space, address, length));
+    ASSERT(address % ARCH_PAGE_SIZE == 0 && length % ARCH_PAGE_SIZE == 0);
 
     segment->address_space = address_space;
-    segment->base = caddr;
+    segment->base = address;
     segment->length = length;
+    segment->type = type;
     segment->protection = prot;
     segment->cache = cache;
-    segment->driver = driver;
-    segment->driver_data = driver_data;
-    segment->driver->ops.attach(segment);
-    list_append(&address_space->segments, &segment->list_elem);
 
+    switch(segment->type) {
+        case VMM_SEGMENT_TYPE_ANON: segment->type_specific_data.anon.back_zeroed = (flags & VMM_FLAG_ANON_ZERO) != 0; break;
+        case VMM_SEGMENT_TYPE_DIRECT: segment->type_specific_data.direct.physical_address = direct_physical_address; break;
+    }
+
+    if((flags & VMM_FLAG_NO_DEMAND) != 0) segment_map(segment, segment->base, segment->length);
+
+    list_append(&address_space->segments, &segment->list_elem);
     spinlock_release(&address_space->lock);
+
+    log(LOG_LEVEL_DEBUG, "VMM", "map success (base: %#lx, length: %#lx)", segment->base, segment->length);
     return (void *) segment->base;
+}
+
+void *vmm_map_anon(vmm_address_space_t *address_space, void *hint, size_t length, vmm_protection_t prot, vmm_cache_t cache, vmm_flags_t flags) {
+    return map_common(address_space, hint, length, prot, cache, flags, VMM_SEGMENT_TYPE_ANON, 0);
+}
+
+void *vmm_map_direct(vmm_address_space_t *address_space, void *hint, size_t length, vmm_protection_t prot, vmm_cache_t cache, vmm_flags_t flags, uintptr_t physical_address) {
+    return map_common(address_space, hint, length, prot, cache, flags, VMM_SEGMENT_TYPE_ANON, physical_address);
 }
 
 void vmm_unmap(vmm_address_space_t *address_space, void *address, size_t length) {
@@ -172,22 +233,24 @@ void vmm_unmap(vmm_address_space_t *address_space, void *address, size_t length)
         ASSERT(SEGMENT_IN_BOUNDS(address_space, split_base, split_length));
         ASSERT(split_base % ARCH_PAGE_SIZE == 0 && split_length % ARCH_PAGE_SIZE == 0);
 
-        split_segment->driver->ops.detach(split_segment);
+        segment_unmap(split_segment, split_base, split_length);
         if(split_segment->base + split_segment->length > split_base + split_length) {
             vmm_segment_t *segment = segments_alloc(address_space == g_vmm_kernel_address_space);
             segment->address_space = address_space;
             segment->base = split_base + split_length;
             segment->length = (split_segment->base + split_segment->length) - (split_base + split_length);
             segment->protection = split_segment->protection;
-            segment->driver = split_segment->driver;
-            segment->driver_data = split_segment->driver_data;
-            segment->driver->ops.attach(segment);
+            segment->type = split_segment->type;
+            switch(segment->type) {
+                case VMM_SEGMENT_TYPE_ANON: break;
+                case VMM_SEGMENT_TYPE_DIRECT: segment->type_specific_data = split_segment->type_specific_data; break;
+            }
+
             list_append(&split_segment->list_elem, &segment->list_elem);
         }
 
         if(split_segment->base < split_base) {
             split_segment->length = split_base - split_segment->base;
-            split_segment->driver->ops.attach(split_segment);
         } else {
             list_delete(&split_segment->list_elem);
             segments_free(split_segment, address_space == g_vmm_kernel_address_space);
@@ -197,14 +260,18 @@ void vmm_unmap(vmm_address_space_t *address_space, void *address, size_t length)
 }
 
 bool vmm_fault(vmm_address_space_t *address_space, uintptr_t address, int flags) {
+    if((flags & VMM_FAULT_NONPRESENT) == 0) return false;
+
     vmm_segment_t *segment = NULL;
     if(ADDRESS_IN_BOUNDS(g_vmm_kernel_address_space, address)) {
         segment = addr_to_segment(g_vmm_kernel_address_space, address);
     } else {
         segment = addr_to_segment(address_space, address);
     }
-    if(!segment) return false;
-    return segment->driver->ops.fault(segment, address, flags);
+    if(segment == NULL) return false;
+
+    segment_map(segment, MATH_FLOOR(address, ARCH_PAGE_SIZE), ARCH_PAGE_SIZE);
+    return true;
 }
 
 size_t vmm_copy_to(vmm_address_space_t *dest_as, uintptr_t dest_addr, void *src, size_t count) {

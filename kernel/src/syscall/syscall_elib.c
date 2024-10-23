@@ -16,18 +16,14 @@ syscall_return_t syscall_elib_framebuffer(uint64_t *width, uint64_t *height, uin
 
     term_close();
 
-    seg_fixed_data_t *fixed_data = heap_alloc(sizeof(seg_fixed_data_t));
-    memset(fixed_data, 0, sizeof(seg_fixed_data_t));
-    fixed_data->phys_base = g_framebuffer.phys_address;
-    void *dest = vmm_map(
+    void *dest = vmm_map_direct(
         arch_sched_thread_current()->proc->address_space,
         NULL,
         MATH_CEIL(g_framebuffer.size, ARCH_PAGE_SIZE),
         VMM_PROT_READ | VMM_PROT_WRITE,
         VMM_FLAG_NONE,
         VMM_CACHE_WRITE_COMBINE,
-        &g_seg_fixed,
-        fixed_data
+        g_framebuffer.phys_address
     );
 
     if(dest == NULL) goto err;

@@ -198,7 +198,7 @@ thread_t *arch_sched_thread_create_user(process_t *proc, uintptr_t ip, uintptr_t
 uintptr_t arch_sched_stack_setup(process_t *proc, char **argv, char **envp, auxv_t *auxv) {
 #define WRITE_QWORD(VALUE) { stack -= sizeof(uint64_t); uint64_t tmp = (VALUE); ASSERT(vmm_copy_to(proc->address_space, stack, &tmp, 4) == 4); }
 
-    void *stack_ptr = vmm_map(proc->address_space, NULL, USER_STACK_SIZE, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, VMM_CACHE_STANDARD, &g_seg_anon, NULL);
+    void *stack_ptr = vmm_map_anon(proc->address_space, NULL, USER_STACK_SIZE, VMM_PROT_READ | VMM_PROT_WRITE, VMM_FLAG_NONE, VMM_CACHE_STANDARD);
     ASSERT(stack_ptr != NULL);
     uintptr_t stack = (uintptr_t) stack_ptr + USER_STACK_SIZE - 1;
     stack &= ~0xF;
