@@ -17,7 +17,7 @@
                 "bool=_Bool",
                 "static_assert=_Static_assert"
             ],
-            "compilerPath": "${workspaceFolder}/.chariot-cache/host/gcc/install/usr/local/bin/x86_64-elysium-gcc",
+            "compilerPath": "${workspaceFolder}/.chariot-cache/host/cross_gcc/install/usr/local/bin/x86_64-elf-gcc",
             "cStandard": "gnu23",
             "intelliSenseMode": "gcc-x64",
             "compilerArgs": [
