@@ -434,22 +434,29 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
     x86_64_lapic_timer_poll(LAPIC_CALIBRATION_TICKS);
     uint16_t end_count = x86_64_pit_count();
 
-    x86_64_cpu_t *cpu = &g_x86_64_cpus[boot_info->bsp_index];
-    cpu->lapic_id = x86_64_lapic_id();
-    cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
-    cpu->tss = tss;
-    cpu->tlb_shootdown_check = SPINLOCK_INIT;
-    cpu->tlb_shootdown_lock = SPINLOCK_INIT;
+    x86_64_cpu_t *cpu = NULL;
 
     g_x86_64_cpu_count = 0;
     for(size_t i = 0; i < boot_info->cpu_count; i++) {
+        if(boot_info->cpus[i].init_failed) continue;
+
         if(i == boot_info->bsp_index) {
+            cpu = &g_x86_64_cpus[g_x86_64_cpu_count];
+            cpu->lapic_id = x86_64_lapic_id();
+            cpu->lapic_timer_frequency = (uint64_t) (LAPIC_CALIBRATION_TICKS / (start_count - end_count)) * PIT_FREQ;
+            cpu->tss = tss;
+            cpu->tlb_shootdown_check = SPINLOCK_INIT;
+            cpu->tlb_shootdown_lock = SPINLOCK_INIT;
             g_x86_64_cpu_count++;
             continue;
         }
+
+        size_t previous_count = g_x86_64_cpu_count;
         *boot_info->cpus[i].wake_on_write = (uint64_t) init_ap;
-        while(i >= g_x86_64_cpu_count);
+        while(previous_count >= g_x86_64_cpu_count);
     }
+    ASSERT(cpu != NULL);
+
     log(LOG_LEVEL_DEBUG, "INIT", "BSP init exit (%i/%i cpus initialized)", g_x86_64_cpu_count, boot_info->cpu_count);
     x86_64_init_stage_set(X86_64_INIT_STAGE_SMP);
 
