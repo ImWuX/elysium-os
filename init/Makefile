@@ -3,5 +3,7 @@
 CFLAGS = -std=gnu2x -static -O0
 CFLAGS += -Wall -Wextra -Wvla -Wshadow -Wno-unused-variable -Wno-unused-function -Wno-unused-parameter
 
-init: src/main.c
+C_SOURCES = $(shell find ./src -name "*.c")
+
+init: $(C_SOURCES)
 	x86_64-elysium-gcc $(CFLAGS) $^ -lelib -o $@

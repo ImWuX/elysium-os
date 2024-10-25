@@ -1,3 +1,7 @@
+#include "graphics/draw.h"
+#include "graphics/font.h"
+
+#include <unistd.h>
 #include <stdarg.h>
 #include <errno.h>
 #include <string.h>
@@ -6,6 +10,7 @@
 #include <sys/utsname.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <limits.h>
 #include <elib.h>
 
 #define ASSERT(ASSERTION) if(!(ASSERTION)) { printf("Assertion failed (%i) [%s]: \"%s\"\n", errno, strerror(errno), #ASSERTION); return 1; }
@@ -75,24 +80,9 @@ int main(int argc, char **vargs) {
     ASSERT(clock_gettime(CLOCK_REALTIME, &tp) == 0);
     printf("Realtime: %lu, %lu\n", tp.tv_sec, tp.tv_nsec);
 
-    /* Acquire framebuffer */
-    elib_framebuffer_info_t fb_info;
-    void *fb = elib_acquire_framebuffer(&fb_info);
-    if(fb == NULL) {
-        printf("Failed to acquire the framebuffer\n");
-        return 1;
-    }
-    printf("Acquired framebuffer\n");
-
-    printf("w: %lu, h: %lu, p: %lu\n", fb_info.width, fb_info.height, fb_info.pitch);
-    for(uint64_t y = 0; y < fb_info.height; y++) {
-        for(uint64_t x = 0; x < fb_info.width; x++) {
-            *((uint32_t *) (fb + (y * fb_info.pitch) + (x * 4))) = ((255 << 16) | (255 << 8) | (0 << 0));
-        }
-    }
-
-    ASSERT(clock_gettime(CLOCK_REALTIME, &tp) == 0);
-    printf("Realtime: %lu, %lu\n", tp.tv_sec, tp.tv_nsec);
+    /* Terminal Emulator */
+    extern void kcon_initialize();
+    kcon_initialize();
 
     return 0;
 }
