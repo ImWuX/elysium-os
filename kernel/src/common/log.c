@@ -46,7 +46,9 @@ void log_raw(char c) {
 
 const char *log_level_tostring(log_level_t level) {
     switch(level) {
+        case LOG_LEVEL_DEBUG_LOW: return "DEBUG_LOW";
         case LOG_LEVEL_DEBUG: return "DEBUG";
+        case LOG_LEVEL_DEBUG_HIGH: return "DEBUG_HIGH";
         case LOG_LEVEL_INFO: return "INFO";
         case LOG_LEVEL_WARN: return "WARN";
         case LOG_LEVEL_ERROR: return "ERROR";

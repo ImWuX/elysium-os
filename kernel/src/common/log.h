@@ -4,7 +4,9 @@
 #include <common/spinlock.h>
 
 typedef enum {
+    LOG_LEVEL_DEBUG_LOW,
     LOG_LEVEL_DEBUG,
+    LOG_LEVEL_DEBUG_HIGH,
     LOG_LEVEL_INFO,
     LOG_LEVEL_WARN,
     LOG_LEVEL_ERROR

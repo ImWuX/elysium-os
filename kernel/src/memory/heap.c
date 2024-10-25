@@ -50,7 +50,7 @@ void heap_initialize(vmm_address_space_t *address_space, size_t size) {
 
 void *heap_alloc_align(size_t size, size_t alignment) {
     ASSERT(size > 0);
-    log(LOG_LEVEL_DEBUG, "HEAP", "alloc(size: %#lx, alignment: %#lx)", size, alignment);
+    log(LOG_LEVEL_DEBUG_LOW, "HEAP", "alloc(size: %#lx, alignment: %#lx)", size, alignment);
     spinlock_acquire(&g_lock);
     LIST_FOREACH(&g_entries, elem) {
         heap_entry_t *entry = LIST_CONTAINER_GET(elem, heap_entry_t, list_elem);
@@ -99,7 +99,7 @@ void *heap_alloc_align(size_t size, size_t alignment) {
         spinlock_release(&g_lock);
 
         size_t address = (uintptr_t) entry + sizeof(heap_entry_t);
-        log(LOG_LEVEL_DEBUG, "HEAP", "alloc success (address: %#lx)", address);
+        log(LOG_LEVEL_DEBUG_LOW, "HEAP", "alloc success (address: %#lx)", address);
         return (void *) address;
     }
     panic("HEAP: Out of memory");
@@ -109,7 +109,8 @@ void *heap_alloc(size_t size) {
     return heap_alloc_align(size, 1);
 }
 
-void heap_free(void* address) {
+void heap_free(void *address) {
+    if(address == NULL) return;
     spinlock_acquire(&g_lock);
     heap_entry_t *entry = (heap_entry_t *) (address - sizeof(heap_entry_t));
 #if HEAP_PROTECTION

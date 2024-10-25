@@ -11,7 +11,7 @@
 #define FLAG_NO_PREFIX_ON_ZERO (1 << 7)
 
 #define HASH(C) ((C) - 'a')
-#define PUTCHAR(OUTFUNC, CH, COUNT) ({(COUNT)++; OUTFUNC((CH)); })
+#define PUTCHAR(OUTFUNC, CH, COUNT) ({ (COUNT)++; OUTFUNC((CH)); })
 
 enum {
     LNONE, Lh, Lhh, Ll, Lll, Lj, Lz, Lt, LL
