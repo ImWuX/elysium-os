@@ -82,7 +82,7 @@ source/pkgconf {
     b2sum: 2f305e102913dbd6e45acb4e008afea879f95aab010f1ebc7a83c218d27f2079eb6fac51be811dad9a62057928ce270fe4e8cb6db24070d8f900956af5a67249
     type: tar.gz
     patch: pkgconf.diff
-    dependencies [ host/automake host/libtool]
+    dependencies [ host/automake host/libtool ]
     strap { libtoolize -cfvi && autoreconf -fvi }
 }
 
@@ -93,10 +93,22 @@ source/binutils {
     patch: binutils.diff
     dependencies [ host/automake host/libtool host/pkgconf ]
     strap {
-        CFG=$(realpath ./config)
-        for f in $(find . -name configure.ac); do \
-            ( cd "$(dirname "$f")" && libtoolize -cfvi && autoreconf -fvi -I"$CFG" ); \
-        done
+        ( cd libiberty && libtoolize -cfvi && autoreconf -fvi -I$(realpath ./config) -I$(realpath ../config) )
+        ( cd intl && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        ( cd zlib/contrib/minizip && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../../../config) )
+        ( cd zlib && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        ( cd bfd && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        ( cd opcodes && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        ( cd gas && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        ( cd gold && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        ( cd libctf && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        ( cd binutils && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        ( cd libsframe && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        ( cd gprof && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        ( cd gprofng/libcollector && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../../config) )
+        ( cd gprofng && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        ( cd ld && libtoolize -cfvi && autoreconf -fvi -I$(realpath ../config) )
+        libtoolize -cfvi && autoreconf -fvi -I$(realpath ./config)
     }
 }
 
@@ -180,18 +192,20 @@ host/libtool {
 
 host/pkgconf {
     source: pkgconf
+    dependencies [ host/automake host/libtool ]
     configure { @(source_dir)/configure --prefix=@(prefix) }
     build { make -j@(thread_count) }
     install {
         DESTDIR=@(install_dir) make install-strip
         mkdir -p @(install_dir)@(prefix)/share/pkgconfig/personality.d
-        cat << EOF > "@(install_dir)@(prefix)/share/pkgconfig/personality.d/x86_64-elysium.personality"
-Triplet: x86_64-elysium
-SysrootDir: @(sysroot_dir)
-DefaultSearchPaths: @(sysroot_dir)/usr/lib/pkgconfig:@(sysroot_dir)/usr/share/pkgconfig
-SystemIncludePaths: @(sysroot_dir)/usr/include
-SystemLibraryPaths: @(sysroot_dir)/usr/lib
-EOF
+
+        PERSONALITY_FILE="@(install_dir)@(prefix)/share/pkgconfig/personality.d/x86_64-elysium.personality"
+        echo "Triplet: x86_64-elysium" >> $PERSONALITY_FILE
+        echo "SysrootDir: @(sysroot_dir)" >> $PERSONALITY_FILE
+        echo "DefaultSearchPaths: @(sysroot_dir)/usr/lib/pkgconfig:@(sysroot_dir)/usr/share/pkgconfig" >> $PERSONALITY_FILE
+        echo "SystemIncludePaths: @(sysroot_dir)/usr/include" >> $PERSONALITY_FILE
+        echo "SystemLibraryPaths: @(sysroot_dir)/usr/lib" >> $PERSONALITY_FILE
+
         ln -s pkgconf @(install_dir)@(prefix)/bin/x86_64-elysium-pkg-config
     }
 }
