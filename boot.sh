@@ -23,6 +23,8 @@ qemu_args+=(-monitor stdio)
 qemu_args+=(-no-reboot)
 qemu_args+=(-no-shutdown)
 qemu_args+=(-net none)
-# qemu_args+=(-machine accel=kvm)
+qemu_args+=(-accel kvm)
+# qemu_args+=(-accel tcg)
+# qemu_args+=(-s -S)
 
 qemu-system-x86_64 "${qemu_args[@]}"
