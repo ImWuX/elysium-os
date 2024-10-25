@@ -409,6 +409,8 @@ void x86_64_init_stage_set(x86_64_init_stage_t stage) {
         char *envp[] = { NULL };
 
         process_t *proc = sched_process_create(as);
+        proc->cwd = root_node;
+
         resource_create_at(&proc->resource_table, 0, stdin, 0, RESOURCE_MODE_READ_WRITE, true);
         resource_create_at(&proc->resource_table, 1, stdout, 0, RESOURCE_MODE_READ_WRITE, true);
         resource_create_at(&proc->resource_table, 2, stderr, 0, RESOURCE_MODE_READ_WRITE, true);

@@ -165,4 +165,8 @@ namespace mlibc {
         return syscall1(SYSCALL_UNAME, (syscall_int_t) buf).err;
     }
 
+    int sys_getcwd(char *buffer, size_t size) {
+        return syscall2(SYSCALL_FS_GETCWD, (syscall_int_t) size, (syscall_int_t) buffer).err;
+    }
+
 }

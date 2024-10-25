@@ -11,3 +11,7 @@ void *elib_acquire_framebuffer(elib_framebuffer_info_t *info) {
     info->pitch = pitch;
     return (void *) ret.value;
 }
+
+int elib_input() {
+    return syscall0(SYSCALL_ELIB_INPUT).value;
+}

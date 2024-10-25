@@ -307,3 +307,30 @@ syscall_return_t syscall_fs_stat(int resource_id, size_t path_length, char *path
     heap_free(stat);
     return ret;
 }
+
+syscall_return_t syscall_fs_getcwd(size_t buffer_size, char *buffer) {
+    syscall_return_t ret = {};
+
+    if(buffer == NULL) {
+        ret.err = -EFAULT;
+        return ret;
+    }
+
+    log(LOG_LEVEL_DEBUG, "SYSCALL", "getcwd(buffer_size: %lu, buffer: %#lx)", buffer_size, (uintptr_t) buffer);
+
+    process_t *proc = arch_sched_thread_current()->proc;
+
+    char *path = vfs_path(proc->cwd);
+    size_t path_len = strlen(path);
+
+    if(path_len >= buffer_size) {
+        ret.err = -ERANGE;
+        return ret;
+    }
+
+    syscall_buffer_out(buffer, path, path_len + 1);
+
+    heap_free(path);
+
+    return ret;
+}

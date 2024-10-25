@@ -8,3 +8,4 @@ typedef struct {
 } elib_framebuffer_info_t;
 
 void *elib_acquire_framebuffer(elib_framebuffer_info_t *info);
+int elib_input();

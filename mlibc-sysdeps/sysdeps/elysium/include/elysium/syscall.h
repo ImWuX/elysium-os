@@ -17,6 +17,8 @@
 #define SYSCALL_STAT 11
 #define SYSCALL_ELIB_FRAMEBUFFER 12
 #define SYSCALL_CLOCK 13
+#define SYSCALL_ELIB_INPUT 14
+#define SYSCALL_FS_GETCWD 15
 
 #ifdef __cplusplus
 extern "C" {
