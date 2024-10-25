@@ -126,6 +126,18 @@ source/gcc {
     }
 }
 
+source/cxxshim {
+    url: https://github.com/managarm/cxxshim/archive/1abc678c17a8b54bf9497065443c1d4b292accb9.tar.gz
+    b2sum: 4bf7a835e5df38c8ceb2f12aa9329c1aab1daed09bdeb4ae6981d379456988ef13a2ac662ffe5b4b0c1dde89fc32e17a4219bd752d2dbef4608f95bf20a884d8
+    type: tar.gz
+}
+
+source/frigg {
+    url: https://github.com/managarm/frigg/archive/cd20c20d1390e06a46983dbd8209125087f5d7da.tar.gz
+    b2sum: 94e4d77b424c7b820b4afa83d83d5e510ef1dd5e8e6a3fde77eb6b085bbf5d7b4fee67d3ace4f304370bf108f9f0c08fd3375078c5fa9e2c7715af0079356b4b
+    type: tar.gz
+}
+
 source/mlibc {
     url: https://github.com/managarm/mlibc/archive/5ea203152ce7b4423dfbe6999e66434c0800ffbe.tar.gz
     b2sum: c91c182edfdc933fdd9f8a48ed9bcfeaab5eecdc2d77e6ae073aac05bd11791f8b01eb568983f6e2abb1f6249328666cb35b04a866d9b321b3c900772ba26a6a
@@ -133,6 +145,19 @@ source/mlibc {
     patch: mlibc.diff
     dependencies [ source/mlibc_sysdeps ]
     strap { mv @(sources_dir)/mlibc_sysdeps/sysdeps/elysium ./sysdeps/ }
+}
+
+source/libgcc_binaries {
+    url: https://github.com/osdev0/libgcc-binaries/archive//88ab85c02d7dd38a8b9aaf8b6efe53f19a2316cb.tar.gz
+    b2sum: f0933b775c97f0a3bb61e17c749049d9a4245f6b80350be5e194aa744ebddf72ac25577a347c470bc1e6d8e971290f8909c6ccf08eeaf43a8b5e08aa1b8acc30
+    type: tar.gz
+}
+
+source/ncurses {
+    url: https://github.com/mirror/ncurses/archive/refs/tags/v6.2.tar.gz
+    b2sum: 8ac2fdc776a80912693930d64d1457c4bd38424415d3ca18d30d413d0efe3b2456a95985f391d3c58f51314f189f7c91b83f02cf76f01c594c5954ba97e8b708
+    type: tar.gz
+    patch: ncurses.diff
 }
 
 // // // // // //
@@ -212,6 +237,7 @@ host/pkgconf {
 
 host/binutils {
     source: binutils
+    dependencies [ host/automake host/libtool host/pkgconf ]
     configure {
         @(source_dir)/configure \
             --with-sysroot=@(sysroot_dir) \
@@ -226,50 +252,100 @@ host/binutils {
     install { DESTDIR=@(install_dir) make install-strip }
 }
 
-host/bootstrap_gcc {
-    source: gcc
-    dependencies [ *host/binutils target/mlibc_headers ]
-    configure {
-        CFLAGS="-O2" CXXFLAGS="-O2" @(source_dir)/configure \
-            --prefix=@(prefix) \
-            --target=x86_64-elysium \
-            --with-sysroot=@(sysroot_dir) \
-            --enable-languages=c,c++ \
-            --disable-nls \
-            --disable-multilib \
-            --disable-shared \
-            --enable-initfini-array
-    }
-    build {
-        make -j@(thread_count) inhibit_libc=true all-gcc
-        make -j@(thread_count) inhibit_libc=true all-target-libgcc
-    }
-    install {
-        DESTDIR=@(install_dir) make install-gcc
-        DESTDIR=@(install_dir) make install-target-libgcc
-    }
-}
+// host/bootstrap_gcc {
+//     source: gcc
+//     dependencies [ *host/binutils host/automake host/libtool host/pkgconf target/mlibc_headers ]
+//     configure {
+//         CFLAGS="-O2" CXXFLAGS="-O2" @(source_dir)/configure \
+//             --prefix=@(prefix) \
+//             --target=x86_64-elysium \
+//             --with-sysroot=@(sysroot_dir) \
+//             --enable-languages=c,c++,lto \
+//             --disable-nls \
+//             --disable-multilib \
+//             --disable-shared \
+//             --enable-initfini-array
+//     }
+//     build {
+//         make -j@(thread_count) inhibit_libc=true all-gcc
+//         make -j@(thread_count) inhibit_libc=true all-target-libgcc
+//         make install-gcc install-target-libgcc
+
+//         make -j@(thread_count) inhibit_libc=true all-target-libstdc++-v3
+//     }
+//     install {
+//         DESTDIR=@(install_dir) make install-gcc
+//         DESTDIR=@(install_dir) make install-target-libgcc
+//         DESTDIR=@(install_dir) make install-target-libstdc++-v3
+//     }
+// }
 
 host/gcc {
     source: gcc
-    dependencies [ *host/binutils *target/mlibc_headers *target/mlibc ]
+    dependencies [ *host/binutils host/automake host/libtool host/pkgconf target/mlibc_headers ]
     configure {
         CFLAGS="-O2" CXXFLAGS="-O2" @(source_dir)/configure \
             --prefix=@(prefix) \
             --target=x86_64-elysium \
             --with-sysroot=@(sysroot_dir) \
-            --enable-languages=c,c++ \
+            --enable-languages=c,c++,lto \
             --disable-nls \
             --disable-multilib \
-            --enable-initfini-array
+            --enable-initfini-array \
+            --enable-shared \
+            --enable-host-shared
     }
     build {
         make -j@(thread_count) all-gcc
-        make -j@(thread_count) all-target-libgcc
     }
     install {
         DESTDIR=@(install_dir) make install-gcc
-        DESTDIR=@(install_dir) make install-target-libgcc
+    }
+}
+
+host/libgcc {
+    source: gcc
+    dependencies [ host/gcc host/automake host/libtool host/pkgconf target/mlibc target/mlibc_headers ]
+    configure {
+        CFLAGS="-O2" CXXFLAGS="-O2" @(source_dir)/configure \
+            --prefix=@(prefix) \
+            --target=x86_64-elysium \
+            --with-sysroot=@(sysroot_dir) \
+            --enable-languages=c,c++,lto \
+            --disable-nls \
+            --disable-multilib \
+            --enable-initfini-array \
+            --enable-shared \
+            --enable-host-shared
+    }
+    build {
+        make -j@(thread_count) all-target-libgcc
+    }
+    install {
+        DESTDIR=@(install_dir) make install-strip-target-libgcc
+    }
+}
+
+host/libstdcpp {
+    source: gcc
+    dependencies [ host/gcc host/automake host/libtool host/pkgconf target/mlibc target/mlibc_headers host/libgcc ]
+    configure {
+        CFLAGS="-O2" CXXFLAGS="-O2" @(source_dir)/configure \
+            --prefix=@(prefix) \
+            --target=x86_64-elysium \
+            --with-sysroot=@(sysroot_dir) \
+            --enable-languages=c,c++,lto \
+            --disable-nls \
+            --disable-multilib \
+            --enable-initfini-array \
+            --enable-shared \
+            --enable-host-shared
+    }
+    build {
+        make -j@(thread_count) all-target-libstdc++-v3
+    }
+    install {
+        DESTDIR=@(install_dir) make install-strip-target-libstdc++-v3
     }
 }
 
@@ -297,9 +373,40 @@ host/mkimg {
 // // // // // //
 // Target Recipes
 
+// TODO these dont even seem to be used ...
+target/cxxshim {
+    source: cxxshim
+    configure {
+        meson setup \
+            --prefix=@(prefix) \
+            --libdir=lib \
+            --includedir=share/cxxshim/include \
+            -Dinstall_headers=true \
+            @(source_dir)
+    }
+    build { ninja }
+    install { DESTDIR=@(install_dir) ninja install }
+}
+
+// TODO these dont even seem to be used ...
+target/frigg {
+    source: frigg
+    configure {
+        meson setup \
+            --prefix=@(prefix) \
+            --libdir=lib \
+            --includedir=share/frigg/include \
+            --buildtype=debugoptimized \
+            -Dbuild_tests=disabled \
+            @(source_dir)
+    }
+    build { ninja }
+    install { DESTDIR=@(install_dir) ninja install }
+}
+ 
 target/mlibc_headers {
     source: mlibc
-    dependencies [ source/support ]
+    dependencies [ source/support host/pkgconf target/cxxshim target/frigg ]
     configure {
         meson setup \
             --cross-file @(sources_dir)/support/elysium.cross-file \
@@ -318,8 +425,9 @@ target/mlibc_headers {
 
 target/mlibc {
     source: mlibc
-    dependencies [ target/mlibc_headers host/bootstrap_gcc source/support ]
+    dependencies [ target/mlibc_headers target/cxxshim target/frigg host/gcc source/libgcc_binaries source/support ]
     configure {
+        LDFLAGS="-Wl,@(sources_dir)/libgcc_binaries/libgcc-x86_64.a" \
         meson setup \
             --cross-file @(sources_dir)/support/elysium.cross-file \
             --prefix=@(prefix) \
@@ -329,12 +437,53 @@ target/mlibc {
             -Ddisable_intl_option=true \
             -Ddisable_crypt_option=true \
             -Ddisable_linux_option=true \
-            --buildtype=debug \
+            --buildtype=debugoptimized \
             -Ddefault_library=both \
+            -Ddisable_libgcc_dependency=true \
             @(source_dir)
     }
     build { ninja }
     install { DESTDIR=@(install_dir) ninja install }
+}
+
+target/ncurses {
+    source: ncurses
+    dependencies [ host/gcc target/mlibc target/mlibc_headers host/libgcc host/libstdcpp host/automake host/libtool host/pkgconf ]
+    configure {
+        cf_cv_func_nanosleep=yes \
+        @(source_dir)/configure \
+            --host=x86_64-elysium \
+            --prefix=@(prefix) \
+            --without-ada \
+            --enable-pc-files \
+            --with-shared \
+            --without-normal \
+            --with-manpage-format=normal \
+            --with-pkg-config-libdir=/usr/lib/pkgconfig \
+            --with-termlib \
+            --enable-widec \
+            --disable-stripping
+    }
+    build { make -j@(thread_count) }
+    install {
+        make install DESTDIR=@(install_dir)
+        for lib in ncurses form panel menu tinfo ; do
+            rm -vf                    @(install_dir)@(prefix)/lib/lib$(echo $lib).so
+            echo "INPUT(-l$(echo $lib)w)" > @(install_dir)@(prefix)/lib/lib$(echo $lib).so
+            ln -sfv $(echo $lib)w.pc        @(install_dir)@(prefix)/lib/pkgconfig/$(echo $lib).pc
+        done
+        rm -vf                     @(install_dir)@(prefix)/lib/libcursesw.so
+        echo "INPUT(-lncursesw)" > @(install_dir)@(prefix)/lib/libcursesw.so
+        ln -sfv libncurses.so      @(install_dir)@(prefix)/lib/libcurses.so
+
+        rm -rf @(install_dir)@(prefix)/lib/*.a
+
+        x86_64-elysium-strip @(install_dir)@(prefix)/lib/libformw.so
+        x86_64-elysium-strip @(install_dir)@(prefix)/lib/libmenuw.so
+        x86_64-elysium-strip @(install_dir)@(prefix)/lib/libncursesw.so
+        x86_64-elysium-strip @(install_dir)@(prefix)/lib/libpanelw.so
+        x86_64-elysium-strip @(install_dir)@(prefix)/lib/libtinfow.so
+    }
 }
 
 target/tartarus {
@@ -387,7 +536,7 @@ target/elib {
 
 target/init {
     source: init
-    dependencies [ host/gcc target/mlibc_headers target/elib ]
+    dependencies [ host/gcc target/mlibc_headers target/mlibc host/libgcc target/elib ]
     configure { cp -r @(source_dir)/* . }
     build { make init }
     install {
@@ -397,7 +546,7 @@ target/init {
 }
 
 target/root {
-    dependencies [ host/rdsk target/mlibc target/init ]
+    dependencies [ host/rdsk target/mlibc target/init target/ncurses ]
     configure {
         mkdir ./rootdir
         cp -r @(sysroot_dir)/* ./rootdir
@@ -425,3 +574,16 @@ target/image {
     }
     install { cp elysium.img @(install_dir) }
 }
+
+// source/readline {
+//     url: https://ftp.gnu.org/gnu/readline/readline-8.2.tar.gz
+//     b2sum: 7974322b9c092a756a79e537df08e8532f8e0fcb598f77732e28287c33ebec9e9837ed88b43334c310892d56a871b423903f0f564def2fbe700a1004f2ae7b18
+//     type: tar.gz
+//     patch: readline.diff
+// }
+
+// target/readline {
+//     source: readline
+//     dependencies [ target/gcc ]
+//     configure {  }
+// }
