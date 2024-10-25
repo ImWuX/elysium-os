@@ -19,6 +19,7 @@ int vfs_mount(vfs_ops_t *vfs_ops, char *path, void *data) {
             heap_free(vfs);
             return -ENOENT;
         }
+        vfs->mount_node = NULL;
     } else {
         vfs_node_t *node;
         int r = vfs_lookup(path, &node, NULL);
@@ -72,7 +73,17 @@ int vfs_lookup_ext(char *path, vfs_node_t **out, vfs_node_t *cwd, vfs_lookup_cre
                 component[comp_length] = 0;
                 comp_start = comp_end + 1;
 
-                int r = current_node->ops->lookup(current_node, component, &current_node);
+                vfs_node_t *next_node;
+                int r = current_node->ops->lookup(current_node, component, &next_node);
+                if(r == 0) {
+                    if(next_node == NULL) {
+                        if(current_node->vfs->mount_node != NULL) {
+                            r = current_node->ops->lookup(current_node, "..", &next_node);
+                        }
+                    } else {
+                        current_node = next_node;
+                    }
+                }
 
                 if(r == -ENOENT && last_comp) {
                     switch(create) {
@@ -127,4 +138,36 @@ int vfs_create(char *path, const char *name, vfs_node_t **out, vfs_node_t *cwd) 
     int r = vfs_lookup(path, &parent, cwd);
     if(r < 0) return r;
     return parent->ops->create(parent, name, out);
+}
+
+char *vfs_path(vfs_node_t *node) {
+    // TODO: use heap_realloc when made
+    size_t buffer_size = 0;
+    char *buffer = NULL;
+    while(true) {
+        const char *name = node->ops->name(node);
+        if(name == NULL) {
+            if(node->vfs->mount_node == NULL) break;
+            node = node->vfs->mount_node;
+            continue;
+        }
+        size_t name_length = strlen(name);
+
+        char *new_buffer = heap_alloc(name_length + 1 + buffer_size + 1);
+        new_buffer[0] = '/';
+        memcpy(&new_buffer[1], name, name_length);
+        if(buffer_size != 0) memcpy(&new_buffer[name_length + 1], buffer, buffer_size);
+        new_buffer[name_length + 1 + buffer_size] = '\0';
+
+        buffer_size += name_length + 1;
+        heap_free(buffer);
+        buffer = new_buffer;
+
+        ASSERT(node->ops->lookup(node, "..", &node) == 0);
+    }
+    if(buffer == NULL) {
+        buffer = heap_alloc(2);
+        buffer[0] = '/', buffer[1] = '\0';
+    }
+    return buffer;
 }

@@ -19,11 +19,19 @@ static int stdio_shared_node_attr(vfs_node_t *node [[maybe_unused]], vfs_node_at
     return 0;
 }
 
+static const char *stdio_stdin_node_name(vfs_node_t *node [[maybe_unused]]) {
+    return "stdin";
+}
+
 static int stdio_stdin_node_rw(vfs_node_t *node [[maybe_unused]], vfs_rw_t *packet, size_t *rw_count) {
     if(packet->rw == VFS_RW_WRITE) return -EPERM;
     // TODO: STDIN
     *rw_count = 0;
     return 0;
+}
+
+static const char *stdio_stdout_node_name(vfs_node_t *node [[maybe_unused]]) {
+    return "stdout";
 }
 
 static int stdio_stdout_node_rw(vfs_node_t *node [[maybe_unused]], vfs_rw_t *packet, size_t *rw_count) {
@@ -32,6 +40,10 @@ static int stdio_stdout_node_rw(vfs_node_t *node [[maybe_unused]], vfs_rw_t *pac
     for(size_t i = 0; i < packet->size && c[i] != 0; i++) log_raw(c[i]);
     *rw_count = packet->size;
     return 0;
+}
+
+static const char *stdio_stderr_node_name(vfs_node_t *node [[maybe_unused]]) {
+    return "stderr";
 }
 
 static int stdio_stderr_node_rw(vfs_node_t *node [[maybe_unused]], vfs_rw_t *packet, size_t *rw_count) {
@@ -64,6 +76,7 @@ static int stdio_shared_node_truncate(vfs_node_t *node [[maybe_unused]], size_t 
 
 static vfs_node_ops_t g_stdin_ops = {
     .attr = stdio_shared_node_attr,
+    .name = stdio_stdin_node_name,
     .lookup = stdio_shared_node_lookup,
     .rw = stdio_stdin_node_rw,
     .mkdir = stdio_shared_node_mkdir,
@@ -74,6 +87,7 @@ static vfs_node_ops_t g_stdin_ops = {
 
 static vfs_node_ops_t g_stdout_ops = {
     .attr = stdio_shared_node_attr,
+    .name = stdio_stdout_node_name,
     .lookup = stdio_shared_node_lookup,
     .rw = stdio_stdout_node_rw,
     .mkdir = stdio_shared_node_mkdir,
@@ -84,6 +98,7 @@ static vfs_node_ops_t g_stdout_ops = {
 
 static vfs_node_ops_t g_stderr_ops = {
     .attr = stdio_shared_node_attr,
+    .name = stdio_stderr_node_name,
     .lookup = stdio_shared_node_lookup,
     .rw = stdio_stderr_node_rw,
     .mkdir = stdio_shared_node_mkdir,
@@ -102,7 +117,15 @@ static int stdio_root_node_attr(vfs_node_t *node [[maybe_unused]], vfs_node_attr
     return 0;
 }
 
+static const char *stdio_root_node_name(vfs_node_t *node [[maybe_unused]]) {
+    return NULL;
+}
+
 static int stdio_root_node_lookup(vfs_node_t *node, char *name, vfs_node_t **out) {
+    if(strcmp(name, "..") == 0) {
+        *out = NULL;
+        return 0;
+    }
     if(strcmp(name, ".") == 0) {
         *out = node;
         return 0;
@@ -159,6 +182,7 @@ static int stdio_root_node_truncate(vfs_node_t *node [[maybe_unused]], size_t le
 
 static vfs_node_ops_t g_root_ops = {
     .attr = stdio_root_node_attr,
+    .name = stdio_root_node_name,
     .lookup = stdio_root_node_lookup,
     .rw = stdio_root_node_rw,
     .mkdir = stdio_root_node_mkdir,

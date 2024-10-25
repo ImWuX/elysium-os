@@ -79,7 +79,15 @@ typedef struct vfs_node_ops {
     int (* attr)(vfs_node_t *node, vfs_node_attr_t *attr);
 
     /**
+     * @brief Retrieve node name
+     * @returns NULL if node is fs root
+     * @todo needs to be refcounted like everything else in here (or return duplicate)
+     */
+    const char *(* name)(vfs_node_t *node);
+
+    /**
      * @brief Look up a node by name
+     * @param out set to looked up node, NULL on parent lookup of fs root
      * @returns 0 on success, -errno on failure
      */
     int (* lookup)(vfs_node_t *node, char *name, vfs_node_t **out);
@@ -159,3 +167,8 @@ int vfs_mkdir(char *path, const char *name, vfs_node_t **out, vfs_node_t *cwd);
  * @returns 0 on success, -errno on failure
  */
 int vfs_create(char *path, const char *name, vfs_node_t **out, vfs_node_t *cwd);
+
+/**
+ * @brief Retrieve the absolute path of a node
+ */
+char *vfs_path(vfs_node_t *node);

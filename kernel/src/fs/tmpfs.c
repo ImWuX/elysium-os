@@ -79,6 +79,10 @@ static int tmpfs_node_attr(vfs_node_t *node, vfs_node_attr_t *attr) {
     return 0;
 }
 
+static const char *tmpfs_node_name(vfs_node_t *node) {
+    return TNODE(node)->name;
+}
+
 static int tmpfs_node_lookup(vfs_node_t *node, char *name, vfs_node_t **out) {
     if(node->type != VFS_NODE_TYPE_DIR) return -ENOTDIR;
     if(strcmp(name, ".") == 0) {
@@ -87,10 +91,10 @@ static int tmpfs_node_lookup(vfs_node_t *node, char *name, vfs_node_t **out) {
     }
     if(strcmp(name, "..") == 0) {
         tmpfs_node_t *parent = TNODE(node)->parent;
-        if(parent)
+        if(parent != NULL)
             *out = parent->node;
         else
-            *out = node;
+            *out = NULL;
         return 0;
     }
     tmpfs_node_t *tnode = dir_find((tmpfs_node_t *) node->data, name);
@@ -179,7 +183,7 @@ static int tmpfs_mount(vfs_t *vfs, [[maybe_unused]] void *data) {
     tmpfs_info_t *info = heap_alloc(sizeof(tmpfs_info_t));
     info->id_counter = 1;
     vfs->data = (void *) info;
-    info->root_dir = create_tnode(NULL, vfs, true, "tmpfs_root");
+    info->root_dir = create_tnode(NULL, vfs, true, NULL);
     return 0;
 }
 
@@ -190,6 +194,7 @@ static int tmpfs_root(vfs_t *vfs, vfs_node_t **out) {
 
 static vfs_node_ops_t g_node_ops = {
     .attr = tmpfs_node_attr,
+    .name = tmpfs_node_name,
     .lookup = tmpfs_node_lookup,
     .rw = tmpfs_node_rw,
     .mkdir = tmpfs_node_mkdir,
