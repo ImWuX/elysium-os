@@ -17,7 +17,6 @@
 #include "memory/vm.h"
 #include "sched/sched.h"
 #include "sys/event.h"
-#include "sys/init.h"
 #include "sys/time.h"
 #include "x86_64/abi/sysv/auxv.h"
 #include "x86_64/abi/sysv/sysv.h"
